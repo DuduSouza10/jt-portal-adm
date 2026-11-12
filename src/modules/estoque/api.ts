@@ -28,15 +28,33 @@ const REF = "solicitacao";
 
 export { STOCK_TX } from "./engine";
 
+/**
+ * Trava a SOLICITAÇÃO até o fim da transação (advisory lock do Postgres).
+ * Sem isso, a mesma solicitação em duas transações ao mesmo tempo (clique duplo, dois aprovadores)
+ * reservaria ou baixaria duas vezes. Usa advisory lock e não FOR UPDATE nas reservas porque, na
+ * primeira aprovação, ainda não existe linha de reserva para travar.
+ * Sempre a primeira trava das funções abaixo (antes das linhas de saldo), então não gera deadlock.
+ */
+async function lockSolicitacao(tx: Tx, solicitacaoId: string) {
+  const key = `estoque:${REF}:${solicitacaoId}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+}
+
 export async function reservar(
   tx: Tx,
   p: { solicitacaoId: string; almoxarifadoId: string; actorId: string | null; itens: ItemInput[] },
 ) {
   const itens = normalizeItems(p.itens);
+  await lockSolicitacao(tx, p.solicitacaoId);
   const base = await tx.base.findUnique({ where: { id: p.almoxarifadoId } });
   if (!base || base.type !== "ALMOXARIFADO" || !base.active) throw new DomainError("Almoxarifado inválido.");
-  const ativa = await tx.stockReservation.count({ where: { refType: REF, refId: p.solicitacaoId, status: "ATIVA" } });
-  if (ativa) throw new DomainError("Esta solicitação já tem reserva ativa.");
+  // Só uma solicitação recusada/cancelada (LIBERADA) pode ser reservada de novo.
+  const anterior = await tx.stockReservation.findFirst({
+    where: { refType: REF, refId: p.solicitacaoId, status: { in: ["ATIVA", "BAIXADA"] } },
+    select: { status: true },
+  });
+  if (anterior?.status === "ATIVA") throw new DomainError("Esta solicitação já tem reserva ativa.");
+  if (anterior?.status === "BAIXADA") throw new DomainError("Esta solicitação já foi enviada; não pode ser reservada de novo.");
 
   const produtos = await loadProdutos(tx, itens.map((i) => i.produtoId));
   const batchId = newBatchId();
@@ -51,7 +69,7 @@ export async function reservar(
       refType: REF,
       refId: p.solicitacaoId,
     });
-    // upsert: uma solicitação aprovada de novo depois de recusada reaproveita a linha.
+    // upsert: uma solicitação aprovada de novo depois de recusada (LIBERADA) reaproveita a linha.
     await tx.stockReservation.upsert({
       where: {
         refType_refId_baseId_produtoId: { refType: REF, refId: p.solicitacaoId, baseId: base.id, produtoId: it.produtoId },
@@ -73,6 +91,7 @@ async function activeReservations(tx: Tx, solicitacaoId: string) {
 
 /** Recusa ou cancelamento: devolve tudo o que estava reservado. Sem reserva ativa = não faz nada. */
 export async function liberarReserva(tx: Tx, p: { solicitacaoId: string; actorId: string | null }) {
+  await lockSolicitacao(tx, p.solicitacaoId);
   const reservas = await activeReservations(tx, p.solicitacaoId);
   const batchId = newBatchId();
   for (const r of reservas) {
@@ -99,6 +118,7 @@ export async function baixarReserva(
   tx: Tx,
   p: { solicitacaoId: string; actorId: string | null; enviados?: ItemInput[] },
 ) {
+  await lockSolicitacao(tx, p.solicitacaoId);
   const reservas = await activeReservations(tx, p.solicitacaoId);
   if (!reservas.length) throw new DomainError("Esta solicitação não tem reserva ativa para enviar.");
   const enviados = p.enviados ? new Map(normalizeItems(p.enviados, { allowZero: true }).map((i) => [i.produtoId, i.quantity])) : null;

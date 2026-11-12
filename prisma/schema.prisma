@@ -263,7 +263,8 @@ model StockMovement {
   reason        String? // motivo (obrigatório em saída e inventário)
   /// Agrupa os itens de um mesmo lançamento (ex.: uma NF com 10 produtos, uma transferência).
   batchId       String
-  /// Origem externa, ex.: "solicitacao" + id da solicitação.
+  /// Origem/contraparte: "solicitacao" + id da solicitação, ou "transferencia" + id do OUTRO almoxarifado
+  /// (de onde veio ou para onde foi). O lançamento inteiro é agrupado por batchId.
   refType       String?
   refId         String?
   actorId       String?

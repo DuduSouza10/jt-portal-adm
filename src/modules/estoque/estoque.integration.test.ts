@@ -99,6 +99,18 @@ describe("solicitações (K4)", () => {
     expect(await bal(mg.id, p2)).toMatchObject({ quantity: 50, reserved: 0 });
   });
 
+  it("só solicitação recusada pode ser reservada de novo; enviada não", async () => {
+    await db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-r1`, almoxarifadoId: mg.id, actorId: null, itens: [{ produtoId: p2, quantity: 2 }] }));
+    await db.$transaction((tx) => liberarReserva(tx, { solicitacaoId: `${tag}-r1`, actorId: null }));
+    await db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-r1`, almoxarifadoId: mg.id, actorId: null, itens: [{ produtoId: p2, quantity: 3 }] }));
+    expect((await bal(mg.id, p2)).reserved).toBe(3);
+    await db.$transaction((tx) => baixarReserva(tx, { solicitacaoId: `${tag}-r1`, actorId: null }));
+    await expect(
+      db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-r1`, almoxarifadoId: mg.id, actorId: null, itens: [{ produtoId: p2, quantity: 1 }] })),
+    ).rejects.toThrow(/já foi enviada/);
+    expect(await bal(mg.id, p2)).toMatchObject({ quantity: 47, reserved: 0 });
+  });
+
   it("recusa libera a reserva", async () => {
     await db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-s2`, almoxarifadoId: mg.id, actorId: null, itens: [{ produtoId: p2, quantity: 20 }] }));
     await db.$transaction((tx) => liberarReserva(tx, { solicitacaoId: `${tag}-s2`, actorId: null }));
@@ -165,6 +177,34 @@ describe.skipIf(!realConcurrency)("concorrência", () => {
     );
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(10);
     expect(await bal(sp.id, p2)).toMatchObject({ quantity: 10, reserved: 10 });
+  });
+});
+
+describe.skipIf(!realConcurrency)("concorrência na MESMA solicitação (clique duplo, dois aprovadores)", () => {
+  it("aprovar 5 vezes ao mesmo tempo reserva uma vez só", async () => {
+    await ajustarInventario(actorGlobal, { baseId: sp.id, reason: "preparo", itens: [{ produtoId: p1, quantity: 50 }] });
+    const before = (await bal(sp.id, p1)).reserved;
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, () =>
+        db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-dup`, almoxarifadoId: sp.id, actorId: null, itens: [{ produtoId: p1, quantity: 4 }] }), STOCK_TX),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    for (const r of results) if (r.status === "rejected") expect(r.reason.message).toMatch(/já tem reserva/);
+    expect((await bal(sp.id, p1)).reserved - before).toBe(4);
+  });
+
+  it("enviar 5 vezes ao mesmo tempo baixa uma vez só e não consome a reserva de outra solicitação", async () => {
+    await db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-outra`, almoxarifadoId: sp.id, actorId: null, itens: [{ produtoId: p1, quantity: 4 }] }));
+    const antes = await bal(sp.id, p1);
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, () => db.$transaction((tx) => baixarReserva(tx, { solicitacaoId: `${tag}-dup`, actorId: null }), STOCK_TX)),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await bal(sp.id, p1)).toMatchObject({ quantity: antes.quantity - 4, reserved: antes.reserved - 4 });
+    const outra = await db.stockReservation.findFirstOrThrow({ where: { refId: `${tag}-outra` } });
+    expect(outra).toMatchObject({ status: "ATIVA", quantity: 4 });
+    await db.$transaction((tx) => liberarReserva(tx, { solicitacaoId: `${tag}-outra`, actorId: null }));
   });
 });
 
