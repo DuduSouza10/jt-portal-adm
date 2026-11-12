@@ -88,6 +88,17 @@ export const zhCN: Messages = {
     minimo: "最低 {n}",
     verTodas: "查看全部",
   },
+  grafico: {
+    disponivel: "可用",
+    fisico: "实物",
+    reservado: "预留",
+    minimo: "最低",
+    situacao: "状态",
+    ok: "高于最低库存",
+    baixo: "低于最低库存",
+    critico: "严重不足（不到最低库存的一半）",
+    doMinimo: "为最低库存的 {p}%",
+  },
   naoEncontrado: {
     titulo: "未找到",
     texto: "页面或申领单不存在，或你没有访问权限。",

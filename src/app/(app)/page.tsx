@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/page-header";
 import { NavIcon } from "@/components/nav-icons";
+import { ChartTooltip } from "@/components/chart-tooltip";
 
 type User = Awaited<ReturnType<typeof requireUser>>;
 
@@ -140,6 +141,7 @@ async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
           ) : (
             top.map((c) => {
               const low = c.disp < c.minimum;
+              const crit = c.disp < c.minimum / 2;
               const pct = Math.max(0, Math.min(100, (c.disp / (c.minimum * 2)) * 100));
               return (
                 <div key={`${c.baseId}:${c.produtoId}`} className="border-t px-[18px] py-3 first:border-t-0">
@@ -153,12 +155,25 @@ async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
                     </span>
                     <span>{t("inicio.minimo", { n: c.minimum })}</span>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn("h-full rounded-full", low ? (c.disp < c.minimum / 2 ? "bg-primary" : "bg-warning") : "bg-success")}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  <ChartTooltip
+                    className="mt-2"
+                    title={`${c.produto.name} · ${c.base.code}`}
+                    rows={[
+                      { label: t("grafico.disponivel"), value: n(c.disp), color: low ? (crit ? "var(--primary)" : "var(--warning)") : "var(--success)" },
+                      { label: t("grafico.fisico"), value: n(c.quantity) },
+                      { label: t("grafico.reservado"), value: n(c.reserved) },
+                      { label: t("grafico.minimo"), value: n(c.minimum) },
+                      { label: t("grafico.situacao"), value: t(low ? (crit ? "grafico.critico" : "grafico.baixo") : "grafico.ok") },
+                    ]}
+                    note={t("grafico.doMinimo", { p: n(Math.round((c.disp / c.minimum) * 1000) / 10) })}
+                  >
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted transition-[box-shadow] hover:shadow-[0_0_0_3px_var(--muted)]">
+                      <div
+                        className={cn("h-full rounded-full", low ? (crit ? "bg-primary" : "bg-warning") : "bg-success")}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </ChartTooltip>
                 </div>
               );
             })

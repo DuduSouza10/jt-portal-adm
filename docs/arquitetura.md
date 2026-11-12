@@ -171,6 +171,12 @@ topo (vermelha no claro, grafite com filete vermelho no escuro), `success` e `wa
 Use as classes dos tokens (`bg-primary`, `text-muted-foreground`, `text-success`), nunca cores fixas como
 `text-emerald-700`, que somem no tema escuro.
 
+### Gráficos
+
+Todo gráfico (barra, coluna, ponto, linha) mostra os detalhes num cartão que segue o mouse:
+envolva a marca com `<ChartTooltip title rows note>` (`src/components/chart-tooltip.tsx`).
+Os textos do cartão também vêm do dicionário.
+
 ## Escala (≈ 5.000 usuários)
 
 - Toda lista é **paginada** no banco (50 por página) e filtrada pelo alcance do usuário. Nada de `findMany` sem `take` em tabela que cresce.

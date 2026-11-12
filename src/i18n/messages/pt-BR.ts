@@ -85,6 +85,17 @@ export const ptBR = {
     minimo: "mín. {n}",
     verTodas: "Ver todas",
   },
+  grafico: {
+    disponivel: "Disponível",
+    fisico: "Físico",
+    reservado: "Reservado",
+    minimo: "Mínimo",
+    situacao: "Situação",
+    ok: "Acima do mínimo",
+    baixo: "Abaixo do mínimo",
+    critico: "Crítico (menos da metade do mínimo)",
+    doMinimo: "{p}% do mínimo",
+  },
   naoEncontrado: {
     titulo: "Não encontrado",
     texto: "A página ou pedido não existe, ou você não tem acesso a ele.",
