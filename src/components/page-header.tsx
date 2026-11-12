@@ -5,7 +5,7 @@ export function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+      className="inline-flex items-center gap-1 rounded-md text-[13px] text-muted-foreground transition-colors hover:text-foreground"
     >
       <ArrowLeft className="size-4" /> {label}
     </Link>
@@ -29,11 +29,8 @@ export function PageHeader({
       {back && <BackLink {...back} />}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0 space-y-1">
-          <div className="flex items-center gap-3">
-            <span aria-hidden className="h-7 w-1.5 shrink-0 rounded-full bg-primary" />
-            <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">{title}</h1>
-          </div>
-          {description && <p className="max-w-[70ch] pl-[18px] text-sm text-muted-foreground">{description}</p>}
+          <h1 className="text-[22px] font-semibold tracking-tight sm:text-[26px]">{title}</h1>
+          {description && <p className="max-w-[68ch] text-muted-foreground">{description}</p>}
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
@@ -43,8 +40,8 @@ export function PageHeader({
 
 export function EmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed bg-card/60 px-6 py-12 text-center">
-      <span className="flex size-11 items-center justify-center rounded-full bg-accent text-accent-foreground">
+    <div className="flex flex-col items-center gap-3 rounded-[14px] border bg-card px-6 py-12 text-center">
+      <span className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Inbox className="size-5" aria-hidden />
       </span>
       <p className="max-w-md text-sm text-muted-foreground">{children}</p>

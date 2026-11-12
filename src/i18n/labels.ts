@@ -8,6 +8,7 @@ import type { Translator } from "./translate";
  */
 
 const NAV_KEY: Record<string, keyof Messages["nav"]> = {
+  "/": "inicio",
   "/solicitacoes/nova": "solicitarInsumos",
   "/solicitacoes": "solicitacoes",
   "/expedicao": "expedicao",

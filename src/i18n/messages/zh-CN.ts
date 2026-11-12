@@ -45,6 +45,7 @@ export const zhCN: Messages = {
     trocarSenha: "修改密码",
     sair: "退出登录",
     principal: "主导航",
+    abrir: "打开菜单",
   },
   secoes: {
     operacao: "运营",
@@ -52,6 +53,7 @@ export const zhCN: Messages = {
     admin: "系统管理",
   },
   nav: {
+    inicio: { label: "首页", description: "今日概况" },
     solicitarInsumos: { label: "申领物料", description: "填写并提交申领单" },
     solicitacoes: { label: "申领单", description: "跟踪申领进度" },
     expedicao: { label: "发货", description: "拣货与发货" },
@@ -76,6 +78,14 @@ export const zhCN: Messages = {
     kpiHoje: "今日库存变动",
     kpiAbaixoOk: "全部高于最低库存",
     kpiAbaixoVer: "查看明细",
+    resumo: "{data} · 以下是今天的运营概况。",
+    lancarEntrada: "登记入库",
+    estoqueCritico: "库存预警",
+    ultimasMov: "最近的库存流水",
+    semCritico: "没有低于最低库存的产品。",
+    semMov: "暂无库存流水。",
+    minimo: "最低 {n}",
+    verTodas: "查看全部",
   },
   naoEncontrado: {
     titulo: "未找到",

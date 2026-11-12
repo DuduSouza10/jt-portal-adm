@@ -42,6 +42,7 @@ export const ptBR = {
     trocarSenha: "Trocar senha",
     sair: "Sair",
     principal: "Navegação principal",
+    abrir: "Abrir menu",
   },
   secoes: {
     operacao: "Operação",
@@ -49,6 +50,7 @@ export const ptBR = {
     admin: "Administração",
   },
   nav: {
+    inicio: { label: "Início", description: "Resumo do dia" },
     solicitarInsumos: { label: "Solicitar insumos", description: "Montar e enviar um pedido" },
     solicitacoes: { label: "Solicitações", description: "Acompanhar pedidos" },
     expedicao: { label: "Expedição", description: "Separar e enviar" },
@@ -73,6 +75,14 @@ export const ptBR = {
     kpiHoje: "Movimentações hoje",
     kpiAbaixoOk: "Tudo acima do mínimo",
     kpiAbaixoVer: "Ver quais",
+    resumo: "{data} · Aqui está o resumo da operação de hoje.",
+    lancarEntrada: "Lançar entrada",
+    estoqueCritico: "Estoque crítico",
+    ultimasMov: "Últimas movimentações",
+    semCritico: "Nenhum produto abaixo do mínimo.",
+    semMov: "Nenhuma movimentação ainda.",
+    minimo: "mín. {n}",
+    verTodas: "Ver todas",
   },
   naoEncontrado: {
     titulo: "Não encontrado",
