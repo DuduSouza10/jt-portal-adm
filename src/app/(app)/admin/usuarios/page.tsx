@@ -12,6 +12,10 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { selectClass } from "@/components/form-field";
+import { Pagination, pageParam } from "@/components/pagination";
+import type { Prisma } from "@/generated/prisma/client";
+
+const PAGE_SIZE = 50;
 
 export const metadata: Metadata = { title: "Usuários" };
 
@@ -20,23 +24,27 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
   const sp = await props.searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const perfil = typeof sp.perfil === "string" ? sp.perfil : "";
+  const page = pageParam(sp);
 
-  const [users, profiles] = await Promise.all([
+  const where: Prisma.UserWhereInput = {
+    ...(q && {
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { login: { contains: q.toLowerCase() } },
+        { email: { contains: q, mode: "insensitive" } },
+      ],
+    }),
+    ...(perfil && { profileId: perfil }),
+  };
+  const [users, total, profiles] = await Promise.all([
     db.user.findMany({
-      where: {
-        ...(q && {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { login: { contains: q.toLowerCase() } },
-            { email: { contains: q, mode: "insensitive" } },
-          ],
-        }),
-        ...(perfil && { profileId: perfil }),
-      },
+      where,
       include: { profile: true, bases: { include: { base: true } }, regionals: { include: { regional: true } } },
       orderBy: [{ active: "desc" }, { name: "asc" }],
-      take: 500,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
+    db.user.count({ where }),
     db.accessProfile.findMany({ orderBy: { name: "asc" } }),
   ]);
 
@@ -44,7 +52,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
     <>
       <PageHeader
         title="Usuários"
-        description={`${users.length} usuário(s)`}
+        description={`${total} usuário(s)`}
         actions={
           can(me, "usuarios.editar") && (
             <Button asChild>
@@ -108,6 +116,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
           </Table>
         </Card>
       )}
+      <Pagination page={page} total={total} pageSize={PAGE_SIZE} basePath="/admin/usuarios" params={{ q, perfil }} />
     </>
   );
 }

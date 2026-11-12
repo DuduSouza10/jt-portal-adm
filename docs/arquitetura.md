@@ -119,7 +119,34 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 - **Mudou o schema?** `npm run db:migrate -- --name descricao_curta` → commita a pasta da migration junto.
 - Nunca edite uma migration que já foi para a `main`. Crie outra.
 - Cada módulo adiciona models numa seção própria em `schema.prisma`. Referenciar `User`, `Base`, `Regional` pode; mexer em models do núcleo ou de outro módulo, combine antes.
-- Estoque: toda alteração de saldo passa pelo service de estoque (movimentação + saldo na mesma transação). Nenhum outro módulo altera saldo direto.
+- Estoque: toda alteração de saldo passa pelo motor do estoque (`src/modules/estoque/engine.ts`). Nenhum outro módulo altera saldo direto. Ver "Estoque" abaixo.
+
+## Estoque
+
+- **Motor único** (`engine.ts → move()`): trava a linha do saldo com `SELECT … FOR UPDATE`, aplica a regra pura (`rules.ts → applyMovement`), grava o saldo e a linha do livro-razão. Tudo na transação do chamador.
+- **Concorrência**: produtos diferentes andam em paralelo; o mesmo produto entra em fila. Os itens são sempre travados em ordem de `produtoId` (e as bases de uma transferência, em ordem de id) para não haver deadlock.
+- **Defesa em profundidade**: CHECK no banco impede físico/reservado negativos mesmo se alguém furar o service.
+- **Para o módulo de solicitações** (`api.ts`), dentro da mesma transação da mudança de status:
+
+  ```ts
+  import { reservar, liberarReserva, baixarReserva, STOCK_TX } from "@/modules/estoque/api";
+
+  await db.$transaction(async (tx) => {
+    await tx.solicitacao.update({ where: { id }, data: { status: "APROVADA" } });
+    await reservar(tx, { solicitacaoId: id, almoxarifadoId, actorId: user.id, itens });
+  }, STOCK_TX);
+  // recusa/cancelamento: liberarReserva(tx, { solicitacaoId, actorId })
+  // envio:               baixarReserva(tx, { solicitacaoId, actorId, enviados? })  — parcial libera o resto
+  ```
+
+- **Testes**: regras puras em `rules.test.ts` (`npm test`); ponta a ponta e concorrência em `estoque.integration.test.ts` (`npm run test:integration`), que no CI roda contra um PostgreSQL real. O `prisma dev` local atende uma conexão por vez, então localmente a concorrência fica em fila.
+
+## Escala (≈ 5.000 usuários)
+
+- Toda lista é **paginada** no banco (50 por página) e filtrada pelo alcance do usuário. Nada de `findMany` sem `take` em tabela que cresce.
+- Índices em todas as colunas de filtro/ordenação das telas (ver `schema.prisma`).
+- Serverless: poucas conexões por instância (`DATABASE_POOL_MAX`, padrão 3) e o pooler do Supabase na frente.
+- Operações de estoque usam `STOCK_TX` (timeout de 30 s) por causa de inventários grandes.
 
 ## Divisão de responsabilidades
 
@@ -139,3 +166,7 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 | 2026-11-12 | Sessão no banco em vez de JWT | Desativar usuário ou mudar perfil vale na hora |
 | 2026-11-12 | Permissões por catálogo + tipos de acesso editáveis | Modelo do portal do Eduardo, já validado na operação |
 | 2026-11-12 | Construir do zero usando os 3 projetos como referência | Evita herdar o monolito Flask e o escopo financeiro do sistema-estoque |
+| 2026-11-12 | Model `Produto` mínimo criado pelo Diogo; o resto é do Eduardo (Issue #3) | Estoque precisava de produto; Eduardo acrescenta campos em migrations novas |
+| 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |
+| 2026-11-12 | Trava de linha (`FOR UPDATE`) + regra pura, em vez de update condicional | Uma regra só, testável, e correta com muitos usuários simultâneos |
+| 2026-11-12 | Testes de integração com Postgres real no CI | Concorrência só se prova com conexões paralelas de verdade |

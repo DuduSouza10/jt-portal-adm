@@ -48,6 +48,7 @@ async function main() {
     { login: "dev", name: "Dev (exemplo)", profileId: profiles.dev },
     { login: "admin", name: "Admin (exemplo)", profileId: profiles.admin },
     { login: "gestor.mg", name: "Gestor MG (exemplo)", profileId: profiles["gestor-regional"], regionalId: mg.id },
+    { login: "almox.mg", name: "Almoxarifado MG (exemplo)", profileId: profiles.almoxarifado, regionalId: mg.id },
     { login: "base.bhz", name: "Base BHZ01 (exemplo)", profileId: profiles.base, baseId: bhz.id },
   ];
   for (const { regionalId, baseId, ...u } of users) {
@@ -62,6 +63,16 @@ async function main() {
       },
     });
   }
+  const produtos = [
+    { code: "LUVA-M", name: "Luva de látex M", unit: "cx" },
+    { code: "FITA-48", name: "Fita adesiva 48mm", unit: "un" },
+    { code: "ETIQ-100", name: "Etiqueta térmica 100x150", unit: "rolo" },
+    { code: "SACO-G", name: "Saco plástico G", unit: "pct" },
+    { code: "CANETA-AZ", name: "Caneta azul", unit: "un" },
+  ];
+  for (const p of produtos) await db.produto.upsert({ where: { code: p.code }, update: {}, create: p });
+  console.log(`✓ ${produtos.length} produtos de exemplo (sem saldo: lance uma entrada em /estoque)`);
+
   console.log(`✓ usuários de exemplo: ${users.map((u) => u.login).join(", ")} (senha: ${password})`);
 }
 

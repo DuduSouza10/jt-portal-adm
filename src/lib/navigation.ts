@@ -22,7 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
   // { href: "/produtos", label: "Produtos", description: "Catálogo de insumos", permissions: ["produtos.ver"], section: "gestao" },
 
   // ---- Estoque (Diogo)
-  // { href: "/estoque", label: "Estoque", description: "Saldos e movimentações", permissions: ["estoque.ver"], section: "gestao" },
+  { href: "/estoque", label: "Estoque", description: "Saldos, entradas, saídas e inventário", permissions: ["estoque.ver"], section: "gestao" },
 
   // ---- Administração (núcleo)
   { href: "/admin/usuarios", label: "Usuários", description: "Contas, bases e redefinição de senha", permissions: ["usuarios.ver"], section: "admin" },

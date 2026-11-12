@@ -6,8 +6,8 @@ Uma pasta por módulo de negócio. Ver `docs/arquitetura.md` → "As 3 camadas d
 |---|---|---|
 | `acessos/` | Diogo (núcleo) | ✅ usuários e tipos de acesso |
 | `estrutura/` | Diogo (núcleo) | ✅ regionais e bases |
-| `estoque/` | Diogo | a fazer |
-| `produtos/` | Eduardo | a fazer |
+| `estoque/` | Diogo | ✅ saldos, entradas, saídas, transferências, inventário e API de reservas (`api.ts`) |
+| `produtos/` | Eduardo | model mínimo criado pelo Diogo (Issue #3); falta o resto |
 | `solicitacoes/` | Eduardo | a fazer |
 | `expedicao/` | Eduardo | a fazer |
 | `relatorios/` | Eduardo | a fazer |

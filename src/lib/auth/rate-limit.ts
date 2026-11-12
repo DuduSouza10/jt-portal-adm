@@ -4,7 +4,9 @@ import { db } from "@/lib/db";
 // Rate limit de login no banco (memória não serve em serverless: cada instância é isolada).
 const WINDOW_MIN = 15;
 const MAX_PER_LOGIN = 5;
-const MAX_PER_IP = 30;
+// Por IP o limite é alto de propósito: numa base, dezenas de funcionários saem pelo MESMO IP (NAT).
+// Ele só segura ataque automatizado; a proteção real contra adivinhar senha é o limite por login.
+const MAX_PER_IP = 300;
 
 export async function isLoginBlocked(login: string, ip: string) {
   const since = new Date(Date.now() - WINDOW_MIN * 60_000);

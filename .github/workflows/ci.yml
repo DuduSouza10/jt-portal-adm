@@ -7,6 +7,7 @@ on:
 
 jobs:
   check:
+    name: Typecheck, lint e testes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,3 +20,36 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
+
+  integration:
+    name: Integração (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: portal_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/portal_test
+      DIRECT_URL: postgres://postgres:postgres@localhost:5432/portal_test
+      # Pool maior que o de produção para forçar concorrência real nos testes.
+      DATABASE_POOL_MAX: "20"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Aplicar migrations
+        run: npx prisma migrate deploy
+      - name: Conferir que o schema bate com as migrations
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - run: npm run test:integration
