@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { fmtDateTime } from "@/lib/format";
 import { listAlmoxarifados, listMovimentos, PAGE_SIZE } from "@/modules/estoque/queries";
 import { MOVEMENT_LABEL } from "@/modules/estoque/schemas";
+import { getT } from "@/i18n/server";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,12 +14,16 @@ import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam, param } from "@/components/pagination";
 import { EstoqueNav } from "../nav";
 
-export const metadata: Metadata = { title: "Movimentações de estoque" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("movimentacoes.tituloPagina") };
+}
 
 const fmtDelta = (n: number) => (n > 0 ? `+${n}` : n === 0 ? "—" : String(n));
 
 export default async function MovimentacoesPage(props: PageProps<"/estoque/movimentacoes">) {
   const user = await requirePermission("estoque.ver");
+  const t = await getT();
   const sp = await props.searchParams;
   const almox = await listAlmoxarifados(user, { includeInactive: true });
   const base = param(sp, "base");
@@ -32,11 +37,11 @@ export default async function MovimentacoesPage(props: PageProps<"/estoque/movim
 
   return (
     <>
-      <PageHeader title="Movimentações" description="Livro-razão do estoque: toda mudança de saldo, com quem fez e por quê." />
+      <PageHeader title={t("movimentacoes.titulo")} description={t("movimentacoes.descricao")} />
       <EstoqueNav user={user} current="/estoque/movimentacoes" />
       <form className="flex flex-wrap gap-2">
         <select name="base" defaultValue={base} className={`${selectClass} max-w-56`}>
-          <option value="">Todos os almoxarifados</option>
+          <option value="">{t("movimentacoes.todosAlmox")}</option>
           {almox.map((a) => (
             <option key={a.id} value={a.id}>
               {a.code}
@@ -44,67 +49,67 @@ export default async function MovimentacoesPage(props: PageProps<"/estoque/movim
           ))}
         </select>
         <select name="tipo" defaultValue={tipo ?? ""} className={`${selectClass} max-w-56`}>
-          <option value="">Todos os tipos</option>
-          {Object.entries(MOVEMENT_LABEL).map(([k, v]) => (
+          <option value="">{t("movimentacoes.todosTipos")}</option>
+          {(Object.keys(MOVEMENT_LABEL) as StockMovementType[]).map((k) => (
             <option key={k} value={k}>
-              {v}
+              {t(`tiposMovimento.${k}`)}
             </option>
           ))}
         </select>
-        <Input name="q" defaultValue={q} placeholder="Produto ou documento" className="max-w-xs" />
+        <Input name="q" defaultValue={q} placeholder={t("movimentacoes.busca")} className="max-w-xs" />
         {lote && <input type="hidden" name="lote" value={lote} />}
         <Button type="submit" variant="outline">
-          Filtrar
+          {t("comum.filtrar")}
         </Button>
         {lote && (
           <Button asChild variant="ghost">
-            <a href="/estoque/movimentacoes">Ver todas (filtrando um lançamento)</a>
+            <a href="/estoque/movimentacoes">{t("movimentacoes.verTodas")}</a>
           </Button>
         )}
       </form>
       {rows.length === 0 ? (
-        <EmptyState>Nenhuma movimentação encontrada.</EmptyState>
+        <EmptyState>{t("movimentacoes.vazio")}</EmptyState>
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Quando</TableHead>
-                <TableHead>Almox.</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Produto</TableHead>
-                <TableHead className="text-right">Físico</TableHead>
-                <TableHead className="text-right">Reservado</TableHead>
-                <TableHead className="text-right">Saldo após</TableHead>
-                <TableHead>Doc. / motivo</TableHead>
-                <TableHead>Quem</TableHead>
+                <TableHead>{t("movimentacoes.colQuando")}</TableHead>
+                <TableHead>{t("movimentacoes.colAlmox")}</TableHead>
+                <TableHead>{t("movimentacoes.colTipo")}</TableHead>
+                <TableHead>{t("movimentacoes.colProduto")}</TableHead>
+                <TableHead className="text-right">{t("movimentacoes.colFisico")}</TableHead>
+                <TableHead className="text-right">{t("movimentacoes.colReservado")}</TableHead>
+                <TableHead className="text-right">{t("movimentacoes.colSaldo")}</TableHead>
+                <TableHead>{t("movimentacoes.colDoc")}</TableHead>
+                <TableHead>{t("movimentacoes.colQuem")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((m) => (
                 <TableRow key={m.id}>
-                  <TableCell className="text-muted-foreground">{fmtDateTime(m.createdAt)}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmtDateTime(m.createdAt, t.locale)}</TableCell>
                   <TableCell>{m.base.code}</TableCell>
                   <TableCell>
-                    <a href={`/estoque/movimentacoes?lote=${m.batchId}`} className="hover:underline" title="Ver o lançamento inteiro">
-                      {MOVEMENT_LABEL[m.type]}
+                    <a href={`/estoque/movimentacoes?lote=${m.batchId}`} className="hover:underline" title={t("movimentacoes.verLote")}>
+                      {t(`tiposMovimento.${m.type}`)}
                     </a>
                   </TableCell>
                   <TableCell>
                     <span className="font-medium">{m.produto.code}</span> {m.produto.name}
                   </TableCell>
-                  <TableCell className={`text-right tabular-nums ${m.quantity < 0 ? "text-destructive" : m.quantity > 0 ? "text-emerald-700" : ""}`}>
+                  <TableCell className={`text-right tabular-nums ${m.quantity < 0 ? "text-destructive" : m.quantity > 0 ? "text-success" : ""}`}>
                     {fmtDelta(m.quantity)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">{fmtDelta(m.reservedDelta)}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {m.balanceAfter}
-                    {m.reservedAfter > 0 && <span className="text-xs text-muted-foreground"> ({m.reservedAfter} res.)</span>}
+                    {m.reservedAfter > 0 && <span className="text-xs text-muted-foreground"> {t("movimentacoes.reservadoApos", { n: m.reservedAfter })}</span>}
                   </TableCell>
                   <TableCell className="max-w-56 truncate text-muted-foreground" title={[m.document, m.reason].filter(Boolean).join(" · ")}>
-                    {[m.document, m.reason, m.refType === "solicitacao" ? `solicitação ${m.refId}` : null].filter(Boolean).join(" · ") || "—"}
+                    {[m.document, m.reason, m.refType === "solicitacao" ? t("movimentacoes.solicitacao", { id: m.refId ?? "" }) : null].filter(Boolean).join(" · ") || "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{m.actor?.name ?? "Sistema"}</TableCell>
+                  <TableCell className="text-muted-foreground">{m.actor?.name ?? t("comum.sistema")}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

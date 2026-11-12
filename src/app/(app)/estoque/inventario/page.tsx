@@ -9,11 +9,16 @@ import { selectClass } from "@/components/form-field";
 import { param } from "@/components/pagination";
 import { EstoqueNav } from "../nav";
 import { InventarioForm } from "./inventario-form";
+import { getT } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Inventário" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("inventario.titulo") };
+}
 
 export default async function InventarioPage(props: PageProps<"/estoque/inventario">) {
   const user = await requirePermission("estoque.inventario");
+  const t = await getT();
   const almox = await listAlmoxarifados(user);
   const baseId = param(await props.searchParams, "base");
   const base = almox.find((a) => a.id === baseId) ?? (almox.length === 1 ? almox[0] : undefined);
@@ -29,18 +34,18 @@ export default async function InventarioPage(props: PageProps<"/estoque/inventar
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Inventário"
-        description="Informe a quantidade contada de cada produto. O saldo físico passa a ser exatamente o contado."
+        title={t("inventario.titulo")}
+        description={t("inventario.descricao")}
       />
       <EstoqueNav user={user} current="/estoque/inventario" />
       {almox.length === 0 ? (
-        <EmptyState>Nenhum almoxarifado no seu alcance.</EmptyState>
+        <EmptyState>{t("estoque.semAlmoxCurto")}</EmptyState>
       ) : (
         <>
           <form className="flex gap-2">
             <select name="base" defaultValue={base?.id ?? ""} className={`${selectClass} max-w-72`} required>
               <option value="" disabled>
-                Escolha o almoxarifado…
+                {t("inventario.escolhaAlmox")}
               </option>
               {almox.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -49,7 +54,7 @@ export default async function InventarioPage(props: PageProps<"/estoque/inventar
               ))}
             </select>
             <Button type="submit" variant="outline">
-              Abrir
+              {t("comum.abrir")}
             </Button>
           </form>
           {base && (
