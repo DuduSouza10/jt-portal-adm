@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.mts",
     "check": "npm run typecheck && npm run lint && npm run test",
     "db:dev": "prisma dev -n jt-portal-adm --detach",
     "db:migrate": "prisma migrate dev",

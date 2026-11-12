@@ -57,7 +57,13 @@ model Base {
   regional Regional   @relation(fields: [regionalId], references: [id])
   users    UserBase[]
 
+  // módulo estoque
+  stockBalances     StockBalance[]
+  stockMovements    StockMovement[]
+  stockReservations StockReservation[]
+
   @@index([regionalId])
+  @@index([type, active])
 }
 
 // ===========================================================================
@@ -108,7 +114,11 @@ model User {
   sessions  Session[]
   auditLogs AuditLog[]
 
+  // módulo estoque
+  stockMovements StockMovement[]
+
   @@index([profileId])
+  @@index([active, name])
 }
 
 model UserBase {
@@ -183,3 +193,118 @@ model AuditLog {
 // MÓDULOS — cada um adiciona sua seção aqui embaixo
 // ===========================================================================
 // Ex.: // ---- MÓDULO: solicitacoes (Eduardo) ----
+
+// ---------------------------------------------------------------------------
+// MÓDULO: produtos (Eduardo)
+// Model mínimo criado pelo Diogo para o estoque (Issue #3). O Eduardo acrescenta
+// categoria, preço, limites, imagem e visibilidade em migrations novas.
+// O estoque usa só id, code, name e unit.
+// ---------------------------------------------------------------------------
+
+model Produto {
+  id        String   @id @default(cuid())
+  code      String   @unique // sempre maiúsculo
+  name      String
+  unit      String   @default("un") // un, cx, kit, pct...
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stockBalances     StockBalance[]
+  stockMovements    StockMovement[]
+  stockReservations StockReservation[]
+
+  @@index([name])
+}
+
+// ---------------------------------------------------------------------------
+// MÓDULO: estoque (Diogo)
+// Regras K1–K4 em docs/regras-de-negocio.md. Nenhum outro módulo altera estas
+// tabelas direto: use src/modules/estoque/service.ts (ou api.ts para solicitações).
+// ---------------------------------------------------------------------------
+
+/// Saldo de um produto em um almoxarifado. Uma linha por (almoxarifado, produto).
+/// disponível = quantity - reserved. quantity (físico) nunca fica negativo (K3).
+model StockBalance {
+  baseId    String // almoxarifado (Base.type = ALMOXARIFADO)
+  produtoId String
+  quantity  Int      @default(0) // saldo físico
+  reserved  Int      @default(0) // reservado por solicitações aprovadas
+  minimum   Int      @default(0) // estoque mínimo (alerta)
+  updatedAt DateTime @updatedAt
+
+  base    Base    @relation(fields: [baseId], references: [id])
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  @@id([baseId, produtoId])
+  @@index([produtoId])
+}
+
+enum StockMovementType {
+  ENTRADA // compra / recebimento (com NF)
+  SAIDA // consumo, perda, descarte (com motivo)
+  TRANSFERENCIA_SAIDA
+  TRANSFERENCIA_ENTRADA
+  INVENTARIO // ajuste: define o saldo para a quantidade contada
+  RESERVA // aprovação de solicitação: só mexe no reservado
+  LIBERACAO // recusa/cancelamento: devolve o reservado
+  BAIXA // envio de solicitação: tira do físico e do reservado
+}
+
+/// Livro-razão do estoque: toda mudança de saldo gera uma linha. Nunca editado nem apagado.
+model StockMovement {
+  id            String            @id @default(cuid())
+  type          StockMovementType
+  baseId        String
+  produtoId     String
+  quantity      Int // variação do saldo FÍSICO (+ entra, - sai, 0 em reserva/liberação)
+  reservedDelta Int               @default(0) // variação do reservado
+  balanceAfter  Int // físico depois do movimento
+  reservedAfter Int // reservado depois do movimento
+  document      String? // nº da NF ou documento
+  reason        String? // motivo (obrigatório em saída e inventário)
+  /// Agrupa os itens de um mesmo lançamento (ex.: uma NF com 10 produtos, uma transferência).
+  batchId       String
+  /// Origem/contraparte: "solicitacao" + id da solicitação, ou "transferencia" + id do OUTRO almoxarifado
+  /// (de onde veio ou para onde foi). O lançamento inteiro é agrupado por batchId.
+  refType       String?
+  refId         String?
+  actorId       String?
+  createdAt     DateTime          @default(now())
+
+  base    Base    @relation(fields: [baseId], references: [id])
+  produto Produto @relation(fields: [produtoId], references: [id])
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([baseId, createdAt])
+  @@index([produtoId, createdAt])
+  @@index([batchId])
+  @@index([refType, refId])
+  @@index([createdAt])
+}
+
+enum StockReservationStatus {
+  ATIVA
+  BAIXADA // enviada (total ou parcial; o resto foi liberado)
+  LIBERADA // recusada/cancelada
+}
+
+/// Reserva de uma solicitação aprovada, por produto.
+model StockReservation {
+  id        String                 @id @default(cuid())
+  refType   String                 @default("solicitacao")
+  refId     String // id da solicitação (sem FK: o model é do módulo de solicitações)
+  baseId    String
+  produtoId String
+  quantity  Int // reservado
+  shipped   Int                    @default(0) // quanto foi baixado no envio
+  status    StockReservationStatus @default(ATIVA)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  base    Base    @relation(fields: [baseId], references: [id])
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  @@unique([refType, refId, baseId, produtoId])
+  @@index([baseId, produtoId, status])
+}

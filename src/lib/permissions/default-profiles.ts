@@ -46,7 +46,7 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     name: "Almoxarifado",
     description: "Separa, envia e controla o estoque.",
     scope: "REGIONAL",
-    permissions: ["produtos.ver", "solicitacoes.ver", "expedicao.separar", "expedicao.enviar", "estoque.ver", "estoque.movimentar"],
+    permissions: ["produtos.ver", "solicitacoes.ver", "expedicao.separar", "expedicao.enviar", "estoque.ver", "estoque.movimentar", "estoque.inventario"],
   },
   {
     key: "base",
