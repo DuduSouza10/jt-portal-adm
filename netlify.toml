@@ -1,0 +1,15 @@
+# Deploy no Netlify. O adaptador oficial de Next.js é aplicado automaticamente.
+[build]
+  # O build só compila. Mudanças no banco (migrations) são aplicadas à parte, antes do deploy:
+  #   node --env-file=.env.producao node_modules/prisma/build/index.js migrate deploy
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Evita downloads desnecessários de engines do Prisma no build.
+  PRISMA_HIDE_UPDATE_MESSAGE = "1"
+  # As variáveis do site ficam marcadas como secretas no Netlify. Estas não são sigilosas e
+  # aparecem no próprio código (ex.: "insumos", "https://open.feishu.cn"), então o verificador
+  # de segredos não deve barrar o deploy por causa delas.
+  SECRETS_SCAN_OMIT_KEYS = "APP_URL,DATABASE_SCHEMA,FEISHU_BASE_URL,FEISHU_APP_ID,FEISHU_STAFF_CHAT_ID"

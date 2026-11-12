@@ -1,0 +1,183 @@
+// Schema do JT Portal ADM.
+// Datas sempre gravadas em UTC; a exibição converte para America/Sao_Paulo.
+//
+// Este arquivo tem duas partes:
+//   1. NÚCLEO (Diogo): acesso, estrutura organizacional e auditoria. Todos os módulos dependem dele.
+//   2. MÓDULOS: cada módulo adiciona os seus models em uma seção própria, abaixo do núcleo.
+// Regra: um módulo pode referenciar o núcleo (User, Base, Regional), mas não os models de outro módulo
+// sem combinar antes. Ver docs/arquitetura.md.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===========================================================================
+// NÚCLEO — Estrutura organizacional
+// ===========================================================================
+
+/// Regional da J&T (ex.: MG, SPN). Agrupa bases.
+model Regional {
+  id        String   @id @default(cuid())
+  code      String   @unique // sigla, sempre maiúscula
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bases Base[]
+  users UserRegional[]
+}
+
+enum BaseType {
+  BASE // base própria
+  FRANQUIA
+  ALMOXARIFADO // centro que guarda estoque e envia para as bases
+}
+
+/// Base, franquia ou almoxarifado. Sempre pertence a uma regional.
+model Base {
+  id         String   @id @default(cuid())
+  code       String   @unique // sigla, sempre maiúscula
+  name       String
+  type       BaseType @default(BASE)
+  regionalId String
+  cnpj       String?
+  city       String?
+  state      String? // UF
+  address    String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  regional Regional   @relation(fields: [regionalId], references: [id])
+  users    UserBase[]
+
+  @@index([regionalId])
+}
+
+// ===========================================================================
+// NÚCLEO — Usuários, perfis de acesso e sessões
+// ===========================================================================
+
+/// Até onde o usuário enxerga dados das bases.
+enum AccessScope {
+  GLOBAL // todas as bases
+  REGIONAL // bases das regionais vinculadas ao usuário
+  BASE // só as bases vinculadas ao usuário
+}
+
+/// Tipo de acesso (perfil). Define as permissões e o alcance dos dados.
+/// Perfis "system" vêm do seed e não podem ser excluídos.
+model AccessProfile {
+  id          String      @id @default(cuid())
+  key         String      @unique // ex.: "admin", "base", "franquia"
+  name        String
+  description String?
+  scope       AccessScope @default(BASE)
+  /// Chaves de permissão (ver src/lib/permissions/catalog.ts). "*" = todas.
+  permissions String[]
+  system      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  users User[]
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String
+  login              String    @unique // usuário, sempre minúsculo
+  email              String?   @unique
+  phone              String?
+  passwordHash       String?
+  profileId          String
+  active             Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  profile   AccessProfile  @relation(fields: [profileId], references: [id])
+  bases     UserBase[]
+  regionals UserRegional[]
+  sessions  Session[]
+  auditLogs AuditLog[]
+
+  @@index([profileId])
+}
+
+model UserBase {
+  userId String
+  baseId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  base   Base   @relation(fields: [baseId], references: [id], onDelete: Cascade)
+
+  @@id([userId, baseId])
+  @@index([baseId])
+}
+
+model UserRegional {
+  userId     String
+  regionalId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  regional   Regional @relation(fields: [regionalId], references: [id], onDelete: Cascade)
+
+  @@id([userId, regionalId])
+  @@index([regionalId])
+}
+
+/// Sessões no banco (não JWT): desativar um usuário derruba as sessões na hora.
+model Session {
+  id        String   @id // sha256 do token do cookie
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  login     String
+  ip        String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([login, createdAt])
+  @@index([ip, createdAt])
+}
+
+// ===========================================================================
+// NÚCLEO — Auditoria
+// ===========================================================================
+
+/// Registro de toda alteração relevante. Gravado por src/lib/audit.ts — nunca editado nem apagado.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String? // null = sistema (jobs, seed)
+  action    String // ex.: "usuario.criar", "base.editar"
+  entity    String // ex.: "User", "Base"
+  entityId  String?
+  summary   String // frase legível: "Criou a base BHZ01"
+  data      Json? // antes/depois ou detalhes
+  ip        String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+}
+
+// ===========================================================================
+// MÓDULOS — cada um adiciona sua seção aqui embaixo
+// ===========================================================================
+// Ex.: // ---- MÓDULO: solicitacoes (Eduardo) ----
