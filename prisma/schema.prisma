@@ -141,6 +141,7 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expiresAt]) // limpeza de sessões expiradas
 }
 
 model LoginAttempt {
@@ -152,6 +153,7 @@ model LoginAttempt {
 
   @@index([login, createdAt])
   @@index([ip, createdAt])
+  @@index([createdAt]) // limpeza de tentativas antigas
 }
 
 // ===========================================================================
