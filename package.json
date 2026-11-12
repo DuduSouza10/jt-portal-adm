@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:integration": "vitest run -c vitest.integration.config.mts",
     "check": "npm run typecheck && npm run lint && npm run test",
+    "doctor": "node scripts/doctor.mjs",
     "db:dev": "prisma dev -n jt-portal-adm --detach",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -56,9 +57,9 @@
     "vitest": "^5.0.3"
   },
   "allowScripts": {
-    "@prisma/engines@7.10.0": true,
-    "esbuild@0.28.2": true,
-    "prisma@7.10.0": true,
-    "unrs-resolver@1.12.2": true
+    "@prisma/engines": true,
+    "esbuild": true,
+    "prisma": true,
+    "unrs-resolver": true
   }
 }
