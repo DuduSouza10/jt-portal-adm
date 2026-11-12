@@ -99,6 +99,7 @@ model User {
   name               String
   login              String    @unique // usuário, sempre minúsculo
   email              String?   @unique
+  registration       String?   @unique // matrícula do funcionário (RH)
   phone              String?
   passwordHash       String?
   profileId          String

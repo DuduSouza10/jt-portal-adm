@@ -18,6 +18,7 @@ Projeto de **Diogo** e **Eduardo**, construído a partir de três sistemas anter
 | Troca de senha obrigatória após senha temporária | ✅ |
 | Tipos de acesso com permissões por ação e alcance (global / regional / base) | ✅ |
 | Usuários, regionais e bases | ✅ |
+| Importação de usuários por planilha (CSV), com matrícula | ✅ |
 | Auditoria de todas as alterações | ✅ |
 | Estoque | a fazer (Diogo) |
 | Produtos, solicitações, expedição, Feishu, relatórios | a fazer (Eduardo) |
