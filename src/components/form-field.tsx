@@ -24,11 +24,12 @@ export function Field({
 
 export function CheckField({ name, label, defaultChecked }: { name: string; label: string; defaultChecked?: boolean }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex items-center gap-2.5 text-sm">
       <input type="checkbox" name={name} defaultChecked={defaultChecked} className="size-4" />
       {label}
     </label>
   );
 }
 
-export const selectClass = "h-9 w-full rounded-md border bg-background px-2 text-sm";
+export const selectClass =
+  "h-9 w-full rounded-md border border-input bg-card px-2.5 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 dark:bg-input/30";

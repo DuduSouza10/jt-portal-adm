@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Inbox } from "lucide-react";
 
 export function BackLink({ href, label }: { href: string; label: string }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline">
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+    >
       <ArrowLeft className="size-4" /> {label}
     </Link>
   );
@@ -22,19 +25,29 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {back && <BackLink {...back} />}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{title}</h1>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <div className="flex items-center gap-3">
+            <span aria-hidden className="h-7 w-1.5 shrink-0 rounded-full bg-primary" />
+            <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">{title}</h1>
+          </div>
+          {description && <p className="max-w-[70ch] pl-[18px] text-sm text-muted-foreground">{description}</p>}
         </div>
-        {actions && <div className="flex gap-2">{actions}</div>}
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
     </div>
   );
 }
 
 export function EmptyState({ children }: { children: React.ReactNode }) {
-  return <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">{children}</p>;
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed bg-card/60 px-6 py-12 text-center">
+      <span className="flex size-11 items-center justify-center rounded-full bg-accent text-accent-foreground">
+        <Inbox className="size-5" aria-hidden />
+      </span>
+      <p className="max-w-md text-sm text-muted-foreground">{children}</p>
+    </div>
+  );
 }
