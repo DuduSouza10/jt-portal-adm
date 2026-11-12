@@ -41,6 +41,7 @@ export async function AppSidebar() {
           <ThemeToggle className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-ring" />
         </div>
         <UserCard name={user.name} subtitle={subtitle} />
+        <Credits text={t("app.creditos")} />
       </div>
     </div>
   );
@@ -55,6 +56,7 @@ export async function AppTopbar() {
         label={t("menu.abrir")}
         brand={<Brand name={t("app.nome")} company={t("app.empresa")} />}
         user={{ name: user.name, subtitle }}
+        credits={t("app.creditos")}
       />
       <Breadcrumb groups={groups} />
       <div className="ml-auto flex items-center gap-1.5 lg:hidden">
@@ -75,6 +77,10 @@ export function Brand({ name, company }: { name: string; company: string }) {
       </span>
     </Link>
   );
+}
+
+export function Credits({ text }: { text: string }) {
+  return <p className="px-1 text-center text-[11px] leading-snug text-muted-foreground">{text}</p>;
 }
 
 export function AppSidebarSkeleton() {

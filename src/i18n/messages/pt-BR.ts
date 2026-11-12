@@ -8,6 +8,7 @@ export const ptBR = {
     nome: "Portal ADM",
     empresa: "J&T Express",
     descricao: "Portal administrativo de insumos da J&T Express",
+    creditos: "Developed by: Eduardo Rodrigues & Diogo Alves",
   },
   comum: {
     salvar: "Salvar",

@@ -11,6 +11,7 @@ export const zhCN: Messages = {
     nome: "Portal ADM",
     empresa: "J&T 极兔速递",
     descricao: "J&T 极兔速递物料管理后台",
+    creditos: "Developed by: Eduardo Rodrigues & Diogo Alves",
   },
   comum: {
     salvar: "保存",

@@ -90,11 +90,13 @@ export function MobileNav({
   label,
   brand,
   user,
+  credits,
 }: {
   groups: NavGroup[];
   label: string;
   brand: React.ReactNode;
   user: { name: string; subtitle: string };
+  credits: string;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -117,6 +119,7 @@ export function MobileNav({
           <div className="mt-auto flex flex-col gap-2.5 pt-3">
             <LanguageSwitch tone="plain" />
             <UserCard {...user} />
+            <p className="px-1 text-center text-[11px] leading-snug text-muted-foreground">{credits}</p>
           </div>
         </div>
       </SheetContent>
