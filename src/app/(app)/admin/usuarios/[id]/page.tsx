@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
-import { isSubsetOf } from "@/modules/acessos/rules";
+import { isSubsetOf, scopeWithin } from "@/modules/acessos/rules";
+import { usersScopeWhere } from "@/modules/acessos/queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ActionForm } from "@/components/action-form";
@@ -26,20 +27,31 @@ export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id
   if (isNew && !can(me, "usuarios.editar")) notFound();
 
   const [user, profiles, regionals] = await Promise.all([
-    isNew ? null : db.user.findUnique({ where: { id }, include: { bases: true, regionals: true, profile: true } }),
+    // Fora do alcance do ator = "não encontrado" (E6).
+    isNew ? null : db.user.findFirst({ where: { id, ...usersScopeWhere(me) }, include: { bases: true, regionals: true, profile: true } }),
     db.accessProfile.findMany({ orderBy: { name: "asc" } }),
+    // Só oferece regionais/bases do alcance do ator.
     db.regional.findMany({
-      where: { active: true },
+      where: { active: true, ...(me.scope !== "GLOBAL" && { OR: [{ id: { in: [...me.regionalIds] } }, { bases: { some: { id: { in: [...me.baseIds] } } } }] }) },
       orderBy: { code: "asc" },
-      include: { bases: { where: { active: true }, orderBy: { code: "asc" } } },
+      include: {
+        bases: {
+          where: { active: true, ...(me.scope === "BASE" && { id: { in: [...me.baseIds] } }) },
+          orderBy: { code: "asc" },
+        },
+      },
     }),
   ]);
   if (!isNew && !user) notFound();
 
   // Só pode editar quem tem permissão E não está mexendo em alguém "acima" dele.
-  const editable = can(me, "usuarios.editar") && (!user || isSubsetOf(user.profile.permissions, me.permissions));
+  const editable =
+    can(me, "usuarios.editar") &&
+    (!user || (isSubsetOf(user.profile.permissions, me.permissions) && scopeWithin(user.profile.scope, me.scope)));
   // Só oferece perfis que o usuário logado pode conceder.
-  const grantable = profiles.filter((p) => isSubsetOf(p.permissions, me.permissions) || p.id === user?.profileId);
+  const grantable = profiles.filter(
+    (p) => (isSubsetOf(p.permissions, me.permissions) && scopeWithin(p.scope, me.scope)) || p.id === user?.profileId,
+  );
   const userBases = new Set(user?.bases.map((b) => b.baseId));
   const userRegionals = new Set(user?.regionals.map((r) => r.regionalId));
 

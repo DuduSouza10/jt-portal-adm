@@ -8,7 +8,10 @@ export const userSchema = z.object({
     .trim()
     .toLowerCase()
     .regex(/^[a-z0-9._-]{3,40}$/, "Login: 3 a 40 caracteres, só letras, números, ponto, hífen ou _."),
-  email: optionalText.pipe(z.email("E-mail inválido.").nullable().optional()),
+  // Minúsculo: o login procura o e-mail digitado em minúsculas.
+  email: optionalText
+    .transform((v) => v?.toLowerCase() ?? v)
+    .pipe(z.email("E-mail inválido.").nullable().optional()),
   phone: optionalText,
   profileId: z.string().min(1, "Escolha o tipo de acesso."),
   active: checkbox,

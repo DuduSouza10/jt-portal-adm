@@ -38,6 +38,12 @@ export async function destroySession() {
   jar.delete(SESSION_COOKIE);
 }
 
+/** Encerra todas as sessões do usuário, menos a desta requisição (ex.: depois de trocar a senha). */
+export async function destroyOtherSessions(userId: string) {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  await db.session.deleteMany({ where: { userId, ...(token && { id: { not: hash(token) } }) } });
+}
+
 export type CurrentUser = Actor & {
   name: string;
   login: string;

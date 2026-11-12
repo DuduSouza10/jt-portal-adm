@@ -74,7 +74,8 @@ Modelo herdado do portal do Eduardo: **por página e por ação**, com **tipos d
   - `REGIONAL` — bases das regionais vinculadas ao usuário
   - `BASE` — só as bases vinculadas
 - Perfil `dev` tem o curinga `*`.
-- **Ninguém concede o que não tem**: um admin não promove ninguém (nem a si mesmo) acima do próprio nível.
+- **Ninguém concede o que não tem**: um admin não promove ninguém (nem a si mesmo) acima do próprio nível, nem em permissões, nem em alcance, nem em bases/regionais (regras E4 e E6).
+- **A administração também respeita o alcance**: a lista de usuários usa `usersScopeWhere(user)`; um admin regional só vê os usuários da sua regional.
 
 ### Como usar
 
@@ -165,6 +166,8 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 | 2026-11-12 | Next.js full-stack em vez de React + Express separados | Um projeto só; cada dev entrega tela + backend do seu módulo sem depender do outro |
 | 2026-11-12 | Sessão no banco em vez de JWT | Desativar usuário ou mudar perfil vale na hora |
 | 2026-11-12 | Permissões por catálogo + tipos de acesso editáveis | Modelo do portal do Eduardo, já validado na operação |
+| 2026-11-12 | Administração de usuários filtrada pelo alcance (revisão do PR #1) | Permite admins regionais sem abrir brecha para conceder acesso fora da área |
+| 2026-11-12 | Limpeza de sessões e tentativas de login em ~1% dos logins | Tabelas não crescem sem parar; não precisa de job agendado |
 | 2026-11-12 | Construir do zero usando os 3 projetos como referência | Evita herdar o monolito Flask e o escopo financeiro do sistema-estoque |
 | 2026-11-12 | Model `Produto` mínimo criado pelo Diogo; o resto é do Eduardo (Issue #3) | Estoque precisava de produto; Eduardo acrescenta campos em migrations novas |
 | 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |

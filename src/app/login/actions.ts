@@ -4,7 +4,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { verifyPassword } from "@/lib/auth/password";
+import { randomBytes } from "node:crypto";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { safeNext } from "@/lib/auth/redirect";
 import { isLoginBlocked, LOGIN_BLOCK_MINUTES, recordLoginAttempt } from "@/lib/auth/rate-limit";
 import { createSession, destroySession } from "@/lib/auth/session";
 import { logger } from "@/lib/logger";
@@ -19,13 +21,18 @@ const schema = z.object({
 
 async function clientIp() {
   const h = await headers();
-  return (
-    h.get("x-nf-client-connection-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "desconhecido"
-  );
+  // No Netlify, x-nf-client-connection-ip é preenchido pela plataforma e o cliente não consegue forjar.
+  // x-forwarded-for (o primeiro valor vem do cliente) só é usado fora de produção (desenvolvimento local).
+  const nf = h.get("x-nf-client-connection-ip");
+  if (nf) return nf;
+  if (process.env.NODE_ENV !== "production") return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  return "desconhecido";
 }
 
-// Só aceita caminhos internos, para não virar redirecionamento aberto.
-const safeNext = (n?: string) => (n && n.startsWith("/") && !n.startsWith("//") ? n : "/");
+// Hash de uma senha qualquer: usuário inexistente também gasta um bcrypt, para o tempo de resposta
+// não revelar quais logins existem.
+let dummyHash: Promise<string> | null = null;
+const getDummyHash = () => (dummyHash ??= hashPassword(randomBytes(16).toString("hex")));
 
 export async function loginAction(_: LoginState, formData: FormData): Promise<LoginState> {
   const parsed = schema.safeParse(Object.fromEntries(formData));
@@ -38,7 +45,8 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   }
 
   const user = await db.user.findFirst({ where: { OR: [{ login }, { email: login }] } });
-  const ok = !!user?.passwordHash && user.active && (await verifyPassword(password, user.passwordHash));
+  const passwordOk = await verifyPassword(password, user?.passwordHash ?? (await getDummyHash()));
+  const ok = !!user?.passwordHash && user.active && passwordOk;
   await recordLoginAttempt(login, ip, ok);
 
   if (!ok || !user) {

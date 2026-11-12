@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam } from "@/components/pagination";
+import { usersScopeWhere } from "@/modules/acessos/queries";
 import type { Prisma } from "@/generated/prisma/client";
 
 const PAGE_SIZE = 50;
@@ -26,7 +27,9 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
   const perfil = typeof sp.perfil === "string" ? sp.perfil : "";
   const page = pageParam(sp);
 
+  const scope = usersScopeWhere(me);
   const where: Prisma.UserWhereInput = {
+    ...(scope && { AND: [scope] }),
     ...(q && {
       OR: [
         { name: { contains: q, mode: "insensitive" } },
