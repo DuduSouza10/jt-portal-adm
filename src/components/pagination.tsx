@@ -12,7 +12,7 @@ export async function Pagination({
   params,
 }: {
   page: number;
-  /** Total de registros. Sem ele, mostra só "Página x de y". */
+  /** Total de registros (aparece ao lado do número da página). */
   total: number;
   pageSize: number;
   basePath: string;
