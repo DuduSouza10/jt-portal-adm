@@ -111,6 +111,20 @@ describe("solicitações (K4)", () => {
     expect(await bal(mg.id, p2)).toMatchObject({ quantity: 47, reserved: 0 });
   });
 
+  it("produto inativo não pode ser reservado, mas a reserva antiga ainda pode ser enviada", async () => {
+    await db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-in1`, almoxarifadoId: mg.id, actorId: null, itens: [{ produtoId: p2, quantity: 1 }] }));
+    await db.produto.update({ where: { id: p2 }, data: { active: false } });
+    try {
+      await expect(
+        db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-in2`, almoxarifadoId: mg.id, actorId: null, itens: [{ produtoId: p2, quantity: 1 }] })),
+      ).rejects.toThrow(/inativo/);
+      await db.$transaction((tx) => baixarReserva(tx, { solicitacaoId: `${tag}-in1`, actorId: null }));
+    } finally {
+      await db.produto.update({ where: { id: p2 }, data: { active: true } });
+    }
+    expect(await bal(mg.id, p2)).toMatchObject({ quantity: 46, reserved: 0 });
+  });
+
   it("recusa libera a reserva", async () => {
     await db.$transaction((tx) => reservar(tx, { solicitacaoId: `${tag}-s2`, almoxarifadoId: mg.id, actorId: null, itens: [{ produtoId: p2, quantity: 20 }] }));
     await db.$transaction((tx) => liberarReserva(tx, { solicitacaoId: `${tag}-s2`, actorId: null }));

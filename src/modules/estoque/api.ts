@@ -56,7 +56,9 @@ export async function reservar(
   if (anterior?.status === "ATIVA") throw new DomainError("Esta solicitação já tem reserva ativa.");
   if (anterior?.status === "BAIXADA") throw new DomainError("Esta solicitação já foi enviada; não pode ser reservada de novo.");
 
-  const produtos = await loadProdutos(tx, itens.map((i) => i.produtoId));
+  // Produto inativo não aceita solicitação (decisão do Eduardo, revisão do PR #5). Liberar e baixar
+  // não exigem: uma solicitação já aprovada pode ser recusada, cancelada ou enviada mesmo assim.
+  const produtos = await loadProdutos(tx, itens.map((i) => i.produtoId), { requireActive: true });
   const batchId = newBatchId();
   for (const it of itens) {
     await move(tx, {
