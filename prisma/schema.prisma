@@ -246,6 +246,8 @@ model StockBalance {
   quantity  Int      @default(0) // saldo físico
   reserved  Int      @default(0) // reservado por solicitações aprovadas
   minimum   Int      @default(0) // estoque mínimo (alerta)
+  /// Custo médio unitário (R$), ponderado pelas entradas com valor da NF. 0 = ainda sem custo conhecido.
+  avgCost   Decimal  @default(0) @db.Decimal(14, 4)
   updatedAt DateTime @updatedAt
 
   base    Base    @relation(fields: [baseId], references: [id])
@@ -275,6 +277,8 @@ model StockMovement {
   quantity      Int // variação do saldo FÍSICO (+ entra, - sai, 0 em reserva/liberação)
   reservedDelta Int               @default(0) // variação do reservado
   balanceAfter  Int // físico depois do movimento
+  /// Custo unitário (R$) do movimento: valor da NF na entrada; custo médio na saída/baixa. null = sem custo.
+  unitCost      Decimal?          @db.Decimal(14, 4)
   reservedAfter Int // reservado depois do movimento
   document      String? // nº da NF ou documento
   reason        String? // motivo (obrigatório em saída e inventário)
@@ -394,12 +398,14 @@ model Solicitacao {
 }
 
 model SolicitacaoItem {
-  id            String @id @default(cuid())
+  id            String   @id @default(cuid())
   solicitacaoId String
   produtoId     String
   requested     Int // pedido pela base
   approved      Int? // aprovado (pode ser menor)
   separated     Int? // separado (pode ser menor que o aprovado: pedido parcial)
+  /// Custo unitário (R$) no envio (custo médio do almoxarifado naquele momento). Base do "gasto por base".
+  unitCost      Decimal? @db.Decimal(14, 4)
 
   solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
   produto     Produto     @relation(fields: [produtoId], references: [id])
@@ -492,4 +498,16 @@ model ReminderLog {
   sentAt DateTime @default(now())
 
   @@index([refId, kind])
+}
+
+// ---------------------------------------------------------------------------
+// NÚCLEO — Configurações editáveis pela tela (prazos de SLA, horário comercial)
+// ---------------------------------------------------------------------------
+
+/// Chave → valor (JSON). Ex.: "sla" = { aprovacao: { normal: 8, urgente: 2 }, ... }. Lido por src/lib/settings.ts.
+model Setting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }

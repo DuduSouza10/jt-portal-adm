@@ -47,6 +47,14 @@ export const PERMISSION_GROUPS = [
       { key: "integracoes.gerenciar", label: "Feishu: ver mensagens, testar e reenviar", description: "Página Administração → Feishu." },
     ],
   },
+  {
+    module: "configuracoes",
+    label: "Configurações",
+    owner: "núcleo",
+    permissions: [
+      { key: "configuracoes.editar", label: "Editar prazos de SLA e horário comercial", description: "Página Administração → Configurações." },
+    ],
+  },
 
   // --------------------------------------------------------------- Estoque (Diogo)
   {

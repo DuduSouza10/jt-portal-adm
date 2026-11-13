@@ -272,6 +272,15 @@ async function enviarUm(user: CurrentUser, id: string, data: EnvioInput & { phot
       actorId: user.id,
       enviados: s.itens.filter((i) => (i.approved ?? 0) > 0).map((i) => ({ produtoId: i.produtoId, quantity: i.separated ?? 0 })),
     });
+    // Custo de cada item no envio (custo médio do almoxarifado, gravado na baixa): base do gasto por base.
+    const baixas = await tx.stockMovement.findMany({
+      where: { refType: "solicitacao", refId: s.id, type: "BAIXA" },
+      select: { produtoId: true, unitCost: true },
+    });
+    for (const b of baixas) {
+      const item = s.itens.find((i) => i.produtoId === b.produtoId);
+      if (item && b.unitCost != null) await tx.solicitacaoItem.update({ where: { id: item.id }, data: { unitCost: b.unitCost } });
+    }
     return formatNumber(s.number);
   }, STOCK_TX);
 }

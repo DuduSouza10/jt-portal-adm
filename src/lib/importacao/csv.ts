@@ -131,3 +131,17 @@ export function chunk<T>(list: T[], size: number): T[][] {
   return out;
 }
 
+
+/**
+ * Valor em reais escrito à brasileira ou não: "1.234,56", "12,5", "12.50", "R$ 3,00". Retorna null se não for número.
+ * Com vírgula: ponto é milhar. Sem vírgula: ponto é decimal (exceto no formato 1.234.567).
+ */
+export function parseMoneyBR(v: string): number | null {
+  let s = v.trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
+  if (!s) return null;
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3}){2,}$/.test(s)) s = s.replace(/\./g, "");
+  if (!/^\d+(\.\d+)?$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}

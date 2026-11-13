@@ -73,6 +73,7 @@ async function plan(actor: CurrentUser, rows: EstoqueImportRow[], o: EstoqueImpo
     const parts: string[] = [];
     if (novo !== b.quantity) parts.push(o.mode === "entrada" ? `+${row.quantity} (saldo ${b.quantity} → ${novo})` : `Saldo ${b.quantity} → ${novo}`);
     if (minimumChange) parts.push(`mínimo ${b.minimum} → ${row.minimum}`);
+    if (row.unitCost !== null && novo > b.quantity) parts.push(`valor unitário R$ ${row.unitCost.toFixed(2).replace(".", ",")}`);
     if (o.mode === "contado" && novo < b.reserved) parts.push(`atenção: ${b.reserved} já reservado(s) para solicitações aprovadas`);
     const action: ImportResult["action"] = !parts.length ? "igual" : balances.has(`${almox.id}|${produto.id}`) ? "atualizar" : "criar";
     return { row, almoxId: almox.id, produtoId: produto.id, minimumChange, result: result(action, parts.join(" · ") || "Sem mudança.") };
@@ -100,7 +101,7 @@ export async function aplicarLote(actor: CurrentUser, rows: EstoqueImportRow[], 
   }
   for (const [baseId, list] of groups) {
     const moves = list.filter((p) => (o.mode === "contado" ? true : p.row.quantity > 0));
-    const itens = moves.map((p) => ({ produtoId: p.produtoId!, quantity: p.row.quantity }));
+    const itens = moves.map((p) => ({ produtoId: p.produtoId!, quantity: p.row.quantity, unitCost: p.row.unitCost ?? undefined }));
     try {
       if (o.mode === "contado") await ajustarInventario(actor, { baseId, reason: `${o.reason} (importação)`, itens });
       else await lancarEntrada(actor, { baseId, document: o.document!, reason: o.reason ? `${o.reason} (importação)` : "Importação por planilha", itens });

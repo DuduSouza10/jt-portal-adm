@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, selectClass } from "@/components/form-field";
 import { useServerMessage, useT } from "@/i18n/client";
+import { parseMoneyBR } from "@/lib/importacao/csv";
 import { lancarAction, type LancamentoState } from "../actions";
 
 type Produto = { id: string; code: string; name: string; unit: string };
 type Almox = { id: string; code: string; name: string };
-type Linha = { key: number; produtoId: string; texto: string; quantity: string };
+type Linha = { key: number; produtoId: string; texto: string; quantity: string; unitCost: string };
 
 export function LancamentoForm({
   tipo,
@@ -29,15 +30,19 @@ export function LancamentoForm({
   const tm = useServerMessage();
   const [state, action, pending] = useActionState<LancamentoState, FormData>(lancarAction, {});
   const nextKey = useRef(1);
-  const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", texto: "", quantity: "" }]);
+  const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", texto: "", quantity: "", unitCost: "" }]);
 
   // Busca por "CÓDIGO — nome": o datalist do navegador filtra conforme digita.
   const byLabel = useMemo(() => new Map(produtos.map((p) => [`${p.code} — ${p.name}`, p])), [produtos]);
   const byId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos]);
 
   const update = (key: number, patch: Partial<Linha>) => setLinhas((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-  const addLinha = () => setLinhas((ls) => [...ls, { key: nextKey.current++, produtoId: "", texto: "", quantity: "" }]);
-  const itens = linhas.filter((l) => l.produtoId || l.quantity).map((l) => ({ produtoId: l.produtoId, quantity: Number(l.quantity) }));
+  const addLinha = () => setLinhas((ls) => [...ls, { key: nextKey.current++, produtoId: "", texto: "", quantity: "", unitCost: "" }]);
+  // Valor unitário só na entrada (vírgula ou ponto como decimal). Vazio = sem valor.
+  const custo = (v: string) => (tipo === "entrada" && v.trim() ? (parseMoneyBR(v) ?? -1) : undefined);
+  const itens = linhas
+    .filter((l) => l.produtoId || l.quantity)
+    .map((l) => ({ produtoId: l.produtoId, quantity: Number(l.quantity), ...(custo(l.unitCost) !== undefined && { unitCost: custo(l.unitCost) }) }));
 
   if (state.ok) {
     return (
@@ -138,6 +143,16 @@ export function LancamentoForm({
                 className="w-28"
               />
               <span className="w-10 pt-2 text-xs text-muted-foreground">{p?.unit}</span>
+              {tipo === "entrada" && (
+                <Input
+                  inputMode="decimal"
+                  value={l.unitCost}
+                  placeholder={t("lancar.valorUnit")}
+                  aria-label={t("lancar.valorUnitAria", { n: i + 1 })}
+                  onChange={(e) => update(l.key, { unitCost: e.target.value.replace(/[^\d.,]/g, "") })}
+                  className="w-32"
+                />
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -155,6 +170,7 @@ export function LancamentoForm({
           <Plus /> {t("lancar.adicionar")}
         </Button>
         <p className="text-xs text-muted-foreground">{t("lancar.dica")}</p>
+        {tipo === "entrada" && <p className="text-xs text-muted-foreground">{t("lancar.valorDica")}</p>}
       </div>
 
       {state.error && (
