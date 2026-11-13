@@ -39,6 +39,14 @@ export const PERMISSION_GROUPS = [
     owner: "núcleo",
     permissions: [{ key: "auditoria.ver", label: "Ver o histórico de alterações" }],
   },
+  {
+    module: "integracoes",
+    label: "Integrações",
+    owner: "núcleo",
+    permissions: [
+      { key: "integracoes.gerenciar", label: "Feishu: ver mensagens, testar e reenviar", description: "Página Administração → Feishu." },
+    ],
+  },
 
   // --------------------------------------------------------------- Estoque (Diogo)
   {

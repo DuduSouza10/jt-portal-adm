@@ -41,18 +41,19 @@ enum BaseType {
 
 /// Base, franquia ou almoxarifado. Sempre pertence a uma regional.
 model Base {
-  id         String   @id @default(cuid())
-  code       String   @unique // sigla, sempre maiúscula
-  name       String
-  type       BaseType @default(BASE)
-  regionalId String
-  cnpj       String?
-  city       String?
-  state      String? // UF
-  address    String?
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  code         String   @unique // sigla, sempre maiúscula
+  name         String
+  type         BaseType @default(BASE)
+  regionalId   String
+  cnpj         String?
+  city         String?
+  state        String? // UF
+  address      String?
+  feishuChatId String? // oc_... grupo da base no Feishu (avisos dos pedidos dela)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   regional Regional   @relation(fields: [regionalId], references: [id])
   users    UserBase[]
@@ -104,6 +105,7 @@ model User {
   login              String    @unique // usuário, sempre minúsculo
   email              String?   @unique
   registration       String?   @unique // matrícula do funcionário (RH)
+  feishuOpenId       String?   @unique // ou_... para mensagem direta no Feishu (preenchido pelo admin ou pelo login do Lark)
   phone              String?
   passwordHash       String?
   profileId          String
@@ -121,6 +123,9 @@ model User {
 
   // módulo estoque
   stockMovements StockMovement[]
+
+  // notificações
+  notifications Notification[]
 
   // módulo solicitações
   solicitacoesCriadas Solicitacao[]       @relation("SolicitacaoCriador")
@@ -430,4 +435,61 @@ model ShipmentPhoto {
   solicitacoes Solicitacao[]
 
   @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// NÚCLEO — Notificações (sino) e Feishu (Diogo)
+// Trazido do sistema antigo de insumos. Ver docs/arquitetura.md → "Notificações".
+// ---------------------------------------------------------------------------
+
+/// Aviso no sino do portal. Criado na mesma transação do evento.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  body      String    @default("")
+  link      String? // caminho interno, ex.: /solicitacoes/abc
+  refType   String? // ex.: "solicitacao"
+  refId     String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([createdAt])
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Fila de saída do Feishu: gravada na transação do evento e enviada depois (com novas tentativas).
+model FeishuOutbox {
+  id            String       @id @default(cuid())
+  event         String // ex.: solicitacao.criar
+  channel       String // webhook | chat | user
+  target        String? // chat_id / open_id / "expedicao" (webhook da expedição)
+  payload       Json // cartão interativo
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  nextAttemptAt DateTime     @default(now())
+  lastError     String?
+  createdAt     DateTime     @default(now())
+  sentAt        DateTime?
+
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
+}
+
+/// Lembretes e resumos já enviados, para não repetir.
+model ReminderLog {
+  id     String   @id @default(cuid())
+  refId  String // id da solicitação, ou o dia ("2026-11-13") no resumo diário
+  kind   String // pendente | separada | daily
+  sentAt DateTime @default(now())
+
+  @@index([refId, kind])
 }
