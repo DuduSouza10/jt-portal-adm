@@ -3,7 +3,8 @@ import type { Permission } from "./catalog";
 /**
  * Tipos de acesso padrão (criados/atualizados pelo seed).
  * Mudar as permissões padrão: edite aqui → `npm run db:seed`.
- * O teste default-profiles.test.ts garante que o Administrador consegue conceder todos os outros (exceto Dev).
+ * O teste default-profiles.test.ts garante que o Administrador consegue conceder todos os outros (exceto Dev)
+ * e que os perfis operacionais (Base, Franquia, Expedição) ficam só na sua parte (regra E9).
  */
 export type DefaultProfile = {
   key: string;
@@ -49,9 +50,18 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     permissions: ["produtos.ver", "solicitacoes.ver", "expedicao.separar", "expedicao.enviar", "estoque.ver", "estoque.movimentar", "estoque.inventario"],
   },
   {
+    // Só a expedição: vê o que já foi separado e está aguardando envio, e confirma o envio (E9).
+    // Sem solicitacoes.ver de propósito: a fila da expedição é liberada por expedicao.enviar.
+    key: "expedicao",
+    name: "Expedição",
+    description: "Vê os pedidos separados aguardando envio e confirma o envio. Não acessa outras áreas.",
+    scope: "REGIONAL",
+    permissions: ["expedicao.enviar"],
+  },
+  {
     key: "base",
     name: "Base",
-    description: "Solicita insumos para a própria base (sujeita ao ciclo de 3 meses).",
+    description: "Só pede insumos para a própria base e acompanha o andamento (separado, na expedição, enviado).",
     scope: "BASE",
     permissions: ["produtos.ver", "solicitacoes.criar", "solicitacoes.ver"],
   },

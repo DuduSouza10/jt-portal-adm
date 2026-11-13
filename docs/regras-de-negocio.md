@@ -14,6 +14,13 @@ Formato sugerido: regra numerada, exemplo concreto, e onde está no código.
 - **E5.** Senha criada ou redefinida pelo admin é temporária: troca obrigatória no primeiro acesso. Trocar a senha encerra as outras sessões do usuário.
 - **E6.** A administração de usuários respeita o alcance: quem é REGIONAL só vê e gerencia usuários ligados às suas regionais/bases, só concede tipos de acesso com alcance igual ou menor que o seu e só vincula bases/regionais do seu alcance. Ninguém muda as próprias bases e regionais. → `modules/acessos/rules.ts` (`scopeWithin`, `linksOutsideScopeError`), `queries.ts`
 - **E7.** Login: 5 senhas erradas do mesmo login e mesmo IP bloqueiam por 15 min; 30 de qualquer IP (ataque distribuído); 300 por IP (uma base inteira sai pelo mesmo IP). Escolha consciente: alguém de fora pode travar uma conta, mas precisa de 30 tentativas e o bloqueio dura só 15 min.
+- **E8.** Ninguém edita o tipo de acesso que ele mesmo usa (só o Dev). Assim um Administrador não tira, sem querer, permissões de todos os administradores de uma vez. → `modules/acessos/rules.ts` (`ownProfileEditError`)
+- **E9.** Acesso hierárquico (decisão do Diogo, 2026-11-12):
+  - **Acesso completo** (perfil Dev): só quem o Diogo e o Eduardo liberarem.
+  - **Base / Franquia**: só pedem insumos para a própria base e acompanham o andamento do pedido (aprovado, separado, na expedição, enviado). Não veem estoque, administração nem relatórios.
+  - **Expedição**: só a expedição. Vê os pedidos já separados que aguardam envio e confirma o envio. Não vê as outras áreas.
+  - O tipo de acesso de quem vem das bases é escolhido pelo Diogo/Eduardo quando a pessoa entra no sistema.
+  - → `src/lib/permissions/default-profiles.ts` (teste em `default-profiles.test.ts`)
 
 ## Solicitações (a definir — Eduardo)
 
