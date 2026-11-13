@@ -49,6 +49,7 @@ async function main() {
     { login: "admin", name: "Admin (exemplo)", profileId: profiles.admin },
     { login: "gestor.mg", name: "Gestor MG (exemplo)", profileId: profiles["gestor-regional"], regionalId: mg.id },
     { login: "almox.mg", name: "Almoxarifado MG (exemplo)", profileId: profiles.almoxarifado, regionalId: mg.id },
+    { login: "expedicao.mg", name: "Expedição MG (exemplo)", profileId: profiles.expedicao, regionalId: mg.id },
     { login: "base.bhz", name: "Base BHZ01 (exemplo)", profileId: profiles.base, baseId: bhz.id },
   ];
   for (const { regionalId, baseId, ...u } of users) {
