@@ -77,6 +77,9 @@ export default async function BaseEditPage(props: PageProps<"/admin/estrutura/ba
             <Field label="Endereço (opcional)" htmlFor="address">
               <Input id="address" name="address" defaultValue={base?.address ?? ""} />
             </Field>
+            <Field label="Grupo do Feishu (opcional)" htmlFor="feishuChatId" hint="chat_id oc_... do grupo da base: recebe os avisos dos pedidos dela (precisa do app do Feishu).">
+              <Input id="feishuChatId" name="feishuChatId" defaultValue={base?.feishuChatId ?? ""} autoCapitalize="none" />
+            </Field>
             <CheckField name="active" label="Base ativa" defaultChecked={base?.active ?? true} />
           </ActionForm>
         </CardContent>

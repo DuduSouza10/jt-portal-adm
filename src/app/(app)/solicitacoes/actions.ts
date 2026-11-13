@@ -13,10 +13,13 @@ import {
   textoSchema,
 } from "@/modules/solicitacoes/schemas";
 import * as svc from "@/modules/solicitacoes/service";
+import { flushFeishuSoon } from "@/lib/feishu/flush";
 
 const form = (f: FormData) => Object.fromEntries(f);
 
+/** Depois de toda mudança: atualiza as telas e manda já os avisos do Feishu que a mudança gerou. */
 function refresh(id?: string) {
+  flushFeishuSoon();
   revalidatePath("/solicitacoes");
   revalidatePath("/separacao");
   revalidatePath("/expedicao");

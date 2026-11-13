@@ -8,6 +8,7 @@ import { can, canAccessBase, canAny } from "@/lib/permissions/check";
 import { baixarReserva, liberarReserva, reservar, STOCK_TX } from "@/modules/estoque/api";
 import { formatNumber, planQuantities, TO, transitionError, type Acao } from "./rules";
 import type { AprovarInput, CriarInput, EnvioInput, SepararInput } from "./schemas";
+import { notificar } from "./notify";
 
 type Tx = Prisma.TransactionClient;
 type BaseRef = { id: string; regionalId: string };
@@ -85,6 +86,8 @@ async function transition(
     },
     tx,
   );
+  // Sino + Feishu para "a outra parte" (S7). Na mesma transação: se a mudança falhar, nenhum aviso sai.
+  await notificar(tx, s.id, { tipo: "status", from: s.status, to, nota: note, parcial: data.partial === true }, user);
 }
 
 function plan(linhas: Parameters<typeof planQuantities>[0], informado: Record<string, number>, etapa: string) {
@@ -131,6 +134,7 @@ export async function criar(user: CurrentUser, input: CriarInput) {
       },
       tx,
     );
+    await notificar(tx, s.id, { tipo: "criada" }, user);
     return s;
   });
 }
@@ -153,7 +157,10 @@ export async function cancelar(user: CurrentUser, id: string, reason: string) {
 export async function comentar(user: CurrentUser, id: string, text: string) {
   const s = await db.solicitacao.findUnique({ where: { id }, include: { base: true, almoxarifado: true } });
   if (!s || !canSee(user, s)) throw new DomainError("Solicitação não encontrada.");
-  await db.solicitacaoEvento.create({ data: { solicitacaoId: id, type: "COMENTARIO", note: text, actorId: user.id } });
+  await db.$transaction(async (tx) => {
+    await tx.solicitacaoEvento.create({ data: { solicitacaoId: id, type: "COMENTARIO", note: text, actorId: user.id } });
+    await notificar(tx, id, { tipo: "comentario", texto: text }, user);
+  });
 }
 
 // ------------------------------------------------------------------ Aprovação
