@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Camera, ScanLine, Truck, X } from "lucide-react";
+import { useServerMessage, useT } from "@/i18n/client";
+import type { Locale } from "@/i18n/config";
 import type { Prioridade } from "@/generated/prisma/enums";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,9 +38,9 @@ export type ShippedOrder = {
   baseCode: string;
 };
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
-const dateTime = (iso: string) =>
-  new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+const time = (iso: string, locale: Locale) => new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+const dateTime = (iso: string, locale: Locale) =>
+  new Date(iso).toLocaleString(locale, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
 /** Reduz a foto no próprio aparelho (lado maior até 1600 px, JPEG) antes de enviar: ~150–300 KB. */
 async function compressPhoto(file: File): Promise<Blob> {
@@ -65,6 +67,8 @@ export function ShippingBoard({
   shipped: ShippedOrder[];
   preselect?: string;
 }) {
+  const t = useT();
+  const tm = useServerMessage();
   const router = useRouter();
   const scanRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -104,8 +108,8 @@ export function ShippingBoard({
     start(async () => {
       const r = await lookupScanAction(raw);
       if (!r.ok) {
-        setScanError(r.error);
-        toast.error(r.error);
+        setScanError(tm(r.error));
+        toast.error(tm(r.error));
         focusScan();
         return;
       }
@@ -113,7 +117,7 @@ export function ShippingBoard({
       if (!byId.has(r.id)) router.refresh(); // separado agora há pouco: recarrega a lista
       add([r.id]);
       const o = byId.get(r.id);
-      toast.success(o ? `${o.number} → ${o.baseCode} adicionado` : "Pedido adicionado");
+      toast.success(o ? t("solicitacoes.expedicao.adicionado", { number: o.number, base: o.baseCode }) : t("solicitacoes.expedicao.adicionadoGenerico"));
       focusScan();
     });
   }
@@ -141,8 +145,8 @@ export function ShippingBoard({
 
   function confirm() {
     if (!chosen.length) return;
-    if (!tripId.trim()) return setFormError("Informe o ID da viagem.");
-    if (!photo) return setFormError("Tire a foto do envio.");
+    if (!tripId.trim()) return setFormError(t("solicitacoes.expedicao.erroViagem"));
+    if (!photo) return setFormError(t("solicitacoes.expedicao.erroFoto"));
     setFormError("");
     const fd = new FormData();
     chosen.forEach((o) => fd.append("id", o.id));
@@ -154,12 +158,12 @@ export function ShippingBoard({
       const res = await fetch("/api/expedicao/enviar", { method: "POST", body: fd }).catch(() => null);
       const data = res ? await res.json().catch(() => null) : null;
       if (!res?.ok || !data) {
-        setFormError(data?.error ?? "Não foi possível enviar. Verifique a internet e tente de novo.");
+        setFormError(data?.error ? tm(data.error) : t("solicitacoes.expedicao.erroRede"));
         return;
       }
       const { shipped: ok, failed } = data as { shipped: string[]; failed: { id: string; error: string }[] };
-      if (ok.length) toast.success(ok.length === 1 ? `${ok[0]} enviado.` : `${ok.length} pedidos enviados.`);
-      failed.forEach((f) => toast.error(`${byId.get(f.id)?.number ?? "Pedido"}: ${f.error}`));
+      if (ok.length) toast.success(ok.length === 1 ? t("solicitacoes.expedicao.enviado", { number: ok[0] }) : t("solicitacoes.expedicao.enviados", { n: ok.length }));
+      failed.forEach((f) => toast.error(`${byId.get(f.id)?.number ?? t("solicitacoes.expedicao.pedido")}: ${tm(f.error)}`));
       clearForm();
       router.refresh();
       focusScan();
@@ -178,15 +182,15 @@ export function ShippingBoard({
                 autoFocus={!preselect}
                 value={scan}
                 onChange={(e) => setScan(e.target.value)}
-                placeholder="Bipe o QR da guia ou digite o nº (SOL-000123)"
-                aria-label="Código da guia"
+                placeholder={t("solicitacoes.expedicao.scanPh")}
+                aria-label={t("solicitacoes.expedicao.codigoGuia")}
                 autoComplete="off"
                 className="h-12 pl-10 text-base"
               />
             </div>
-            <CameraScanButton title="Escanear QR da guia" onResult={lookup} />
+            <CameraScanButton title={t("solicitacoes.expedicao.escanearGuia")} onResult={lookup} />
             <Button type="submit" size="lg" className="h-12" disabled={pending}>
-              Buscar
+              {t("comum.buscar")}
             </Button>
           </form>
           {scanError && <p className="text-sm font-medium text-destructive">{scanError}</p>}
@@ -194,13 +198,13 @@ export function ShippingBoard({
           {chosen.length > 0 && (
             <div className="space-y-3 rounded-lg border bg-accent/40 p-3">
               <p className="text-sm font-medium">
-                {chosen.length === 1 ? "1 pedido para enviar" : `${chosen.length} pedidos na mesma viagem`}
+                {chosen.length === 1 ? t("solicitacoes.expedicao.umParaEnviar") : t("solicitacoes.expedicao.nMesmaViagem", { n: chosen.length })}
               </p>
               <div className="flex flex-wrap gap-2">
                 {chosen.map((o) => (
                   <Badge key={o.id} variant="secondary" className="h-7 gap-1 text-sm">
                     {o.number} → {o.baseCode}
-                    <button type="button" onClick={() => toggle(o.id)} aria-label={`Tirar ${o.number}`} className="ml-1 rounded hover:bg-black/10">
+                    <button type="button" onClick={() => toggle(o.id)} aria-label={t("solicitacoes.expedicao.tirar", { number: o.number })} className="ml-1 rounded hover:bg-foreground/10">
                       <X className="size-3.5" />
                     </button>
                   </Badge>
@@ -208,7 +212,7 @@ export function ShippingBoard({
               </div>
               <div className="grid gap-2 sm:grid-cols-[1fr_8rem]">
                 <div className="space-y-1">
-                  <Label htmlFor="trip">ID da viagem *</Label>
+                  <Label htmlFor="trip">{t("solicitacoes.expedicao.idViagem")}</Label>
                   <div className="flex gap-2">
                     <Input
                       id="trip"
@@ -216,12 +220,12 @@ export function ShippingBoard({
                       onChange={(e) => setTripId(e.target.value)}
                       maxLength={60}
                       autoComplete="off"
-                      placeholder="Escaneie o código de barras ou digite"
+                      placeholder={t("solicitacoes.expedicao.viagemPh")}
                       autoFocus={!!preselect}
                       className="h-11 font-mono text-base"
                     />
                     <CameraScanButton
-                      title="Escanear ID da viagem"
+                      title={t("solicitacoes.expedicao.escanearViagem")}
                       onResult={(text) => {
                         setTripId(text.trim().slice(0, 60));
                         setFormError("");
@@ -231,20 +235,20 @@ export function ShippingBoard({
                 </div>
                 {chosen.length === 1 && (
                   <div className="space-y-1">
-                    <Label htmlFor="volumes">Volumes</Label>
+                    <Label htmlFor="volumes">{t("solicitacoes.expedicao.volumes")}</Label>
                     <Input id="volumes" type="number" min={1} inputMode="numeric" value={volumes} onChange={(e) => setVolumes(e.target.value)} className="h-11" />
                   </div>
                 )}
               </div>
               <div className="space-y-1">
-                <Label htmlFor="photo">Foto do envio *</Label>
+                <Label htmlFor="photo">{t("solicitacoes.expedicao.fotoEnvio")}</Label>
                 <input ref={photoRef} id="photo" type="file" accept="image/*" capture="environment" onChange={onPhoto} className="sr-only" />
                 {photoUrl ? (
                   <div className="flex items-center gap-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photoUrl} alt="Foto do envio" className="size-24 rounded-md border object-cover" />
+                    <img src={photoUrl} alt={t("solicitacoes.expedicao.fotoAlt")} className="size-24 rounded-md border object-cover" />
                     <Button type="button" variant="outline" onClick={() => photoRef.current?.click()}>
-                      <Camera /> Tirar outra
+                      <Camera /> {t("solicitacoes.expedicao.tirarOutra")}
                     </Button>
                   </div>
                 ) : (
@@ -255,17 +259,17 @@ export function ShippingBoard({
                     className="h-16 w-full border-dashed text-base"
                     onClick={() => photoRef.current?.click()}
                   >
-                    <Camera className="size-5" /> Tirar foto
+                    <Camera className="size-5" /> {t("solicitacoes.expedicao.tirarFoto")}
                   </Button>
                 )}
               </div>
               <div className="space-y-1">
-                <Label htmlFor="snotes">Observação (opcional)</Label>
+                <Label htmlFor="snotes">{t("solicitacoes.detalhe.observacaoOpc")}</Label>
                 <Input id="snotes" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} />
               </div>
               {formError && <p className="text-sm font-medium text-destructive">{formError}</p>}
               <Button size="lg" className="h-12 w-full text-base" disabled={pending} onClick={confirm}>
-                <Truck /> {pending ? "Enviando..." : `Confirmar envio (${chosen.length})`}
+                <Truck /> {pending ? t("solicitacoes.nova.enviando") : t("solicitacoes.expedicao.confirmar", { n: chosen.length })}
               </Button>
             </div>
           )}
@@ -274,10 +278,10 @@ export function ShippingBoard({
 
       <Card>
         <CardHeader>
-          <CardTitle>Prontos para carregar ({ready.length})</CardTitle>
+          <CardTitle>{t("solicitacoes.expedicao.prontos", { n: ready.length })}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!ready.length && <p className="text-sm text-muted-foreground">Nenhum pedido separado aguardando envio.</p>}
+          {!ready.length && <p className="text-sm text-muted-foreground">{t("solicitacoes.expedicao.nenhum")}</p>}
           {groups.map(([code, orders]) => (
             <div key={code} className="space-y-2">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -291,7 +295,7 @@ export function ShippingBoard({
                     size="sm"
                     onClick={() => add(orders.map((o) => o.id))}
                   >
-                    Selecionar todos ({orders.length})
+                    {t("solicitacoes.expedicao.selecionarTodos", { n: orders.length })}
                   </Button>
                 )}
               </div>
@@ -306,12 +310,12 @@ export function ShippingBoard({
                       <input type="checkbox" checked={on} onChange={() => toggle(o.id)} className="size-4 accent-primary" />
                       <span className="font-mono text-sm font-semibold">{o.number}</span>
                       <PriorityBadge priority={o.priority} />
-                      {o.partial && <Badge variant="outline">Parcial</Badge>}
-                      <span className="text-sm text-muted-foreground">{o.items} insumo(s)</span>
+                      {o.partial && <Badge variant="outline">{t("solicitacoes.expedicao.parcial")}</Badge>}
+                      <span className="text-sm text-muted-foreground">{t("solicitacoes.expedicao.nInsumos", { n: o.items })}</span>
                       <span className="ml-auto text-xs text-muted-foreground">
-                        {o.separatedAt && `Separado ${dateTime(o.separatedAt)} · `}
+                        {o.separatedAt && `${t("solicitacoes.expedicao.separadoEm", { data: dateTime(o.separatedAt, t.locale) })} · `}
                         <Link href={`/solicitacoes/${o.id}`} className="underline" onClick={(e) => e.stopPropagation()}>
-                          ver itens
+                          {t("solicitacoes.expedicao.verItens")}
                         </Link>
                       </span>
                     </label>
@@ -325,19 +329,19 @@ export function ShippingBoard({
 
       <Card>
         <CardHeader>
-          <CardTitle>Enviados hoje ({shipped.length})</CardTitle>
+          <CardTitle>{t("solicitacoes.expedicao.enviadosHoje", { n: shipped.length })}</CardTitle>
         </CardHeader>
         <CardContent>
-          {!shipped.length && <p className="text-sm text-muted-foreground">Nada enviado hoje ainda.</p>}
+          {!shipped.length && <p className="text-sm text-muted-foreground">{t("solicitacoes.expedicao.nadaHoje")}</p>}
           <div className="divide-y">
             {shipped.map((o) => (
               <Link key={o.id} href={`/solicitacoes/${o.id}`} className="flex flex-wrap gap-x-3 py-2 text-sm hover:bg-muted/50">
                 <span className="font-mono font-semibold">{o.number}</span>
                 <span className="font-medium">{o.baseCode}</span>
                 <span className="text-muted-foreground">
-                  {[o.tripId && `Viagem ${o.tripId}`, o.volumes && `${o.volumes} vol.`].filter(Boolean).join(" · ")}
+                  {[o.tripId && t("solicitacoes.expedicao.viagem", { id: o.tripId }), o.volumes && t("solicitacoes.expedicao.vol", { n: o.volumes })].filter(Boolean).join(" · ")}
                 </span>
-                <span className="ml-auto text-xs text-muted-foreground">{time(o.shippedAt)}</span>
+                <span className="ml-auto text-xs text-muted-foreground">{time(o.shippedAt, t.locale)}</span>
               </Link>
             ))}
           </div>

@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { navFor, SECTION_LABEL, type NavItem } from "@/lib/navigation";
+import { unreadCount } from "@/modules/notificacoes/queries";
 import { getT } from "@/i18n/server";
 import { navText, profileText } from "@/i18n/labels";
 import { Breadcrumb, MobileNav, SidebarNav, UserCard, type NavGroup } from "@/components/app-nav";
@@ -49,6 +51,7 @@ export async function AppSidebar() {
 
 export async function AppTopbar() {
   const { user, t, groups, subtitle } = await loadNav();
+  const unread = await unreadCount(user.id);
   return (
     <div className="flex h-15 items-center gap-3 px-4 sm:px-7">
       <MobileNav
@@ -59,10 +62,32 @@ export async function AppTopbar() {
         credits={t("app.creditos")}
       />
       <Breadcrumb groups={groups} />
-      <div className="ml-auto flex items-center gap-1.5 lg:hidden">
-        <ThemeToggle className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-ring" />
+      <div className="ml-auto flex items-center gap-1.5">
+        <NotificationBell unread={unread} label={unread ? t("notificacoes.sinoNaoLidas", { n: unread }) : t("notificacoes.titulo")} />
+        <div className="lg:hidden">
+          <ThemeToggle className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-ring" />
+        </div>
       </div>
     </div>
+  );
+}
+
+/** Sino do cabeçalho: leva à lista de avisos e mostra quantos ainda não foram lidos. */
+function NotificationBell({ unread, label }: { unread: number; label: string }) {
+  return (
+    <Link
+      href="/notificacoes"
+      aria-label={label}
+      title={label}
+      className="relative inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    >
+      <Bell className="size-[18px]" aria-hidden />
+      {unread > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1 text-[11px] leading-none font-semibold text-primary-foreground tabular-nums ring-2 ring-background">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
+    </Link>
   );
 }
 

@@ -5,22 +5,24 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, selectClass } from "@/components/form-field";
+import { useServerMessage, useT } from "@/i18n/client";
 import type { FormState } from "@/lib/action-result";
 
 type Item = { produtoId: string; code: string; name: string; unit: string; max: number };
 type Almox = { id: string; code: string; name: string };
 
 function Feedback({ state }: { state: FormState }) {
+  const tm = useServerMessage();
   if (state.error)
     return (
       <Alert variant="destructive">
-        <AlertDescription>{state.error}</AlertDescription>
+        <AlertDescription>{tm(state.error)}</AlertDescription>
       </Alert>
     );
   if (state.message)
     return (
-      <Alert>
-        <AlertDescription className="font-medium text-foreground">{state.message}</AlertDescription>
+      <Alert className="border-success/40 bg-success/5">
+        <AlertDescription className="font-medium text-foreground">{tm(state.message)}</AlertDescription>
       </Alert>
     );
   return null;
@@ -49,6 +51,7 @@ export function QuantidadesForm({
   almoxDefault?: string;
   disponivel?: Record<string, Record<string, number>>;
 }) {
+  const t = useT();
   const [state, formAction, pending] = useActionState(action, {});
   const [q, setQ] = useState<Record<string, string>>(() => Object.fromEntries(itens.map((i) => [i.produtoId, String(i.max)])));
   const [almox, setAlmox] = useState(almoxDefault ?? "");
@@ -62,10 +65,10 @@ export function QuantidadesForm({
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="quantidades" value={JSON.stringify(quantidades)} />
       {almoxarifados && (
-        <Field label="Almoxarifado que vai atender" htmlFor="almoxarifadoId">
+        <Field label={t("solicitacoes.forms.almoxAtende")} htmlFor="almoxarifadoId">
           <select id="almoxarifadoId" name="almoxarifadoId" required value={almox} onChange={(e) => setAlmox(e.target.value)} className={selectClass}>
             <option value="" disabled>
-              Escolha o almoxarifado
+              {t("solicitacoes.forms.escolhaAlmox")}
             </option>
             {almoxarifados.map((a) => (
               <option key={a.id} value={a.id}>
@@ -77,8 +80,8 @@ export function QuantidadesForm({
       )}
       <div className="divide-y rounded-lg border">
         <div className="flex gap-2 px-3 py-2 text-xs font-medium text-muted-foreground">
-          <span className="flex-1">Insumo</span>
-          {disp && <span className="w-20 text-right">Disponível</span>}
+          <span className="flex-1">{t("solicitacoes.detalhe.col.insumo")}</span>
+          {disp && <span className="w-20 text-right">{t("solicitacoes.forms.disponivel")}</span>}
           <span className="w-24 text-right">{colLabel}</span>
         </div>
         {itens.map((i) => {
@@ -89,7 +92,7 @@ export function QuantidadesForm({
               <span className="flex-1">
                 <span className="font-medium">{i.code}</span> {i.name}{" "}
                 <span className="text-xs text-muted-foreground">
-                  (máx. {i.max} {i.unit})
+                  {t("solicitacoes.forms.max", { max: i.max, unit: i.unit })}
                 </span>
               </span>
               {disp && <span className={`w-20 text-right tabular-nums ${falta ? "font-semibold text-destructive" : "text-muted-foreground"}`}>{d}</span>}
@@ -101,7 +104,7 @@ export function QuantidadesForm({
                 inputMode="numeric"
                 value={q[i.produtoId]}
                 onChange={(e) => setQ((s) => ({ ...s, [i.produtoId]: e.target.value }))}
-                aria-label={`${colLabel} de ${i.code}`}
+                aria-label={t("solicitacoes.forms.qtdDe", { col: colLabel, code: i.code })}
                 className="w-24 text-right"
               />
             </div>
@@ -109,13 +112,13 @@ export function QuantidadesForm({
         })}
       </div>
       {almoxarifados && (
-        <Field label="Observação (opcional)" htmlFor="note">
+        <Field label={t("solicitacoes.detalhe.observacaoOpc")} htmlFor="note">
           <Input id="note" name="note" maxLength={300} />
         </Field>
       )}
       <Feedback state={state} />
       <Button type="submit" size="lg" disabled={pending}>
-        {pending ? "Salvando..." : submitLabel}
+        {pending ? t("comum.salvando") : submitLabel}
       </Button>
     </form>
   );
@@ -141,6 +144,7 @@ export function TextoForm({
   variant?: "default" | "outline" | "destructive";
   placeholder?: string;
 }) {
+  const t = useT();
   const [state, formAction, pending] = useActionState(action, {});
   return (
     <form action={formAction} className="space-y-2">
@@ -150,7 +154,7 @@ export function TextoForm({
       </Field>
       <Feedback state={state} />
       <Button type="submit" variant={variant} disabled={pending}>
-        {pending ? "Salvando..." : submitLabel}
+        {pending ? t("comum.salvando") : submitLabel}
       </Button>
     </form>
   );
@@ -168,13 +172,14 @@ export function BotaoForm({
   label: string;
   variant?: "default" | "outline";
 }) {
+  const t = useT();
   const [state, formAction, pending] = useActionState(action, {});
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="id" value={id} />
       <Feedback state={state} />
       <Button type="submit" variant={variant} disabled={pending}>
-        {pending ? "Salvando..." : label}
+        {pending ? t("comum.salvando") : label}
       </Button>
     </form>
   );

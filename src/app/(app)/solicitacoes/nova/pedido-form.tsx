@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, selectClass } from "@/components/form-field";
+import { useServerMessage, useT } from "@/i18n/client";
 import type { FormState } from "@/lib/action-result";
 import { criarAction } from "../actions";
 
@@ -15,6 +16,8 @@ type Base = { id: string; code: string; name: string };
 type Linha = { key: number; produtoId: string; texto: string; quantity: string };
 
 export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produto[] }) {
+  const t = useT();
+  const tm = useServerMessage();
   const [state, action, pending] = useActionState<FormState, FormData>(criarAction, {});
   const nextKey = useRef(1);
   const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", texto: "", quantity: "" }]);
@@ -33,7 +36,7 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
       <input type="hidden" name="itens" value={JSON.stringify(itens)} />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Base" htmlFor="baseId">
+        <Field label={t("solicitacoes.nova.base")} htmlFor="baseId">
           {bases.length === 1 ? (
             <>
               <input type="hidden" name="baseId" value={bases[0].id} />
@@ -44,7 +47,7 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
           ) : (
             <select id="baseId" name="baseId" required className={selectClass} defaultValue="">
               <option value="" disabled>
-                Escolha a base
+                {t("solicitacoes.nova.escolhaBase")}
               </option>
               {bases.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -54,10 +57,10 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
             </select>
           )}
         </Field>
-        <Field label="Prioridade" htmlFor="priority">
+        <Field label={t("solicitacoes.nova.prioridade")} htmlFor="priority">
           <select id="priority" name="priority" className={selectClass} defaultValue="NORMAL">
-            <option value="NORMAL">Normal</option>
-            <option value="URGENTE">Urgente</option>
+            <option value="NORMAL">{t("solicitacoes.prioridade.NORMAL")}</option>
+            <option value="URGENTE">{t("solicitacoes.prioridade.URGENTE")}</option>
           </select>
         </Field>
       </div>
@@ -69,7 +72,7 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
       </datalist>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium">Insumos</p>
+        <p className="text-sm font-medium">{t("solicitacoes.nova.insumos")}</p>
         {linhas.map((l, i) => {
           const p = byId.get(l.produtoId);
           return (
@@ -78,15 +81,15 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
                 <Input
                   list="produtos-list"
                   value={l.texto}
-                  placeholder="Digite o código ou o nome"
-                  aria-label={`Produto ${i + 1}`}
+                  placeholder={t("solicitacoes.nova.buscaPh")}
+                  aria-label={t("solicitacoes.nova.produtoN", { n: i + 1 })}
                   onChange={(e) => {
                     const found = byLabel.get(e.target.value);
                     update(l.key, { texto: e.target.value, produtoId: found?.id ?? "" });
                   }}
                   className={l.texto && !l.produtoId ? "border-destructive" : ""}
                 />
-                {l.texto && !l.produtoId && <p className="mt-1 text-xs text-destructive">Escolha um produto da lista.</p>}
+                {l.texto && !l.produtoId && <p className="mt-1 text-xs text-destructive">{t("solicitacoes.nova.escolhaLista")}</p>}
               </div>
               <Input
                 type="number"
@@ -94,8 +97,8 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
                 step={1}
                 inputMode="numeric"
                 value={l.quantity}
-                placeholder="Qtd."
-                aria-label={`Quantidade ${i + 1}`}
+                placeholder={t("solicitacoes.nova.qtd")}
+                aria-label={t("solicitacoes.nova.quantidadeN", { n: i + 1 })}
                 onChange={(e) => update(l.key, { quantity: e.target.value })}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && i === linhas.length - 1) {
@@ -110,7 +113,7 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="Remover linha"
+                aria-label={t("solicitacoes.nova.remover")}
                 disabled={linhas.length === 1}
                 onClick={() => setLinhas((ls) => ls.filter((x) => x.key !== l.key))}
               >
@@ -120,21 +123,21 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
           );
         })}
         <Button type="button" variant="outline" size="sm" onClick={addLinha}>
-          <Plus /> Adicionar insumo
+          <Plus /> {t("solicitacoes.nova.adicionar")}
         </Button>
       </div>
 
-      <Field label="Observação (opcional)" htmlFor="notes">
+      <Field label={t("solicitacoes.nova.observacao")} htmlFor="notes">
         <Textarea id="notes" name="notes" maxLength={500} rows={2} />
       </Field>
 
       {state.error && (
         <Alert variant="destructive">
-          <AlertDescription>{state.error}</AlertDescription>
+          <AlertDescription>{tm(state.error)}</AlertDescription>
         </Alert>
       )}
       <Button type="submit" size="lg" disabled={pending || invalid}>
-        {pending ? "Enviando..." : "Enviar pedido"}
+        {pending ? t("solicitacoes.nova.enviando") : t("solicitacoes.nova.enviar")}
       </Button>
     </form>
   );

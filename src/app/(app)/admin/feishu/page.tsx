@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { fmtDateTime } from "@/lib/format";
+import { getT } from "@/i18n/server";
 import { cardTitle, type Card as FeishuCard } from "@/lib/feishu/cards";
 import { messagingConfig } from "@/lib/feishu/send";
 import { BACKOFF_MINUTES } from "@/lib/feishu/outbox";
@@ -11,14 +12,16 @@ import { EmptyState, PageHeader } from "@/components/page-header";
 import { retryAction } from "./actions";
 import { TestButtons } from "./test-buttons";
 
-export const metadata: Metadata = { title: "Feishu" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("feishu.titulo") };
+}
 
-const STATUS = { PENDING: "Na fila", SENT: "Enviada", FAILED: "Falhou" } as const;
 const STATUS_CLASS = { PENDING: "text-muted-foreground", SENT: "text-foreground", FAILED: "text-destructive" } as const;
-const CHANNEL: Record<string, string> = { webhook: "Webhook do grupo", chat: "Grupo (app)", user: "Mensagem direta" };
 
 export default async function FeishuPage() {
   await requirePermission("integracoes.gerenciar");
+  const t = await getT();
   const cfg = messagingConfig();
   const [rows, counts] = await Promise.all([
     db.feishuOutbox.findMany({ orderBy: { createdAt: "desc" }, take: 40 }),
@@ -27,39 +30,37 @@ export default async function FeishuPage() {
   const count = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
   const equipeVia =
     cfg.app && cfg.staffChatId
-      ? "grupo da equipe (app)"
+      ? t("feishu.viaGrupoApp")
       : cfg.webhook
-        ? "webhook do grupo da equipe"
+        ? t("feishu.viaWebhook")
         : cfg.app
-          ? "mensagem direta para cada pessoa com o open_id preenchido"
-          : "nenhum (configure o Feishu)";
+          ? t("feishu.viaDireta")
+          : t("feishu.viaNenhum");
+  const config = (ok: boolean) => (ok ? t("feishu.configurado") : t("feishu.naoConfigurado"));
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <PageHeader title="Feishu" description="Avisos das solicitações, lembretes e resumo diário enviados ao Feishu." />
+      <PageHeader title={t("feishu.titulo")} description={t("feishu.descricao")} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Configuração</CardTitle>
-          <CardDescription>Definida nas variáveis de ambiente (veja .env.example).</CardDescription>
+          <CardTitle>{t("feishu.configuracao")}</CardTitle>
+          <CardDescription>{t("feishu.configuracaoDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-1 text-sm">
           <p>
-            Webhook do grupo da equipe: <b>{cfg.webhook ? "configurado" : "não configurado"}</b>
+            {t("feishu.webhookEquipe")} <b>{config(!!cfg.webhook)}</b>
           </p>
           <p>
-            Webhook do grupo da expedição: <b>{cfg.shippingWebhook ? "configurado" : "não configurado (vai para o destino da equipe)"}</b>
+            {t("feishu.webhookExpedicao")} <b>{cfg.shippingWebhook ? t("feishu.configurado") : t("feishu.naoConfiguradoExpedicao")}</b>
           </p>
           <p>
-            App da Open Platform (mensagem direta e grupos das bases): <b>{cfg.app ? "configurado" : "não configurado"}</b>
+            {t("feishu.appPlataforma")} <b>{config(!!cfg.app)}</b>
           </p>
           <p>
-            Avisos da equipe (aprovação e separação) vão para: <b>{equipeVia}</b>
+            {t("feishu.avisosEquipe")} <b>{equipeVia}</b>
           </p>
-          <p className="text-muted-foreground">
-            Avisos para as bases vão por mensagem direta (open_id no cadastro do usuário) e para o grupo da base (chat_id no
-            cadastro da base). Isso precisa do app. O sino do portal funciona sempre, com ou sem Feishu.
-          </p>
+          <p className="text-muted-foreground">{t("feishu.notaBases")}</p>
           <div className="pt-2">
             <TestButtons />
           </div>
@@ -68,27 +69,31 @@ export default async function FeishuPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Últimas mensagens</CardTitle>
+          <CardTitle>{t("feishu.ultimas")}</CardTitle>
           <CardDescription>
-            {count("SENT")} enviadas · {count("PENDING")} na fila · {count("FAILED")} com falha. Falhas são tentadas de novo
-            automaticamente ({BACKOFF_MINUTES.map((m) => (m < 60 ? `${m} min` : `${m / 60} h`)).join(", ")}).
+            {t("feishu.resumo", {
+              sent: count("SENT"),
+              pending: count("PENDING"),
+              failed: count("FAILED"),
+              tempos: BACKOFF_MINUTES.map((m) => (m < 60 ? t("feishu.minutos", { n: m }) : t("feishu.horas", { n: m / 60 }))).join(", "),
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {!rows.length ? (
-            <EmptyState>Nenhuma mensagem ainda.</EmptyState>
+            <EmptyState>{t("feishu.vazio")}</EmptyState>
           ) : (
             <ul className="divide-y text-sm">
               {rows.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-                  <span className={`w-20 font-medium ${STATUS_CLASS[r.status]}`}>{STATUS[r.status]}</span>
+                  <span className={`w-20 font-medium ${STATUS_CLASS[r.status]}`}>{t(`feishu.status.${r.status}`)}</span>
                   <span className="min-w-0 flex-1 truncate">{cardTitle(r.payload as FeishuCard) ?? r.event}</span>
-                  <span className="text-xs text-muted-foreground">{CHANNEL[r.channel] ?? r.channel}</span>
-                  <span className="text-xs text-muted-foreground">{fmtDateTime(r.sentAt ?? r.createdAt)}</span>
+                  <span className="text-xs text-muted-foreground">{t.maybe(`feishu.canal.${r.channel}`) ?? r.channel}</span>
+                  <span className="text-xs text-muted-foreground">{fmtDateTime(r.sentAt ?? r.createdAt, t.locale)}</span>
                   {r.status !== "SENT" && (
                     <form action={retryAction.bind(null, r.id)}>
                       <Button type="submit" variant="outline" size="sm">
-                        Tentar de novo
+                        {t("feishu.tentarDeNovo")}
                       </Button>
                     </form>
                   )}
