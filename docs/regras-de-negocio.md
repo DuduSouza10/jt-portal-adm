@@ -22,16 +22,34 @@ Formato sugerido: regra numerada, exemplo concreto, e onde está no código.
   - O tipo de acesso de quem vem das bases é escolhido pelo Diogo/Eduardo quando a pessoa entra no sistema.
   - → `src/lib/permissions/default-profiles.ts` (teste em `default-profiles.test.ts`)
 
-## Solicitações (a definir — Eduardo)
+## Solicitações — implementado em `src/modules/solicitacoes` (Diogo, trazido do sistema antigo)
 
-- **S1.** Ciclo de troca de 3 meses para bases (franquia não tem ciclo). _Detalhar: conta a partir de quê? aprovação ou envio?_
-- **S2.** Base informa o número de pessoas a cada pedido. _Isso limita quantidades?_
-- **S3.** Limites por produto. _Por pedido? Por pessoa? Por ciclo?_
-- **S4.** Status: _listar e definir quem muda de qual para qual._
+- **S1.** Ciclo de troca de 3 meses para bases (franquia não tem ciclo). _A definir. Ainda não implementado._
+- **S2.** Base informa o número de pessoas a cada pedido. _A definir. Ainda não implementado._
+- **S3.** Limites por produto. _A definir. Ainda não implementado._
+- **S4.** Status (proposta, igual ao sistema antigo + aprovação). → `modules/solicitacoes/rules.ts`
 
-## Expedição (a definir — Eduardo)
+  | De | Para | Quem (permissão + alcance) |
+  |---|---|---|
+  | — | Aguardando aprovação | `solicitacoes.criar`, para uma base do seu alcance |
+  | Aguardando aprovação | Aprovada (reserva o estoque) | `solicitacoes.aprovar`, base no alcance; escolhe o almoxarifado e pode aprovar menos que o pedido |
+  | Aguardando aprovação | Recusada (motivo obrigatório) | `solicitacoes.aprovar` |
+  | Aguardando aprovação ou Aprovada | Cancelada (devolve a reserva) | quem pediu ou `solicitacoes.aprovar` |
+  | Aprovada | Em separação | `expedicao.separar`, almoxarifado no alcance |
+  | Aprovada ou Em separação | Separada · na expedição | `expedicao.separar`; pode separar menos que o aprovado (fica "parcial") |
+  | Separada | Enviada (baixa o separado e libera o resto) | `expedicao.enviar`, almoxarifado no alcance |
+  | Enviada | Recebida | `solicitacoes.criar`, base no alcance |
 
-- _…_
+- **S5.** Número do pedido: `SOL-000123` (sequencial). Toda mudança de status entra na linha do tempo do pedido (`SolicitacaoEvento`) e na auditoria.
+- **S6.** Duas pessoas mexendo no mesmo pedido ao mesmo tempo: a segunda recebe "acabou de ser alterada por outra pessoa". O UPDATE confere o status lido.
+
+## Separação e expedição — implementado (Diogo, trazido do sistema antigo)
+
+- **X1.** Fila da separação: aprovadas e em separação dos almoxarifados do alcance, urgentes primeiro. Guia A4 com QR do pedido.
+- **X2.** Fila da expedição: separadas dos almoxarifados do alcance, agrupadas por base, urgentes primeiro, e "enviados hoje".
+- **X3.** Bipar a guia (leitor físico ou câmera do celular) acha o pedido e diz por que não pode enviar (ainda separando, já enviado, cancelado, outro almoxarifado). Aceita o QR ou o número (`SOL-000123`, `123`).
+- **X4.** Envio em lote: vários pedidos na mesma viagem, com **ID da viagem** e **foto** obrigatórios (reduzida no celular, máx. 3 MB), volumes (só com 1 pedido) e observação. Um pedido que falhar não trava os outros.
+- **X5.** A foto fica no banco (`ShipmentPhoto`) e só abre para quem pode ver algum pedido daquela viagem. _Falta: apagar fotos antigas (o sistema antigo apaga depois de 180 dias)._
 
 ## Estoque (Diogo) — implementado em `src/modules/estoque`
 

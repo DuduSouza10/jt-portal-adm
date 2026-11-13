@@ -155,8 +155,9 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 |---|---|
 | Núcleo: arquitetura, banco, login, permissões, auditoria, deploy, CI | **Diogo** |
 | Estoque e movimentações | **Diogo** |
-| Produtos (catálogo), solicitações, aprovação, ciclo de 3 meses | **Eduardo** |
-| Separação, expedição, rastreio, Feishu, relatórios operacionais | **Eduardo** |
+| Produtos (catálogo), ciclo de 3 meses e limites (S1–S3) | **Eduardo** |
+| Solicitações, aprovação, separação e expedição (trazidos do sistema antigo) | **Diogo** (decidido em 2026-11-13) |
+| Rastreio, Feishu, relatórios operacionais | **Eduardo** |
 | Visual, dashboard, testes, revisão de PRs | **Os dois** |
 
 ## Decisões registradas
@@ -175,3 +176,6 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 | 2026-11-12 | Testes de integração com Postgres real no CI | Concorrência só se prova com conexões paralelas de verdade |
 | 2026-11-12 | Perfil "Expedição" só com `expedicao.enviar`; a fila da expedição é liberada por essa permissão, sem `solicitacoes.ver` (E9) | Quem é da expedição não enxerga as solicitações de outras etapas |
 | 2026-11-12 | Ninguém (exceto Dev) edita o próprio tipo de acesso (E8) | Com o Administrador gerenciando perfis (#9), evita que um admin derrube o acesso de todos |
+| 2026-11-13 | Solicitações, separação e expedição trazidas do sistema antigo pelo Diogo, sem mudar o layout do portal (Issue #2) | O sistema antigo já tem isso testado na operação; o Eduardo fica com produtos e relatórios |
+| 2026-11-13 | Envio pela rota `/api/expedicao/enviar` (multipart), não server action | A foto passa do limite de 1 MB das server actions |
+| 2026-11-13 | Almoxarifado que atende é escolhido na aprovação (o da regional da base vem sugerido) | Não existe vínculo fixo base → almoxarifado |

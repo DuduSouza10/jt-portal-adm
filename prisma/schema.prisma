@@ -62,6 +62,10 @@ model Base {
   stockMovements    StockMovement[]
   stockReservations StockReservation[]
 
+  // módulo solicitações
+  solicitacoes          Solicitacao[] @relation("SolicitacaoBase")
+  solicitacoesAtendidas Solicitacao[] @relation("SolicitacaoAlmoxarifado")
+
   @@index([regionalId])
   @@index([type, active])
 }
@@ -116,6 +120,10 @@ model User {
 
   // módulo estoque
   stockMovements StockMovement[]
+
+  // módulo solicitações
+  solicitacoesCriadas Solicitacao[]       @relation("SolicitacaoCriador")
+  solicitacaoEventos  SolicitacaoEvento[]
 
   @@index([profileId])
   @@index([active, name])
@@ -213,6 +221,7 @@ model Produto {
   stockBalances     StockBalance[]
   stockMovements    StockMovement[]
   stockReservations StockReservation[]
+  solicitacaoItens  SolicitacaoItem[]
 
   @@index([name])
 }
@@ -307,4 +316,117 @@ model StockReservation {
 
   @@unique([refType, refId, baseId, produtoId])
   @@index([baseId, produtoId, status])
+}
+
+// ---------------------------------------------------------------------------
+// MÓDULO: solicitações, separação e expedição (Diogo, decidido em 2026-11-13)
+// Funcionalidades trazidas do sistema antigo de insumos. Regras S4 e X1–X4 em
+// docs/regras-de-negocio.md. O estoque só é alterado pela API do estoque (api.ts).
+// ---------------------------------------------------------------------------
+
+enum SolicitacaoStatus {
+  PENDENTE // aguardando aprovação
+  APROVADA // estoque reservado no almoxarifado escolhido
+  EM_SEPARACAO // almoxarifado começou a separar
+  SEPARADA // pronta, na expedição aguardando envio
+  ENVIADA // saiu na viagem (estoque baixado)
+  RECEBIDA // base confirmou o recebimento
+  RECUSADA
+  CANCELADA
+}
+
+enum Prioridade {
+  NORMAL
+  URGENTE
+}
+
+enum SolicitacaoEventoTipo {
+  CRIADA
+  STATUS
+  COMENTARIO
+}
+
+/// Pedido de insumos de uma base.
+model Solicitacao {
+  id             String            @id @default(cuid())
+  number         Int               @unique @default(autoincrement()) // aparece como SOL-000123
+  baseId         String // quem pede
+  almoxarifadoId String? // quem atende (escolhido na aprovação)
+  createdById    String
+  status         SolicitacaoStatus @default(PENDENTE)
+  priority       Prioridade        @default(NORMAL)
+  notes          String? // observação de quem pediu
+  decisionNote   String? // motivo da recusa/cancelamento ou observação da aprovação
+  partial        Boolean           @default(false) // separado/enviado com menos que o aprovado
+
+  // expedição
+  tripId          String? // ID da viagem (a "saca"/carga que leva o pedido)
+  volumes         Int?
+  shippingNotes   String?
+  shipmentPhotoId String? // uma foto pode valer para vários pedidos da mesma viagem
+
+  approvedAt      DateTime?
+  separationAt    DateTime? // começou a separar
+  separatedAt     DateTime?
+  shippedAt       DateTime?
+  receivedAt      DateTime?
+  statusChangedAt DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  base          Base                @relation("SolicitacaoBase", fields: [baseId], references: [id])
+  almoxarifado  Base?               @relation("SolicitacaoAlmoxarifado", fields: [almoxarifadoId], references: [id])
+  createdBy     User                @relation("SolicitacaoCriador", fields: [createdById], references: [id])
+  shipmentPhoto ShipmentPhoto?      @relation(fields: [shipmentPhotoId], references: [id], onDelete: SetNull)
+  itens         SolicitacaoItem[]
+  eventos       SolicitacaoEvento[]
+
+  @@index([baseId, createdAt])
+  @@index([status, almoxarifadoId])
+  @@index([shippedAt])
+  @@index([tripId])
+}
+
+model SolicitacaoItem {
+  id            String @id @default(cuid())
+  solicitacaoId String
+  produtoId     String
+  requested     Int // pedido pela base
+  approved      Int? // aprovado (pode ser menor)
+  separated     Int? // separado (pode ser menor que o aprovado: pedido parcial)
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  produto     Produto     @relation(fields: [produtoId], references: [id])
+
+  @@unique([solicitacaoId, produtoId])
+  @@index([produtoId])
+}
+
+/// Linha do tempo do pedido (o que a base acompanha). Nunca editado nem apagado.
+model SolicitacaoEvento {
+  id            String                @id @default(cuid())
+  solicitacaoId String
+  type          SolicitacaoEventoTipo
+  fromStatus    SolicitacaoStatus?
+  toStatus      SolicitacaoStatus?
+  note          String?
+  actorId       String?
+  createdAt     DateTime              @default(now())
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  actor       User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([solicitacaoId, createdAt])
+}
+
+/// Foto do carregamento, tirada na expedição. Fica no banco (reduzida no celular, ~200 KB).
+model ShipmentPhoto {
+  id        String   @id @default(cuid())
+  mime      String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  solicitacoes Solicitacao[]
+
+  @@index([createdAt])
 }
