@@ -2,7 +2,10 @@ import { timingSafeEqual } from "node:crypto";
 import { connection } from "next/server";
 import { runScheduledJobs } from "@/lib/jobs/run";
 
-// Chamado pelo agendador (Netlify Scheduled Function) a cada 15 min em horário comercial.
+// Chamado por um agendador a cada 15 min em horário comercial. Não depende da hospedagem:
+// - Netlify: netlify/functions/agendador.mts (POST);
+// - Vercel Cron: chama com GET e já manda "Authorization: Bearer <CRON_SECRET>";
+// - qualquer outro agendador externo: POST ou GET com o mesmo cabeçalho. Ver docs/hospedagem.md.
 // Protegido por CRON_SECRET: Authorization: Bearer <segredo>.
 export const maxDuration = 26;
 
@@ -20,3 +23,6 @@ export async function POST(req: Request) {
   if (!authorized(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   return Response.json(await runScheduledJobs());
 }
+
+/** Vercel Cron só faz GET. Mesma proteção do POST. */
+export const GET = POST;
