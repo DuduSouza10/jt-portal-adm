@@ -197,8 +197,9 @@ Os pontos vêm de `src/components/brasil-mapa-dados.ts`, **gerado** por `node sc
 |---|---|
 | Núcleo: arquitetura, banco, login, permissões, auditoria, deploy, CI | **Diogo** |
 | Estoque e movimentações | **Diogo** |
-| Produtos (catálogo), solicitações, aprovação, ciclo de 3 meses | **Eduardo** |
-| Separação, expedição, rastreio, Feishu, relatórios operacionais | **Eduardo** |
+| Produtos (catálogo), ciclo de 3 meses e limites (S1–S3) | **Eduardo** |
+| Solicitações, aprovação, separação e expedição (trazidos do sistema antigo) | **Diogo** (decidido em 2026-11-13) |
+| Rastreio, Feishu, relatórios operacionais | **Eduardo** |
 | Visual, dashboard, testes, revisão de PRs | **Os dois** |
 
 ## Decisões registradas
@@ -210,6 +211,8 @@ Os pontos vêm de `src/components/brasil-mapa-dados.ts`, **gerado** por `node sc
 | 2026-11-12 | Permissões por catálogo + tipos de acesso editáveis | Modelo do portal do Eduardo, já validado na operação |
 | 2026-11-12 | Administração de usuários filtrada pelo alcance (revisão do PR #1) | Permite admins regionais sem abrir brecha para conceder acesso fora da área |
 | 2026-11-12 | Limpeza de sessões e tentativas de login em ~1% dos logins | Tabelas não crescem sem parar; não precisa de job agendado |
+| 2026-11-12 | Importação de usuários lida no navegador e enviada em lotes (500 para conferir, 25 para gravar) | Cada requisição cabe no limite de 10 s do Netlify; 5.000 usuários ≈ 11 min com barra de progresso |
+| 2026-11-12 | Senha temporária com bcrypt custo 8 (a escolhida pela pessoa segue com 11) | Senha aleatória de ~69 bits não depende do custo; importar em massa ficou 5× mais rápido |
 | 2026-11-12 | Construir do zero usando os 3 projetos como referência | Evita herdar o monolito Flask e o escopo financeiro do sistema-estoque |
 | 2026-11-12 | Model `Produto` mínimo criado pelo Diogo; o resto é do Eduardo (Issue #3) | Estoque precisava de produto; Eduardo acrescenta campos em migrations novas |
 | 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |
@@ -219,3 +222,8 @@ Os pontos vêm de `src/components/brasil-mapa-dados.ts`, **gerado** por `node sc
 | 2026-11-12 | Mensagens do servidor traduzidas por catálogo na tela, não nos services | Os módulos seguem lançando DomainError em português; um teste garante que toda mensagem tem tradução |
 | 2026-11-12 | Tema no `localStorage` + script no `<head>`; idioma em cookie | Tema sem piscar e sem ida ao servidor; idioma precisa ser conhecido no servidor para traduzir a página |
 | 2026-11-13 | Login com mapa de pontos gerado por script, em vez de imagem ou biblioteca de mapas | Um único `path` (≈19 KB), segue o tema claro/escuro por `currentColor` e não depende de serviço externo |
+| 2026-11-12 | Perfil "Expedição" só com `expedicao.enviar`; a fila da expedição é liberada por essa permissão, sem `solicitacoes.ver` (E9) | Quem é da expedição não enxerga as solicitações de outras etapas |
+| 2026-11-12 | Ninguém (exceto Dev) edita o próprio tipo de acesso (E8) | Com o Administrador gerenciando perfis (#9), evita que um admin derrube o acesso de todos |
+| 2026-11-13 | Solicitações, separação e expedição trazidas do sistema antigo pelo Diogo, sem mudar o layout do portal (Issue #2) | O sistema antigo já tem isso testado na operação; o Eduardo fica com produtos e relatórios |
+| 2026-11-13 | Envio pela rota `/api/expedicao/enviar` (multipart), não server action | A foto passa do limite de 1 MB das server actions |
+| 2026-11-13 | Almoxarifado que atende é escolhido na aprovação (o da regional da base vem sugerido) | Não existe vínculo fixo base → almoxarifado |

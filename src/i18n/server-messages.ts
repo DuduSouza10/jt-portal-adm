@@ -107,6 +107,37 @@ const ZH: [string, string][] = [
     "{produto}: contado {contado}, mas {reservado} já reservado(s) para solicitações aprovadas.",
     "{produto}：盘点数量 {contado}，但已有 {reservado} 预留给已批准的申领单。",
   ],
+  // ------------------------------------------------------------- Importação de usuários
+  ["Já existe um usuário com esse login, e-mail ou matrícula.", "该登录名、邮箱或工号已被使用。"],
+  ["Dados da planilha inválidos. Recarregue o arquivo.", "表格数据无效，请重新上传文件。"],
+  ["Erro ao processar este lote. Tente de novo.", "处理此批次时出错，请重试。"],
+
+  // ------------------------------------------------------------- Solicitações, separação e expedição
+  ["Solicitação não encontrada.", "未找到该申领单。"],
+  ["Pedido não encontrado.", "未找到该订单。"],
+  ["Você não tem permissão para isso.", "你没有执行此操作的权限。"],
+  ["Almoxarifado não faz pedido de insumos.", "仓库不能提交物资申领。"],
+  ["O mesmo produto aparece duas vezes. Junte as quantidades numa linha só.", "同一物资出现了两次，请合并为一行。"],
+  ["A foto precisa ser JPG, PNG ou WEBP.", "照片必须是 JPG、PNG 或 WEBP 格式。"],
+  ["Foto grande demais (máximo 3 MB).", "照片过大（最大 3 MB）。"],
+  ["{x} acabou de ser alterada por outra pessoa. Recarregue a página.", "{x} 刚被其他人修改，请刷新页面。"],
+  ["A base {x} está inativa.", "网点 {x} 已停用。"],
+  ["{x} não está mais disponível para pedido.", "{x} 已不可申领。"],
+  ["{x} é de outro almoxarifado.", "{x} 属于其他仓库。"],
+  ["Código não reconhecido. Bipe o QR da guia ou digite o nº do pedido (SOL-000123).", "无法识别该编码。请扫描单据上的二维码，或输入订单号（SOL-000123）。"],
+  ["Aprovada. O estoque foi reservado.", "已批准，库存已预留。"],
+  ["Separada. Já aparece na fila da expedição.", "已拣货，已进入发货队列。"],
+  ["Escolha a base.", "请选择网点。"],
+  ["Quantidade mínima: 1.", "最小数量：1。"],
+  ["Adicione ao menos um produto.", "请至少添加一个物资。"],
+  ["Máximo de 200 produtos por pedido.", "每个订单最多 200 个物资。"],
+  ["Quantidade não pode ser negativa.", "数量不能为负数。"],
+  ["Escolha o almoxarifado que vai atender.", "请选择负责发货的仓库。"],
+  ["Informe o motivo.", "请填写原因。"],
+  ["Escreva o comentário.", "请填写评论。"],
+  ["Bipe ou marque ao menos um pedido.", "请扫描或勾选至少一个订单。"],
+  ["Máximo de 100 pedidos por envio.", "每次发货最多 100 个订单。"],
+  ["Informe o ID da viagem.", "请输入车次 ID。"],
 ];
 
 type Rule = { re: RegExp; names: string[]; out: string };

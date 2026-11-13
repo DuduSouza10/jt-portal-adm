@@ -14,7 +14,17 @@ export function isSubsetOf(granted: readonly string[], own: readonly string[]): 
   return granted.every((p) => own.includes(p));
 }
 
-type ScopeInput = { scope: "GLOBAL" | "REGIONAL" | "BASE"; baseIds: string[]; regionalIds: string[] };
+/**
+ * Ninguém edita o tipo de acesso que ele mesmo usa (exceto o Dev, que tem o curinga).
+ * Sem esta trava, um Administrador poderia tirar permissões do perfil "Administrador"
+ * e derrubar o acesso de todos os administradores de uma vez, inclusive o dele (regra E8).
+ */
+export function ownProfileEditError(actor: { permissions: readonly string[]; profileId: string }, profileId: string): string | null {
+  if (actor.permissions.includes(ALL)) return null;
+  return actor.profileId === profileId ? "Você não pode editar o seu próprio tipo de acesso." : null;
+}
+
+type ScopeInput ={ scope: "GLOBAL" | "REGIONAL" | "BASE"; baseIds: string[]; regionalIds: string[] };
 
 /** Valida os vínculos exigidos pelo alcance do perfil. Retorna a mensagem de erro ou null. */
 export function scopeLinksError({ scope, baseIds, regionalIds }: ScopeInput): string | null {

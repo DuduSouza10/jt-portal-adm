@@ -15,10 +15,11 @@ export type NavItem = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  // ---- Operação (Eduardo): descomente/ajuste quando a página existir
-  // { href: "/solicitacoes/nova", label: "Solicitar insumos", description: "Montar e enviar um pedido", permissions: ["solicitacoes.criar"], section: "operacao" },
-  // { href: "/solicitacoes", label: "Solicitações", description: "Acompanhar pedidos", permissions: ["solicitacoes.ver"], section: "operacao" },
-  // { href: "/expedicao", label: "Expedição", description: "Separar e enviar", permissions: ["expedicao.separar", "expedicao.enviar"], section: "operacao" },
+  // ---- Operação: solicitações, separação e expedição
+  { href: "/solicitacoes/nova", label: "Solicitar insumos", description: "Montar e enviar um pedido", permissions: ["solicitacoes.criar"], section: "operacao" },
+  { href: "/solicitacoes", label: "Solicitações", description: "Acompanhar pedidos e aprovar", permissions: ["solicitacoes.ver"], section: "operacao" },
+  { href: "/separacao", label: "Separação", description: "Separar os pedidos aprovados", permissions: ["expedicao.separar"], section: "operacao" },
+  { href: "/expedicao", label: "Expedição", description: "Carregar e confirmar o envio", permissions: ["expedicao.enviar"], section: "operacao" },
   // { href: "/produtos", label: "Produtos", description: "Catálogo de insumos", permissions: ["produtos.ver"], section: "gestao" },
 
   // ---- Estoque (Diogo)

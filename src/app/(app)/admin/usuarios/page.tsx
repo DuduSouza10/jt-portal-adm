@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
@@ -41,6 +41,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
         { name: { contains: q, mode: "insensitive" } },
         { login: { contains: q.toLowerCase() } },
         { email: { contains: q, mode: "insensitive" } },
+        { registration: { contains: q } },
       ],
     }),
     ...(perfil && { profileId: perfil }),
@@ -64,11 +65,18 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
         description={t("usuarios.total", { n: total })}
         actions={
           can(me, "usuarios.editar") && (
-            <Button asChild>
-              <Link href="/admin/usuarios/novo">
-                <Plus /> {t("usuarios.novo")}
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href="/admin/usuarios/importar">
+                  <Upload /> {t("usuarios.importar")}
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/admin/usuarios/novo">
+                  <Plus /> {t("usuarios.novo")}
+                </Link>
+              </Button>
+            </>
           )
         }
       />

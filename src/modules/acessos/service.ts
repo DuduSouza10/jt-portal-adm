@@ -3,9 +3,9 @@ import { db } from "@/lib/db";
 import { audit, diff } from "@/lib/audit";
 import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
-import { generateTempPassword, hashPassword } from "@/lib/auth/password";
+import { generateTempPassword, hashTempPassword } from "@/lib/auth/password";
 import { ALL, sanitizePermissions } from "@/lib/permissions/catalog";
-import { isSubsetOf, linksOutsideScopeError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
+import { isSubsetOf, linksOutsideScopeError, ownProfileEditError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
 import type { ProfileInput, UserInput } from "./schemas";
 
 // ============================================================ Usuários
@@ -99,7 +99,7 @@ export async function saveUser(actor: CurrentUser, id: string | null, input: Use
   const tempPassword = generateTempPassword();
   const created = await db.$transaction(async (tx) => {
     const u = await tx.user.create({
-      data: { ...data, ...links, passwordHash: await hashPassword(tempPassword), mustChangePassword: true },
+      data: { ...data, ...links, passwordHash: await hashTempPassword(tempPassword), mustChangePassword: true },
     });
     await audit(
       {
@@ -125,7 +125,7 @@ export async function resetPassword(actor: CurrentUser, id: string) {
   await db.$transaction(async (tx) => {
     await tx.user.update({
       where: { id },
-      data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true },
+      data: { passwordHash: await hashTempPassword(tempPassword), mustChangePassword: true },
     });
     await tx.session.deleteMany({ where: { userId: id } });
     await audit(
@@ -146,6 +146,8 @@ export async function saveProfile(actor: CurrentUser, id: string | null, input: 
     throw new DomainError("Você não pode criar um tipo de acesso com alcance maior que o seu.");
 
   if (id) {
+    const ownError = ownProfileEditError({ permissions: actor.permissions, profileId: actor.profile.id }, id);
+    if (ownError) throw new DomainError(ownError);
     const before = await db.accessProfile.findUnique({ where: { id } });
     if (!before) throw new DomainError("Tipo de acesso não encontrado.");
     if (!isSubsetOf(before.permissions, actor.permissions))

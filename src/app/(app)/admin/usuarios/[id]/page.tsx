@@ -75,6 +75,9 @@ export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id
                 <Field label={t("usuarios.telefone")} htmlFor="phone">
                   <Input id="phone" name="phone" defaultValue={user?.phone ?? ""} />
                 </Field>
+                <Field label="Matrícula (opcional)" htmlFor="registration" hint="Número do funcionário no RH/Lark.">
+                  <Input id="registration" name="registration" defaultValue={user?.registration ?? ""} />
+                </Field>
               </div>
               <Field label={t("usuarios.tipo")} htmlFor="profileId">
                 <select id="profileId" name="profileId" defaultValue={user?.profileId ?? ""} required className={selectClass}>
