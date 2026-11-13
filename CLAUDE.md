@@ -46,6 +46,8 @@ e a entrada do próprio módulo em `navigation.ts`.
 - Toda alteração de dado grava `audit(..., tx)` dentro de `db.$transaction`.
 - Erro que o usuário deve ver: `throw new DomainError("...")`. As actions usam `runAction` e devolvem `FormState`.
 - Formulários: `<ActionForm>` + `Field` + validação Zod no servidor (`formToObject` para checkboxes múltiplos).
+- Texto de tela sempre pelo dicionário (`getT()` no servidor, `useT()` no cliente), nos dois idiomas: `src/i18n/messages/pt-BR.ts` e `zh-CN.ts`. Mensagem nova de erro ou validação entra em `src/i18n/server-messages.ts`. Ver `docs/arquitetura.md` → "Idioma e tema".
+- Cores só pelos tokens do tema (`bg-primary`, `text-muted-foreground`, `text-success`...), para funcionar no claro e no escuro.
 - Mudou `prisma/schema.prisma`? Gere a migration (`npm run db:migrate -- --name x`) e commite junto. Não edite migrations que já estão na `main`.
 - Estoque: nenhum módulo altera saldo direto. Use o service de estoque.
 

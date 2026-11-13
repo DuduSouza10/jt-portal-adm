@@ -7,17 +7,16 @@ import { EmptyState, PageHeader } from "@/components/page-header";
 import { param } from "@/components/pagination";
 import { EstoqueNav } from "../nav";
 import { LancamentoForm } from "./lancamento-form";
+import { getT } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Lançamento de estoque" };
-
-const INFO = {
-  entrada: { title: "Entrada de materiais", description: "Recebimento de compra ou devolução, com nota fiscal." },
-  saida: { title: "Saída de materiais", description: "Consumo, avaria ou descarte. Não usa o que está reservado para solicitações." },
-  transferencia: { title: "Transferência entre almoxarifados", description: "Tira da origem e coloca no destino na mesma operação." },
-} as const;
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("lancar.tituloPagina") };
+}
 
 export default async function LancarPage(props: PageProps<"/estoque/lancar">) {
   const user = await requirePermission("estoque.movimentar");
+  const t = await getT();
   const tipo = param(await props.searchParams, "tipo");
   if (tipo !== "entrada" && tipo !== "saida" && tipo !== "transferencia") notFound();
 
@@ -29,12 +28,12 @@ export default async function LancarPage(props: PageProps<"/estoque/lancar">) {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={INFO[tipo].title} description={INFO[tipo].description} />
+      <PageHeader title={t(`lancar.${tipo}Titulo`)} description={t(`lancar.${tipo}Descricao`)} />
       <EstoqueNav user={user} current={`/estoque/lancar?tipo=${tipo}`} />
       {almox.length === 0 ? (
-        <EmptyState>Nenhum almoxarifado no seu alcance.</EmptyState>
+        <EmptyState>{t("estoque.semAlmoxCurto")}</EmptyState>
       ) : produtos.length === 0 ? (
-        <EmptyState>Nenhum produto ativo cadastrado ainda.</EmptyState>
+        <EmptyState>{t("lancar.semProdutos")}</EmptyState>
       ) : (
         <Card className="max-w-4xl">
           <CardContent>

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { fmtDateTime } from "@/lib/format";
@@ -8,16 +7,22 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
+import { Pagination, pageParam } from "@/components/pagination";
+import { getT } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Auditoria" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("auditoria.titulo") };
+}
 
 const PAGE_SIZE = 50;
 
 export default async function AuditPage(props: PageProps<"/admin/auditoria">) {
   await requirePermission("auditoria.ver");
+  const t = await getT();
   const sp = await props.searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
-  const page = Math.max(1, Number(sp.p) || 1);
+  const page = pageParam(sp);
 
   const where = q
     ? {
@@ -38,41 +43,40 @@ export default async function AuditPage(props: PageProps<"/admin/auditoria">) {
     }),
     db.auditLog.count({ where }),
   ]);
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const href = (p: number) => `/admin/auditoria?${new URLSearchParams({ ...(q && { q }), p: String(p) })}`;
 
   return (
     <>
-      <PageHeader title="Auditoria" description={`${total} registro(s). Os registros não podem ser editados nem apagados.`} />
+      <PageHeader title={t("auditoria.titulo")} description={t("auditoria.descricao", { n: total })} />
       <form className="flex gap-2">
-        <Input name="q" defaultValue={q} placeholder="Buscar por pessoa, ação ou texto" className="max-w-sm" />
+        <Input name="q" defaultValue={q} placeholder={t("auditoria.buscar")} className="max-w-sm" />
         <Button type="submit" variant="outline">
-          Buscar
+          {t("comum.buscar")}
         </Button>
       </form>
+      {t.locale !== "pt-BR" && <p className="text-xs text-muted-foreground">{t("auditoria.aviso")}</p>}
       {logs.length === 0 ? (
-        <EmptyState>Nenhum registro.</EmptyState>
+        <EmptyState>{t("auditoria.vazio")}</EmptyState>
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-40">Quando</TableHead>
-                <TableHead className="w-48">Quem</TableHead>
-                <TableHead>O quê</TableHead>
+                <TableHead className="w-40">{t("auditoria.quando")}</TableHead>
+                <TableHead className="w-48">{t("auditoria.quem")}</TableHead>
+                <TableHead>{t("auditoria.oque")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logs.map((l) => (
                 <TableRow key={l.id}>
-                  <TableCell className="text-muted-foreground">{fmtDateTime(l.createdAt)}</TableCell>
-                  <TableCell>{l.actor?.name ?? "Sistema"}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmtDateTime(l.createdAt, t.locale)}</TableCell>
+                  <TableCell>{l.actor?.name ?? t("comum.sistema")}</TableCell>
                   <TableCell className="whitespace-normal">
                     {l.summary}
                     <span className="ml-2 font-mono text-xs text-muted-foreground">{l.action}</span>
                     {l.data && Object.keys(l.data as object).length > 0 && (
                       <details className="mt-1 text-xs">
-                        <summary className="cursor-pointer text-muted-foreground">detalhes</summary>
+                        <summary className="cursor-pointer text-muted-foreground">{t("comum.detalhes")}</summary>
                         <pre className="mt-1 overflow-x-auto rounded bg-muted p-2">{JSON.stringify(l.data, null, 2)}</pre>
                       </details>
                     )}
@@ -83,23 +87,7 @@ export default async function AuditPage(props: PageProps<"/admin/auditoria">) {
           </Table>
         </Card>
       )}
-      {pages > 1 && (
-        <div className="flex items-center justify-center gap-2 text-sm">
-          {page > 1 && (
-            <Button asChild variant="outline" size="sm">
-              <Link href={href(page - 1)}>Anterior</Link>
-            </Button>
-          )}
-          <span className="text-muted-foreground">
-            Página {page} de {pages}
-          </span>
-          {page < pages && (
-            <Button asChild variant="outline" size="sm">
-              <Link href={href(page + 1)}>Próxima</Link>
-            </Button>
-          )}
-        </div>
-      )}
+      <Pagination page={page} total={total} pageSize={PAGE_SIZE} basePath="/admin/auditoria" params={{ q }} />
     </>
   );
 }

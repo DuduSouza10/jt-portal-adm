@@ -9,9 +9,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-heading: var(--font-sans);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-surface-2: var(--surface-2);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,74 +53,85 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Cores da J&T Express: vermelho #E60012 como cor principal. */
+/*
+ * Identidade J&T Express, versão limpa:
+ *   fundo neutro, superfícies brancas, vermelho J&T (#E60012) só como destaque
+ *   (ação principal, item ativo, marca). --success / --warning são estado, não marca.
+ * Layout: barra lateral fixa + barra superior fina + conteúdo em cartões.
+ */
 :root {
-  --background: oklch(0.985 0.004 25);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.58 0.235 28);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.015 25);
-  --secondary-foreground: oklch(0.35 0.12 27);
-  --muted: oklch(0.965 0.004 25);
-  --muted-foreground: oklch(0.52 0.01 25);
-  --accent: oklch(0.96 0.02 25);
-  --accent-foreground: oklch(0.42 0.17 27);
-  --destructive: oklch(0.48 0.19 25);
-  --border: oklch(0.915 0.008 25);
-  --input: oklch(0.915 0.008 25);
-  --ring: oklch(0.58 0.235 28);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.58 0.235 28);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #f6f6f7;
+  --foreground: #17171a;
+  --card: #ffffff;
+  --card-foreground: #17171a;
+  --popover: #ffffff;
+  --popover-foreground: #17171a;
+  --primary: #e60012;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f2f4;
+  --secondary-foreground: #17171a;
+  --muted: #f2f2f4;
+  --muted-foreground: #62626c;
+  --accent: #fdeced;
+  --accent-foreground: #c2000e;
+  --destructive: #c2000e;
+  --success: #0b7d47;
+  --warning: #a35f00;
+  --border: #e7e7ea;
+  --input: #d6d6dc;
+  --ring: #e60012;
+  --surface-2: #f9f9fa;
+  --chart-1: #e60012;
+  --chart-2: #a35f00;
+  --chart-3: #0b7d47;
+  --chart-4: #1d5bd0;
+  --chart-5: #6847c9;
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #17171a;
+  --sidebar-primary: #e60012;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fdeced;
+  --sidebar-accent-foreground: #c2000e;
+  --sidebar-border: #e7e7ea;
+  --sidebar-ring: #e60012;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.64 0.22 27);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.64 0.22 27);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0d0d0f;
+  --foreground: #f2f2f4;
+  --card: #161619;
+  --card-foreground: #f2f2f4;
+  --popover: #1b1b1f;
+  --popover-foreground: #f2f2f4;
+  --primary: #f0283a;
+  --primary-foreground: #ffffff;
+  --secondary: #212126;
+  --secondary-foreground: #f2f2f4;
+  --muted: #212126;
+  --muted-foreground: #a9a9b3;
+  --accent: rgb(240 40 58 / 14%);
+  --accent-foreground: #ff6b76;
+  --destructive: #ff6b76;
+  --success: #45d18f;
+  --warning: #f3b54a;
+  --border: #26262c;
+  --input: #34343b;
+  --ring: #f0283a;
+  --surface-2: #1b1b1f;
+  --chart-1: #f0283a;
+  --chart-2: #f3b54a;
+  --chart-3: #45d18f;
+  --chart-4: #79a6ff;
+  --chart-5: #ab95ff;
+  --sidebar: #161619;
+  --sidebar-foreground: #f2f2f4;
+  --sidebar-primary: #f0283a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(240 40 58 / 14%);
+  --sidebar-accent-foreground: #ff6b76;
+  --sidebar-border: #26262c;
+  --sidebar-ring: #f0283a;
 }
 
 @layer base {
@@ -127,10 +141,67 @@
   body {
     @apply bg-background text-foreground;
   }
+  input[type="checkbox"], input[type="radio"] {
+    accent-color: var(--primary);
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
   }
   html {
     @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
   }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  :lang(zh-CN) h1, :lang(zh-CN) h2 {
+    letter-spacing: 0.01em;
+  }
+  body {
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Login: rotas do mapa (ver src/components/brasil-mapa.tsx). */
+@keyframes rota-desenhar {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes rota-aparecer {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes rota-halo {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.9); opacity: 0; }
+}
+.rota-arco {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: rota-desenhar 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.rota-no, .rota-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.rota-no {
+  opacity: 0;
+  animation: rota-aparecer 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.rota-halo {
+  animation: rota-halo 3.2s ease-out 1.6s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rota-arco { stroke-dashoffset: 0; animation: none; }
+  .rota-no { opacity: 1; animation: none; }
+  .rota-halo, .rota-pacote { display: none; }
 }

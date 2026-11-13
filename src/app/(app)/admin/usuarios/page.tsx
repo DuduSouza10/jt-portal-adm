@@ -15,13 +15,19 @@ import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam } from "@/components/pagination";
 import { usersScopeWhere } from "@/modules/acessos/queries";
 import type { Prisma } from "@/generated/prisma/client";
+import { getT } from "@/i18n/server";
+import { profileText } from "@/i18n/labels";
 
 const PAGE_SIZE = 50;
 
-export const metadata: Metadata = { title: "Usuários" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("usuarios.titulo") };
+}
 
 export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
   const me = await requirePermission("usuarios.ver");
+  const t = await getT();
   const sp = await props.searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const perfil = typeof sp.perfil === "string" ? sp.perfil : "";
@@ -54,44 +60,44 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
   return (
     <>
       <PageHeader
-        title="Usuários"
-        description={`${total} usuário(s)`}
+        title={t("usuarios.titulo")}
+        description={t("usuarios.total", { n: total })}
         actions={
           can(me, "usuarios.editar") && (
             <Button asChild>
               <Link href="/admin/usuarios/novo">
-                <Plus /> Novo usuário
+                <Plus /> {t("usuarios.novo")}
               </Link>
             </Button>
           )
         }
       />
       <form className="flex flex-wrap gap-2">
-        <Input name="q" defaultValue={q} placeholder="Buscar por nome, login ou e-mail" className="max-w-xs" />
+        <Input name="q" defaultValue={q} placeholder={t("usuarios.buscar")} className="max-w-xs" />
         <select name="perfil" defaultValue={perfil} className={`${selectClass} max-w-56`}>
-          <option value="">Todos os tipos de acesso</option>
+          <option value="">{t("usuarios.todosTipos")}</option>
           {profiles.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name}
+              {profileText(t, p).name}
             </option>
           ))}
         </select>
         <Button type="submit" variant="outline">
-          Filtrar
+          {t("comum.filtrar")}
         </Button>
       </form>
       {users.length === 0 ? (
-        <EmptyState>Nenhum usuário encontrado.</EmptyState>
+        <EmptyState>{t("usuarios.vazio")}</EmptyState>
       ) : (
         <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Login</TableHead>
-                <TableHead>Tipo de acesso</TableHead>
-                <TableHead>Bases / regionais</TableHead>
-                <TableHead>Último acesso</TableHead>
+                <TableHead>{t("usuarios.colNome")}</TableHead>
+                <TableHead>{t("usuarios.colLogin")}</TableHead>
+                <TableHead>{t("usuarios.colTipo")}</TableHead>
+                <TableHead>{t("usuarios.colBases")}</TableHead>
+                <TableHead>{t("usuarios.colUltimoAcesso")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -103,16 +109,16 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
                     </Link>
                     {!u.active && (
                       <Badge variant="outline" className="ml-2">
-                        inativo
+                        {t("comum.inativo")}
                       </Badge>
                     )}
                   </TableCell>
                   <TableCell>{u.login}</TableCell>
-                  <TableCell>{u.profile.name}</TableCell>
+                  <TableCell>{profileText(t, u.profile).name}</TableCell>
                   <TableCell className="max-w-64 truncate text-muted-foreground">
                     {[...u.regionals.map((r) => r.regional.code), ...u.bases.map((b) => b.base.code)].join(", ") || "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{fmtDateTime(u.lastLoginAt)}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmtDateTime(u.lastLoginAt, t.locale)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -142,6 +142,48 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 
 - **Testes**: regras puras em `rules.test.ts` (`npm test`); ponta a ponta e concorrência em `estoque.integration.test.ts` (`npm run test:integration`), que no CI roda contra um PostgreSQL real. O `prisma dev` local atende uma conexão por vez, então localmente a concorrência fica em fila.
 
+## Idioma e tema
+
+O portal tem dois idiomas (**português** e **chinês simplificado**) e dois temas (**claro** e **escuro**).
+O seletor `PT | 中文` e o botão sol/lua ficam no cabeçalho e na tela de login.
+
+- **Textos de tela** saem de `src/i18n/messages/pt-BR.ts` e `zh-CN.ts`. Nada de texto solto no JSX.
+  - Server Component, `generateMetadata`: `const t = await getT(); t("estoque.titulo")` (`@/i18n/server`).
+  - Client Component: `const t = useT();` (`@/i18n/client`).
+  - Valores: `t("usuarios.total", { n: 3 })` com `{n}` no texto.
+  - O `zh-CN.ts` tem o tipo do `pt-BR.ts`: chave faltando ou sobrando quebra o typecheck.
+    O teste `src/i18n/i18n.test.ts` confere também os `{campos}`.
+- **Mensagens do servidor** (DomainError, validação Zod, `error`/`message` das actions) continuam em
+  português no código. Quem mostra na tela passa por `useServerMessage()` (o `<ActionForm>` já faz),
+  que traduz pelo catálogo `src/i18n/server-messages.ts`. **Mensagem nova precisa entrar nesse catálogo**:
+  o teste varre o código e falha se faltar.
+- **Menu, permissões, perfis padrão, tipos de base e de movimento** continuam definidos em `src/lib` e nos
+  módulos. A tradução é achada pela chave (`src/i18n/labels.ts`); item novo sem tradução aparece em português.
+- **Datas**: `fmtDateTime(data, t.locale)`.
+- **Dados** (nome de produto, regional, textos da auditoria) não são traduzidos: aparecem como foram digitados.
+- **Idioma** fica no cookie `portal_lang`, lido no servidor. **Tema** fica no `localStorage` (`portal_theme`) e
+  um script no `<head>` aplica antes da página aparecer; sem escolha, segue o sistema operacional.
+
+### Cores (J&T)
+
+Tokens em `src/app/globals.css`, para os dois temas: `primary` é o vermelho J&T (#E60012), `header-*` a faixa do
+topo (vermelha no claro, grafite com filete vermelho no escuro), `success` e `warning` para estado.
+Use as classes dos tokens (`bg-primary`, `text-muted-foreground`, `text-success`), nunca cores fixas como
+`text-emerald-700`, que somem no tema escuro.
+
+### Gráficos
+
+Todo gráfico (barra, coluna, ponto, linha) mostra os detalhes num cartão que segue o mouse:
+envolva a marca com `<ChartTooltip title rows note>` (`src/components/chart-tooltip.tsx`).
+Os textos do cartão também vêm do dicionário.
+
+### Tela de login
+
+Painel vermelho J&T com o Brasil em pontos (`src/components/brasil-mapa.tsx`): as rotas se desenham a partir do almoxarifado
+e duas encomendas percorrem as linhas. É a única animação da tela; com "reduzir movimento" fica tudo parado e já desenhado.
+Os pontos vêm de `src/components/brasil-mapa-dados.ts`, **gerado** por `node scripts/gen-mapa-brasil.mjs` (não editar à mão).
+É só ilustração, sem dado real: nada de números ou nomes de bases na tela de login, que é pública.
+
 ## Escala (≈ 5.000 usuários)
 
 - Toda lista é **paginada** no banco (50 por página) e filtrada pelo alcance do usuário. Nada de `findMany` sem `take` em tabela que cresce.
@@ -173,3 +215,7 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 | 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |
 | 2026-11-12 | Trava de linha (`FOR UPDATE`) + regra pura, em vez de update condicional | Uma regra só, testável, e correta com muitos usuários simultâneos |
 | 2026-11-12 | Testes de integração com Postgres real no CI | Concorrência só se prova com conexões paralelas de verdade |
+| 2026-11-12 | Idiomas pt-BR e zh-CN com dicionário tipado próprio, sem biblioteca de i18n | Dois idiomas só; o TypeScript acusa tradução faltando e não muda as rotas |
+| 2026-11-12 | Mensagens do servidor traduzidas por catálogo na tela, não nos services | Os módulos seguem lançando DomainError em português; um teste garante que toda mensagem tem tradução |
+| 2026-11-12 | Tema no `localStorage` + script no `<head>`; idioma em cookie | Tema sem piscar e sem ida ao servidor; idioma precisa ser conhecido no servidor para traduzir a página |
+| 2026-11-13 | Login com mapa de pontos gerado por script, em vez de imagem ou biblioteca de mapas | Um único `path` (≈19 KB), segue o tema claro/escuro por `currentColor` e não depende de serviço externo |

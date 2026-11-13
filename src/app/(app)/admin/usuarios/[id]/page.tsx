@@ -10,18 +10,18 @@ import { Input } from "@/components/ui/input";
 import { ActionForm } from "@/components/action-form";
 import { CheckField, Field, selectClass } from "@/components/form-field";
 import { PageHeader } from "@/components/page-header";
+import { getT } from "@/i18n/server";
+import { profileText } from "@/i18n/labels";
 import { resetPasswordAction, saveUserAction } from "../actions";
 
-export const metadata: Metadata = { title: "Usuário" };
-
-const SCOPE_HINT = {
-  GLOBAL: "vê todas as bases",
-  REGIONAL: "vê as bases das regionais marcadas",
-  BASE: "vê só as bases marcadas",
-} as const;
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("usuarios.tituloUm") };
+}
 
 export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id]">) {
   const me = await requirePermission("usuarios.ver");
+  const t = await getT();
   const { id } = await props.params;
   const isNew = id === "novo";
   if (isNew && !can(me, "usuarios.editar")) notFound();
@@ -57,44 +57,44 @@ export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <PageHeader title={isNew ? "Novo usuário" : user!.name} back={{ href: "/admin/usuarios", label: "Usuários" }} />
+      <PageHeader title={isNew ? t("usuarios.novo") : user!.name} back={{ href: "/admin/usuarios", label: t("usuarios.titulo") }} />
       <Card>
         <CardContent>
           <fieldset disabled={!editable} className="contents">
             <ActionForm action={saveUserAction.bind(null, user?.id ?? null)}>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Nome" htmlFor="name">
+                <Field label={t("usuarios.nome")} htmlFor="name">
                   <Input id="name" name="name" defaultValue={user?.name} required />
                 </Field>
-                <Field label="Usuário (login)" htmlFor="login" hint="Ex.: joao.silva (sem espaços)">
+                <Field label={t("usuarios.login")} htmlFor="login" hint={t("usuarios.loginDica")}>
                   <Input id="login" name="login" defaultValue={user?.login} required autoCapitalize="none" />
                 </Field>
-                <Field label="E-mail (opcional)" htmlFor="email" hint="Também serve para entrar.">
+                <Field label={t("usuarios.email")} htmlFor="email" hint={t("usuarios.emailDica")}>
                   <Input id="email" name="email" type="email" defaultValue={user?.email ?? ""} />
                 </Field>
-                <Field label="Telefone (opcional)" htmlFor="phone">
+                <Field label={t("usuarios.telefone")} htmlFor="phone">
                   <Input id="phone" name="phone" defaultValue={user?.phone ?? ""} />
                 </Field>
               </div>
-              <Field label="Tipo de acesso" htmlFor="profileId">
+              <Field label={t("usuarios.tipo")} htmlFor="profileId">
                 <select id="profileId" name="profileId" defaultValue={user?.profileId ?? ""} required className={selectClass}>
                   <option value="" disabled>
-                    Escolha…
+                    {t("comum.escolha")}
                   </option>
                   {grantable.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({SCOPE_HINT[p.scope]})
+                      {profileText(t, p).name} ({t(`alcanceUsuario.${p.scope}`)})
                     </option>
                   ))}
                 </select>
               </Field>
               <Field
-                label="Regionais e bases"
-                hint="Marque a regional para dar acesso a todas as bases dela (perfis regionais), ou bases avulsas."
+                label={t("usuarios.regionaisBases")}
+                hint={t("usuarios.regionaisBasesDica")}
               >
-                <div className="max-h-72 space-y-3 overflow-y-auto rounded-md border p-3">
+                <div className="max-h-72 space-y-3 overflow-y-auto rounded-lg border bg-muted/30 p-3">
                   {regionals.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Nenhuma regional cadastrada ainda.</p>
+                    <p className="text-sm text-muted-foreground">{t("usuarios.nenhumaRegional")}</p>
                   )}
                   {regionals.map((r) => (
                     <div key={r.id} className="space-y-1">
@@ -128,13 +128,11 @@ export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id
               </Field>
               <CheckField
                 name="active"
-                label="Usuário ativo (desativar encerra as sessões; o histórico é mantido)"
+                label={t("usuarios.ativo")}
                 defaultChecked={user?.active ?? true}
               />
               {isNew && (
-                <p className="text-sm text-muted-foreground">
-                  Uma senha temporária será gerada e exibida após salvar. No primeiro acesso, a pessoa terá que trocá-la.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("usuarios.senhaTemporaria")}</p>
               )}
             </ActionForm>
           </fieldset>
@@ -144,13 +142,13 @@ export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id
       {!isNew && editable && (
         <Card>
           <CardHeader>
-            <CardTitle>Redefinir senha</CardTitle>
-            <CardDescription>Gera uma senha temporária e encerra as sessões abertas do usuário.</CardDescription>
+            <CardTitle>{t("usuarios.resetTitulo")}</CardTitle>
+            <CardDescription>{t("usuarios.resetDescricao")}</CardDescription>
           </CardHeader>
           <CardContent>
             <ActionForm
               action={resetPasswordAction.bind(null, user!.id)}
-              submitLabel="Gerar senha temporária"
+              submitLabel={t("usuarios.resetBotao")}
               variant="outline"
             />
           </CardContent>
