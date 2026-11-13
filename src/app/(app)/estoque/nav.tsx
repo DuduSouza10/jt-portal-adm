@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardCheck, LayoutList, ScrollText } from "lucide-react";
-import { can, type Actor } from "@/lib/permissions/check";
+import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardCheck, FileUp, LayoutList, ScrollText } from "lucide-react";
+import { can, canAny, type Actor } from "@/lib/permissions/check";
 import { cn } from "@/lib/utils";
 import { getT } from "@/i18n/server";
 
@@ -14,6 +14,7 @@ export async function EstoqueNav({ user, current }: { user: Actor; current: stri
     { href: "/estoque/lancar?tipo=saida", label: t("estoque.abaSaida"), icon: ArrowUpFromLine, show: can(user, "estoque.movimentar") },
     { href: "/estoque/lancar?tipo=transferencia", label: t("estoque.abaTransferencia"), icon: ArrowLeftRight, show: can(user, "estoque.movimentar") },
     { href: "/estoque/inventario", label: t("estoque.abaInventario"), icon: ClipboardCheck, show: can(user, "estoque.inventario") },
+    { href: "/estoque/importar", label: t("estoque.abaImportar"), icon: FileUp, show: canAny(user, ["estoque.inventario", "estoque.movimentar", "produtos.editar"]) },
   ].filter((i) => i.show);
   return (
     <nav className="flex gap-1 overflow-x-auto border-b">

@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { pickClientIp, UNKNOWN_IP } from "@/lib/client-ip";
 import { logger, errorInfo } from "@/lib/logger";
 
 type Tx = Prisma.TransactionClient;
@@ -20,7 +21,8 @@ export type AuditEntry = {
 async function clientIp() {
   try {
     const h = await headers();
-    return h.get("x-nf-client-connection-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    const ip = pickClientIp((n) => h.get(n), process.env);
+    return ip === UNKNOWN_IP ? null : ip;
   } catch {
     return null; // fora de uma requisição (seed, jobs)
   }

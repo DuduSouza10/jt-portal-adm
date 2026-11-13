@@ -6,68 +6,10 @@
  * Fluxo: arquivo → decodeCsvBytes → parseCsv → mapHeaders → normalizeRows → (servidor) validar/aplicar em lotes.
  */
 
-// ------------------------------------------------------------------ Leitura do arquivo
+import { chunk, decodeCsvBytes, normHeader, parseBool, parseCsv, MAX_IMPORT_ROWS, type RowError } from "@/lib/importacao/csv";
 
-/**
- * Excel no Brasil salva CSV em Windows-1252 (a menos que se escolha "CSV UTF-8").
- * Tenta UTF-8 estrito; se não for UTF-8 válido, lê como Windows-1252.
- */
-export function decodeCsvBytes(bytes: ArrayBuffer | Uint8Array): string {
-  const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  let text: string;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(buf);
-  } catch {
-    text = new TextDecoder("windows-1252").decode(buf);
-  }
-  return text.replace(/^﻿/, ""); // BOM
-}
-
-/** CSV no padrão RFC 4180 (aspas, aspas duplicadas, quebra de linha dentro de aspas). Separador detectado. */
-export function parseCsv(text: string): string[][] {
-  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
-  const counts = { ";": 0, ",": 0, "\t": 0 } as Record<string, number>;
-  let inQ = false;
-  for (const ch of firstLine) {
-    if (ch === '"') inQ = !inQ;
-    else if (!inQ && ch in counts) counts[ch]++;
-  }
-  // Separador = o que mais aparece no cabeçalho (fora de aspas); padrão ";" (Excel em português).
-  const [best, n] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-  const sep = n > 0 ? best : ";";
-
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (quoted) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else quoted = false;
-      } else field += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === sep) {
-      row.push(field);
-      field = "";
-    } else if (ch === "\n" || ch === "\r") {
-      if (ch === "\r" && text[i + 1] === "\n") i++;
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = "";
-    } else field += ch;
-  }
-  if (field !== "" || row.length) {
-    row.push(field);
-    rows.push(row);
-  }
-  // Linhas totalmente vazias (comum no fim de arquivos do Excel) são descartadas.
-  return rows.filter((r) => r.some((c) => c.trim() !== ""));
-}
+// Leitura do CSV é comum a todas as importações (src/lib/importacao/csv.ts).
+export { chunk, decodeCsvBytes, normHeader, parseCsv, MAX_IMPORT_ROWS, type RowError };
 
 // ------------------------------------------------------------------ Colunas
 
@@ -85,13 +27,6 @@ const ALIASES: Record<Campo, string[]> = {
   regionais: ["regional", "regionais"],
   ativo: ["ativo", "status", "situacao"],
 };
-
-export const normHeader = (h: string) =>
-  h
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[\s_\-.]/g, "");
 
 export type HeaderMap = { indexOf: Partial<Record<Campo, number>>; unknown: string[]; missing: Campo[] };
 
@@ -126,8 +61,6 @@ export type ImportRow = {
   active: boolean;
 };
 
-export type RowError = { line: number; message: string };
-
 const LOGIN_RE = /^[a-z0-9._-]{3,40}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -137,20 +70,13 @@ const splitCodes = (v: string) =>
     .map((c) => c.trim().toUpperCase())
     .filter(Boolean);
 
-function parseActive(v: string): boolean | null {
-  const n = normHeader(v);
-  if (!n || ["sim", "s", "ativo", "1", "true", "yes", "ok"].includes(n)) return true;
-  if (["nao", "n", "inativo", "0", "false", "no", "desligado", "demitido", "afastado", "bloqueado"].includes(n)) return false;
-  return null;
-}
+const parseActive = (v: string) => parseBool(v);
 
 /** Login padrão: o informado; senão a matrícula; senão a parte antes do @ do e-mail. */
 export function defaultLogin(login: string, registration: string, email: string) {
   const l = (login || registration || email.split("@")[0] || "").trim().toLowerCase();
   return l.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, ".");
 }
-
-export const MAX_IMPORT_ROWS = 10_000;
 
 /**
  * Converte a planilha em linhas prontas, com os erros de formato e de repetição DENTRO do arquivo.
@@ -211,13 +137,6 @@ export function normalizeRows(table: string[][]): { header: HeaderMap; rows: Imp
     });
   });
   return { header, rows, errors };
-}
-
-/** Divide em lotes (validação e gravação vão ao servidor em partes). */
-export function chunk<T>(list: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
-  return out;
 }
 
 /** Planilha modelo (separador ; para abrir direto no Excel em português). */
