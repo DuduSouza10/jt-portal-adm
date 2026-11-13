@@ -62,6 +62,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   const baseIds = [almox, base, outraBase];
+  // Avisos dos pedidos de teste também chegam a usuários de verdade do banco (ex.: um admin global).
+  const solicitacoes = await db.solicitacao.findMany({ where: { baseId: { in: baseIds } }, select: { id: true } });
+  await db.notification.deleteMany({ where: { refType: "solicitacao", refId: { in: solicitacoes.map((x) => x.id) } } });
   await db.solicitacao.deleteMany({ where: { baseId: { in: baseIds } } });
   await db.shipmentPhoto.deleteMany({ where: { solicitacoes: { none: {} } } });
   await db.stockMovement.deleteMany({ where: { baseId: { in: baseIds } } });

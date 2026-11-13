@@ -43,6 +43,14 @@ Formato sugerido: regra numerada, exemplo concreto, e onde está no código.
 
 - **S5.** Número do pedido: `SOL-000123` (sequencial). Toda mudança de status entra na linha do tempo do pedido (`SolicitacaoEvento`) e na auditoria.
 - **S6.** Duas pessoas mexendo no mesmo pedido ao mesmo tempo: a segunda recebe "acabou de ser alterada por outra pessoa". O UPDATE confere o status lido.
+- **S7.** Avisos (sino do portal + Feishu), igual ao sistema antigo. Quem fez a ação não é avisado; cada pessoa recebe um aviso por evento. → `modules/solicitacoes/notify-rules.ts`
+  - **Nova:** quem aprova aquela base (`solicitacoes.aprovar` com alcance sobre ela). Urgente em destaque.
+  - **Aprovada:** a base (quem pediu + quem pede por ela) e o almoxarifado que vai separar.
+  - **Recusada, em separação, enviada:** a base. **Separada:** a base e a expedição ("pronto para envio").
+  - **Cancelada:** pela base → quem aprova; por outra pessoa → a base. Se já estava aprovada, também o almoxarifado ("não separar").
+  - **Recebida:** o almoxarifado. **Comentário:** "a outra parte" (base ↔ quem aprova e o almoxarifado).
+  - Quem tem só o curinga (Dev) não recebe avisos de rotina.
+- **S8.** Lembretes no Feishu, em horário comercial (seg–sex 08–18 h), por horas úteis paradas: aguardando aprovação há 4 h (urgente 1 h) → equipe; aprovada sem separar há 8 h → equipe; separada sem enviar há 4 h → expedição. Não repete o mesmo pedido antes de 4 h. Resumo diário das solicitações em aberto às 08:00 dos dias úteis. → `lib/jobs/select.ts`
 
 ## Separação e expedição — implementado (Diogo, trazido do sistema antigo)
 
@@ -50,7 +58,7 @@ Formato sugerido: regra numerada, exemplo concreto, e onde está no código.
 - **X2.** Fila da expedição: separadas dos almoxarifados do alcance, agrupadas por base, urgentes primeiro, e "enviados hoje".
 - **X3.** Bipar a guia (leitor físico ou câmera do celular) acha o pedido e diz por que não pode enviar (ainda separando, já enviado, cancelado, outro almoxarifado). Aceita o QR ou o número (`SOL-000123`, `123`).
 - **X4.** Envio em lote: vários pedidos na mesma viagem, com **ID da viagem** e **foto** obrigatórios (reduzida no celular, máx. 3 MB), volumes (só com 1 pedido) e observação. Um pedido que falhar não trava os outros.
-- **X5.** A foto fica no banco (`ShipmentPhoto`) e só abre para quem pode ver algum pedido daquela viagem. _Falta: apagar fotos antigas (o sistema antigo apaga depois de 180 dias)._
+- **X5.** A foto fica no banco (`ShipmentPhoto`) e só abre para quem pode ver algum pedido daquela viagem. A foto é apagada depois de 180 dias (o pedido continua).
 
 ## Estoque (Diogo) — implementado em `src/modules/estoque`
 

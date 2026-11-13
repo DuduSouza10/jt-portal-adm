@@ -14,6 +14,7 @@ export const userSchema = z.object({
     .pipe(z.email("E-mail inválido.").nullable().optional()),
   phone: optionalText,
   registration: optionalText, // matrícula (RH)
+  feishuOpenId: optionalText.pipe(z.string().regex(/^ou_[A-Za-z0-9_-]{6,80}$/, "open_id do Feishu começa com ou_.").nullable().optional()),
   profileId: z.string().min(1, "Escolha o tipo de acesso."),
   active: checkbox,
   baseIds: z.array(z.string()).default([]),

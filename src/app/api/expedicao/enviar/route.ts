@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { flushFeishuSoon } from "@/lib/feishu/flush";
 import { getCurrentUser } from "@/lib/auth/session";
 import { firstIssue } from "@/lib/action-result";
 import { DomainError } from "@/lib/errors";
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
 
   try {
     const result = await enviarLote(user, p.data, { mime: photo.type, data: new Uint8Array(await photo.arrayBuffer()) });
+    flushFeishuSoon();
     revalidatePath("/expedicao");
     revalidatePath("/solicitacoes");
     for (const id of p.data.ids) revalidatePath(`/solicitacoes/${id}`);

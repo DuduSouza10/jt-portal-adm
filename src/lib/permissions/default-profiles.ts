@@ -28,7 +28,7 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     description: "Administração geral: usuários, estrutura, estoque e operação.",
     scope: "GLOBAL",
     permissions: [
-      "usuarios.ver", "usuarios.editar", "perfis.gerenciar", "estrutura.ver", "estrutura.editar", "auditoria.ver",
+      "usuarios.ver", "usuarios.editar", "perfis.gerenciar", "estrutura.ver", "estrutura.editar", "auditoria.ver", "integracoes.gerenciar",
       "estoque.ver", "estoque.movimentar", "estoque.inventario",
       "produtos.ver", "produtos.editar", "produtos.precos",
       "solicitacoes.criar", "solicitacoes.ver", "solicitacoes.aprovar", "solicitacoes.excluir",

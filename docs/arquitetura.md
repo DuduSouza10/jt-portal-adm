@@ -184,6 +184,18 @@ e duas encomendas percorrem as linhas. É a única animação da tela; com "redu
 Os pontos vêm de `src/components/brasil-mapa-dados.ts`, **gerado** por `node scripts/gen-mapa-brasil.mjs` (não editar à mão).
 É só ilustração, sem dado real: nada de números ou nomes de bases na tela de login, que é pública.
 
+## Notificações (sino + Feishu)
+
+Trazido do sistema antigo de insumos. Regras S7 e S8 em `regras-de-negocio.md`.
+
+- **Evento → avisos**: `modules/solicitacoes/notify-rules.ts` (puro, com teste) decide os públicos e o texto; `notify.ts` acha os usuários pela **permissão e alcance** (não por cargo fixo), grava o sino (`Notification`) e enfileira o cartão do Feishu (`FeishuOutbox`) **na mesma transação** do evento.
+- **Envio**: depois da action, `flushFeishuSoon()` manda a fila sem atrasar a tela; o que falhar tenta de novo (1 min, 5 min, 15 min, 1 h, 3 h) pelo agendador. Duas execuções não mandam a mesma mensagem (a linha é "reservada" antes).
+- **Destinos** (`lib/feishu/outbox.ts`): equipe = grupo (app) > webhook > mensagem direta; expedição = webhook próprio > equipe; base = mensagem direta (`User.feishuOpenId`) + grupo da base (`Base.feishuChatId`).
+- **Agendador**: `netlify/functions/agendador.mts` chama `POST /api/cron/run` (com `CRON_SECRET`) a cada 15 min em horário comercial: lembretes, resumo diário, fila do Feishu, limpeza de fotos de envio (180 dias) e de notificações lidas (90 dias).
+- **Admin**: `/admin/feishu` (permissão `integracoes.gerenciar`) mostra a configuração, envia teste e reenvia o que falhou.
+- **Sino na tela**: `/notificacoes` lista; o contador do cabeçalho usa `unreadCount(user.id)` de `modules/notificacoes/queries.ts` (o ícone no cabeçalho é do front, Eduardo).
+- **Outro módulo quer avisar?** Siga o mesmo padrão: regras puras → `tx.notification.createMany` + `enqueue(tx, ...)` na transação → `flushFeishuSoon()` na action.
+
 ## Escala (≈ 5.000 usuários)
 
 - Toda lista é **paginada** no banco (50 por página) e filtrada pelo alcance do usuário. Nada de `findMany` sem `take` em tabela que cresce.
@@ -213,6 +225,8 @@ Os pontos vêm de `src/components/brasil-mapa-dados.ts`, **gerado** por `node sc
 | 2026-11-12 | Limpeza de sessões e tentativas de login em ~1% dos logins | Tabelas não crescem sem parar; não precisa de job agendado |
 | 2026-11-12 | Importação de usuários lida no navegador e enviada em lotes (500 para conferir, 25 para gravar) | Cada requisição cabe no limite de 10 s do Netlify; 5.000 usuários ≈ 11 min com barra de progresso |
 | 2026-11-12 | Senha temporária com bcrypt custo 8 (a escolhida pela pessoa segue com 11) | Senha aleatória de ~69 bits não depende do custo; importar em massa ficou 5× mais rápido |
+| 2026-11-13 | Avisos iguais ao sistema antigo (sino + Feishu com fila de saída), destinatários por permissão e alcance | Já validado na operação; permissão/alcance substituem os cargos fixos do sistema antigo |
+| 2026-11-13 | Horário comercial e prazos dos lembretes como constantes no código (sem tela de configuração) | Menos coisa para manter agora; dá para virar configuração depois |
 | 2026-11-12 | Construir do zero usando os 3 projetos como referência | Evita herdar o monolito Flask e o escopo financeiro do sistema-estoque |
 | 2026-11-12 | Model `Produto` mínimo criado pelo Diogo; o resto é do Eduardo (Issue #3) | Estoque precisava de produto; Eduardo acrescenta campos em migrations novas |
 | 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |
