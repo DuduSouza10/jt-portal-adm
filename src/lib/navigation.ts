@@ -30,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/perfis", label: "Tipos de acesso", description: "Permissões e alcance de cada perfil", permissions: ["perfis.gerenciar"], section: "admin" },
   { href: "/admin/estrutura", label: "Regionais e bases", description: "Estrutura organizacional", permissions: ["estrutura.ver"], section: "admin" },
   { href: "/admin/auditoria", label: "Auditoria", description: "Quem alterou o quê e quando", permissions: ["auditoria.ver"], section: "admin" },
+  { href: "/admin/feishu", label: "Feishu", description: "Avisos no Feishu: teste e mensagens enviadas", permissions: ["integracoes.gerenciar"], section: "admin" },
 ];
 
 export const SECTION_LABEL: Record<NavItem["section"], string> = {

@@ -81,6 +81,9 @@ export default async function BaseEditPage(props: PageProps<"/admin/estrutura/ba
             <Field label={t("estrutura.endereco")} htmlFor="address">
               <Input id="address" name="address" defaultValue={base?.address ?? ""} />
             </Field>
+            <Field label={t("estrutura.grupoFeishu")} htmlFor="feishuChatId" hint={t("estrutura.grupoFeishuDica")}>
+              <Input id="feishuChatId" name="feishuChatId" defaultValue={base?.feishuChatId ?? ""} autoCapitalize="none" />
+            </Field>
             <CheckField name="active" label={t("estrutura.baseAtiva")} defaultChecked={base?.active ?? true} />
           </ActionForm>
         </CardContent>

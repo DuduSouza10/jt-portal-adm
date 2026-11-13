@@ -138,6 +138,16 @@ const ZH: [string, string][] = [
   ["Bipe ou marque ao menos um pedido.", "请扫描或勾选至少一个申领单。"],
   ["Máximo de 100 pedidos por envio.", "每次发货最多 100 个申领单。"],
   ["Informe o ID da viagem.", "请输入车次 ID。"],
+  // ------------------------------------------------------------- Feishu (admin) e notificações
+  ["Falta configurar o app do Feishu (FEISHU_APP_ID e FEISHU_APP_SECRET).", "尚未配置飞书应用（FEISHU_APP_ID 和 FEISHU_APP_SECRET）。"],
+  ["Seu usuário não tem o open_id do Feishu. Preencha em Usuários → seu cadastro.", "你的账号没有飞书 open_id，请在「用户 → 你的资料」中填写。"],
+  ["Nenhum destino para a expedição: configure o webhook do grupo da expedição ou o da equipe.", "发货没有可用的接收方：请配置发货群或团队群的 Webhook。"],
+  ["Nenhum destino para a equipe: configure o webhook do grupo, o chat do grupo ou o app do Feishu.", "团队没有可用的接收方：请配置群 Webhook、群 chat_id 或飞书应用。"],
+  ["O Feishu recusou a mensagem. Veja o erro na lista abaixo.", "飞书拒绝了该消息，请查看下方列表中的错误。"],
+  ["Mensagem de teste enviada ({x} destino(s)).", "测试消息已发送（{x} 个接收方）。"],
+  ["Executado: {x}", "已执行：{x}"],
+  ["open_id do Feishu começa com ou_.", "飞书 open_id 以 ou_ 开头。"],
+  ["chat_id do grupo do Feishu começa com oc_.", "飞书群 chat_id 以 oc_ 开头。"],
 ];
 
 type Rule = { re: RegExp; names: string[]; out: string };
