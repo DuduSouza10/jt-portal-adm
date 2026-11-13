@@ -1,6 +1,6 @@
 /**
  * Schema do Postgres onde ficam as tabelas do sistema (padrão "public").
- * Em produção usamos "insumos", dentro do mesmo banco do sistema de chamados.
+ * Em produção usamos "portal", dentro do mesmo banco do sistema de chamados (ver docs/producao.md).
  */
 export function dbSchema() {
   const s = process.env.DATABASE_SCHEMA || "public";

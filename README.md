@@ -9,6 +9,7 @@ Projeto de **Diogo** e **Eduardo**, construído a partir de três sistemas anter
 - Arquitetura e padrões: [`docs/arquitetura.md`](docs/arquitetura.md)
 - Como trabalhamos (branches, PRs): [`docs/como-contribuir.md`](docs/como-contribuir.md)
 - Regras de negócio: [`docs/regras-de-negocio.md`](docs/regras-de-negocio.md)
+- Produção (banco, primeiro acesso, deploy): [`docs/producao.md`](docs/producao.md)
 
 ## O que já existe
 
