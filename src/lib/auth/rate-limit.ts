@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { UNKNOWN_IP } from "@/lib/client-ip";
 import { errorInfo, logger } from "@/lib/logger";
 
 // Rate limit de login no banco (memória não serve em serverless: cada instância é isolada).
@@ -20,6 +21,9 @@ const MAX_PER_IP = 300;
 export async function isLoginBlocked(login: string, ip: string) {
   const since = new Date(Date.now() - WINDOW_MIN * 60_000);
   const failed = { success: false, createdAt: { gte: since } };
+  // IP desconhecido (hospedagem sem cabeçalho confiável): sobra só o limite por login. Contar por
+  // "desconhecido" juntaria todas as bases num IP só e qualquer um travaria o login de todos.
+  if (ip === UNKNOWN_IP) return (await db.loginAttempt.count({ where: { ...failed, login } })) >= MAX_PER_LOGIN;
   const [byLoginIp, byLogin, byIp] = await Promise.all([
     db.loginAttempt.count({ where: { ...failed, login, ip } }),
     db.loginAttempt.count({ where: { ...failed, login } }),
