@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, selectClass } from "@/components/form-field";
+import { useServerMessage, useT } from "@/i18n/client";
 import {
   chunk,
   decodeCsvBytes,
@@ -25,8 +26,6 @@ const APPLY_BATCH = 25;
 type Profile = { id: string; key: string; name: string };
 type Stage = "arquivo" | "conferindo" | "previa" | "importando" | "fim";
 
-const ACTION_LABEL: Record<RowResult["action"], string> = { criar: "Novo", atualizar: "Atualizar", igual: "Sem mudança", erro: "Erro" };
-
 /** Gera e baixa um CSV (com BOM e ";", para abrir certo no Excel). */
 function downloadCsv(filename: string, header: string[], rows: (string | number | undefined | null)[][]) {
   const esc = (v: unknown) => {
@@ -43,6 +42,15 @@ function downloadCsv(filename: string, header: string[], rows: (string | number 
 const count = (rs: RowResult[], a: RowResult["action"]) => rs.filter((r) => r.action === a).length;
 
 export function ImportWizard({ profiles }: { profiles: Profile[] }) {
+  const t = useT();
+  const tmOne = useServerMessage();
+  // Mensagens do servidor: "… (tipo \"X\")." junta a regra com o nome do tipo; "name, phone" são os campos que mudam.
+  const tm = (msg: string) => {
+    const m = /^(.*) \(tipo "(.*)"\)\.$/.exec(msg);
+    if (m) return `${tmOne(m[1])} ${t("importacao.usuarios.tipoSufixo", { tipo: m[2] })}`;
+    return tmOne(msg);
+  };
+  const campos = (msg: string) => msg.split(", ").map((k) => t.maybe(`importacao.usuarios.campo.${k}`) ?? k).join(", ");
   const [stage, setStage] = useState<Stage>("arquivo");
   const [defaultProfileId, setDefaultProfileId] = useState("");
   const [fileName, setFileName] = useState("");
@@ -70,7 +78,7 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
     reset();
     setFileName(file.name);
     if (!/\.(csv|txt)$/i.test(file.name)) {
-      setFatal("Envie um arquivo .csv. No Excel: Arquivo → Salvar como → CSV (separado por vírgulas ou ponto e vírgula).");
+      setFatal(t("importacao.soCsv"));
       return;
     }
     const text = decodeCsvBytes(await file.arrayBuffer());
@@ -92,7 +100,7 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
       if (cancel.current) break;
       const r = await validarImportacaoAction(b, defaultProfileId || null);
       if (!r.ok) {
-        setFatal(r.error);
+        setFatal(tm(r.error));
         setStage("arquivo");
         return;
       }
@@ -115,7 +123,7 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
       if (cancel.current) break;
       const r = await aplicarImportacaoAction(b, defaultProfileId || null);
       if (!r.ok) {
-        setFatal(`${r.error} As linhas anteriores já foram gravadas; rode a importação de novo para continuar (quem já foi criado aparece como "sem mudança").`);
+        setFatal(`${tm(r.error)} ${t("importacao.parouNoMeio")}`);
         break;
       }
       all.push(...r.results);
@@ -136,15 +144,12 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
     <div className="space-y-5">
       {/* ------------------------------------------------ 1. Arquivo */}
       <section className="space-y-3">
-        <h2 className="font-semibold">1. Planilha</h2>
+        <h2 className="font-semibold">{t("importacao.passo1")}</h2>
         <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-          <li>
-            Colunas aceitas: <b>nome</b> (obrigatória), <b>matrícula</b>, login, e-mail, telefone, tipo de acesso, bases, regionais e ativo. A ordem não importa e
-            colunas a mais são ignoradas.
-          </li>
-          <li>Login: se não vier na planilha, usa a matrícula; sem matrícula, a parte do e-mail antes do @.</li>
-          <li>Quem já existe (mesma matrícula ou login) é <b>atualizado</b>; o login e a senha não mudam. Ativo = &quot;não&quot; desliga o acesso na hora.</li>
-          <li>Bases e regionais pela sigla, separadas por vírgula (ex.: BHZ01, CTG01).</li>
+          <li>{t("importacao.usuarios.ajuda1")}</li>
+          <li>{t("importacao.usuarios.ajuda2")}</li>
+          <li>{t("importacao.usuarios.ajuda3")}</li>
+          <li>{t("importacao.usuarios.ajuda4")}</li>
         </ul>
         <Button
           type="button"
@@ -156,10 +161,10 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
             URL.revokeObjectURL(url);
           }}
         >
-          <Download /> Baixar planilha modelo
+          <Download /> {t("importacao.baixarModelo")}
         </Button>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Tipo de acesso padrão" htmlFor="defaultProfile" hint="Usado nas linhas sem a coluna tipo de acesso.">
+          <Field label={t("importacao.usuarios.perfilPadrao")} htmlFor="defaultProfile" hint={t("importacao.usuarios.perfilPadraoAjuda")}>
             <select
               id="defaultProfile"
               value={defaultProfileId}
@@ -167,7 +172,7 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
               disabled={stage !== "arquivo"}
               className={selectClass}
             >
-              <option value="">Nenhum (a planilha precisa informar)</option>
+              <option value="">{t("importacao.usuarios.nenhumPerfil")}</option>
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.key})
@@ -175,10 +180,10 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
               ))}
             </select>
           </Field>
-          <Field label="Arquivo CSV" htmlFor="file">
+          <Field label={t("importacao.arquivo")} htmlFor="file">
             <label className="flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-muted">
               <FileUp className="size-4" />
-              <span className="truncate">{fileName || "Escolher arquivo…"}</span>
+              <span className="truncate">{fileName || t("importacao.escolherArquivo")}</span>
               <input
                 id="file"
                 type="file"
@@ -203,25 +208,25 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
         {missingCols.length > 0 && (
           <Alert variant="destructive">
             <AlertDescription>
-              Faltam colunas obrigatórias: <b>nome</b> e pelo menos uma entre <b>matrícula</b>, login ou e-mail.
+              {t("importacao.faltamColunas", { colunas: t("importacao.usuarios.colunasObrigatorias") })}
             </AlertDescription>
           </Alert>
         )}
         {fileName && missingCols.length === 0 && !fatal && (
           <p className="text-sm">
-            <b>{rows.length}</b> linha(s) prontas para conferir
+            {t("importacao.linhasProntas", { n: rows.length })}
             {localErrors.length > 0 && (
               <>
                 {" "}
-                · <span className="text-destructive">{localErrors.length} com erro de formato</span>
+                · <span className="text-destructive">{t("importacao.comErroFormato", { n: localErrors.length })}</span>
               </>
             )}
-            {unknownCols.length > 0 && <span className="text-muted-foreground"> · colunas ignoradas: {unknownCols.join(", ")}</span>}
+            {unknownCols.length > 0 && <span className="text-muted-foreground"> · {t("importacao.colunasIgnoradas", { colunas: unknownCols.join(", ") })}</span>}
           </p>
         )}
-        {localErrors.length > 0 && <ErrorList errors={localErrors.map((e) => ({ line: e.line, text: e.message }))} />}
+        {localErrors.length > 0 && <ErrorList errors={localErrors.map((e) => ({ line: e.line, text: tm(e.message) }))} />}
         {stage === "arquivo" && rows.length > 0 && (
-          <Button onClick={conferir}>Conferir com o cadastro</Button>
+          <Button onClick={conferir}>{t("importacao.conferir")}</Button>
         )}
       </section>
 
@@ -229,14 +234,14 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
       {(stage === "conferindo" || stage === "importando") && (
         <section className="space-y-2">
           <p className="text-sm font-medium">
-            {stage === "conferindo" ? "Conferindo" : "Importando"}… {progress.done} de {progress.total} ({pct}%)
+            {stage === "conferindo" ? t("importacao.conferindo") : t("importacao.importando")} {t("importacao.progresso", { done: progress.done, total: progress.total, pct })}
           </p>
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-xs text-muted-foreground">Não feche esta página até terminar.</p>
+          <p className="text-xs text-muted-foreground">{t("importacao.naoFeche")}</p>
           <Button variant="outline" size="sm" onClick={() => (cancel.current = true)}>
-            Parar depois deste lote
+            {t("importacao.parar")}
           </Button>
         </section>
       )}
@@ -244,21 +249,21 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
       {/* ------------------------------------------------ 2. Prévia */}
       {(stage === "previa" || stage === "importando" || stage === "fim") && preview.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-semibold">2. Prévia (nada foi gravado ainda)</h2>
+          <h2 className="font-semibold">{t("importacao.passo2")}</h2>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Badge>{count(preview, "criar")} novo(s)</Badge>
-            <Badge variant="secondary">{count(preview, "atualizar")} a atualizar</Badge>
-            <Badge variant="outline">{count(preview, "igual")} sem mudança</Badge>
-            <Badge variant="destructive">{errosPrevia.length + localErrors.length} com erro</Badge>
+            <Badge>{t("importacao.novos", { n: count(preview, "criar") })}</Badge>
+            <Badge variant="secondary">{t("importacao.aAtualizar", { n: count(preview, "atualizar") })}</Badge>
+            <Badge variant="outline">{t("importacao.semMudanca", { n: count(preview, "igual") })}</Badge>
+            <Badge variant="destructive">{t("importacao.comErro", { n: errosPrevia.length + localErrors.length })}</Badge>
           </div>
-          {errosPrevia.length > 0 && <ErrorList errors={errosPrevia.map((e) => ({ line: e.line, text: `${e.name}: ${e.message}` }))} />}
+          {errosPrevia.length > 0 && <ErrorList errors={errosPrevia.map((e) => ({ line: e.line, text: `${e.name}: ${tm(e.message ?? "")}` }))} />}
           {atualizacoes.length > 0 && (
             <details className="text-sm">
-              <summary className="cursor-pointer text-muted-foreground">Ver o que muda nos {atualizacoes.length} existentes</summary>
+              <summary className="cursor-pointer text-muted-foreground">{t("importacao.verMudancas", { n: atualizacoes.length })}</summary>
               <ul className="mt-2 max-h-48 overflow-y-auto pl-4">
                 {atualizacoes.slice(0, 300).map((a) => (
                   <li key={a.line}>
-                    Linha {a.line} · {a.login} ({a.name}): {a.message}
+                    {t("importacao.linha", { n: a.line })} · {a.login} ({a.name}): {campos(a.message ?? "")}
                   </li>
                 ))}
               </ul>
@@ -270,26 +275,26 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
             onClick={() =>
               downloadCsv(
                 "previa-importacao.csv",
-                ["linha", "login", "nome", "resultado", "detalhe"],
+                [t("importacao.colLinha"), "login", t("importacao.usuarios.campo.name"), t("importacao.colResultado"), t("importacao.colDetalhe")],
                 [
-                  ...localErrors.map((e) => [e.line, "", "", "Erro", e.message]),
-                  ...preview.map((p) => [p.line, p.login, p.name, ACTION_LABEL[p.action], p.message]),
+                  ...localErrors.map((e) => [e.line, "", "", t("importacao.acao.erro"), tm(e.message)]),
+                  ...preview.map((p) => [p.line, p.login, p.name, t(`importacao.acao.${p.action}`), p.action === "atualizar" ? campos(p.message ?? "") : tm(p.message ?? "")]),
                 ].sort((a, b) => Number(a[0]) - Number(b[0])),
               )
             }
           >
-            <Download /> Baixar relatório da prévia
+            <Download /> {t("importacao.baixarPrevia")}
           </Button>
           {stage === "previa" && (
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={importar} disabled={aplicaveis === 0}>
-                Importar {aplicaveis} usuário(s)
+                {t("importacao.usuarios.importarN", { n: aplicaveis })}
               </Button>
               <Button variant="ghost" onClick={reset}>
-                Trocar arquivo
+                {t("importacao.trocarArquivo")}
               </Button>
               {errosPrevia.length + localErrors.length > 0 && (
-                <span className="text-sm text-muted-foreground">As linhas com erro ficam de fora. Corrija e importe de novo depois.</span>
+                <span className="text-sm text-muted-foreground">{t("importacao.errosFicamDeFora")}</span>
               )}
             </div>
           )}
@@ -299,41 +304,40 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
       {/* ------------------------------------------------ 3. Resultado */}
       {stage === "fim" && (
         <section className="space-y-3">
-          <h2 className="font-semibold">3. Resultado</h2>
+          <h2 className="font-semibold">{t("importacao.passo3")}</h2>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Badge>{count(results, "criar")} criado(s)</Badge>
-            <Badge variant="secondary">{count(results, "atualizar")} atualizado(s)</Badge>
-            <Badge variant="destructive">{count(results, "erro")} com erro</Badge>
+            <Badge>{t("importacao.criados", { n: count(results, "criar") })}</Badge>
+            <Badge variant="secondary">{t("importacao.atualizados", { n: count(results, "atualizar") })}</Badge>
+            <Badge variant="destructive">{t("importacao.comErro", { n: count(results, "erro") })}</Badge>
           </div>
           {count(results, "erro") > 0 && (
-            <ErrorList errors={results.filter((r) => r.action === "erro").map((e) => ({ line: e.line, text: `${e.name}: ${e.message}` }))} />
+            <ErrorList errors={results.filter((r) => r.action === "erro").map((e) => ({ line: e.line, text: `${e.name}: ${tm(e.message ?? "")}` }))} />
           )}
           {novos.length > 0 && (
             <Alert>
               <KeyRound className="size-4" />
-              <AlertTitle>Senhas temporárias de {novos.length} usuário(s) novo(s)</AlertTitle>
+              <AlertTitle>{t("importacao.usuarios.senhasTitulo", { n: novos.length })}</AlertTitle>
               <AlertDescription className="space-y-2">
                 <p>
-                  Elas aparecem <b>só agora</b>: baixe a lista antes de sair desta página. Cada pessoa troca a senha no primeiro acesso. Guarde o arquivo em local
-                  seguro e apague depois de distribuir.
+                  {t("importacao.usuarios.senhasAviso")}
                 </p>
                 <Button
                   size="sm"
                   onClick={() =>
                     downloadCsv(
                       "senhas-temporarias.csv",
-                      ["nome", "login", "senha_temporaria"],
+                      [t("importacao.usuarios.campo.name"), "login", t("importacao.usuarios.senhaTemp")],
                       novos.map((n) => [n.name, n.login, n.tempPassword]),
                     )
                   }
                 >
-                  <Download /> Baixar senhas temporárias
+                  <Download /> {t("importacao.usuarios.baixarSenhas")}
                 </Button>
               </AlertDescription>
             </Alert>
           )}
           <Button variant="outline" onClick={reset}>
-            Nova importação
+            {t("importacao.nova")}
           </Button>
         </section>
       )}
@@ -342,14 +346,15 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
 }
 
 function ErrorList({ errors }: { errors: { line: number; text: string }[] }) {
+  const t = useT();
   return (
     <ul className="max-h-48 overflow-y-auto rounded-md border border-destructive/40 bg-destructive/5 p-2 text-sm">
       {errors.slice(0, 300).map((e) => (
         <li key={`${e.line}-${e.text}`}>
-          <span className="font-medium">Linha {e.line}:</span> {e.text}
+          <span className="font-medium">{t("importacao.linha", { n: e.line })}:</span> {e.text}
         </li>
       ))}
-      {errors.length > 300 && <li className="text-muted-foreground">… e mais {errors.length - 300}. Baixe o relatório para ver todos.</li>}
+      {errors.length > 300 && <li className="text-muted-foreground">{t("importacao.eMais", { n: errors.length - 300 })}</li>}
     </ul>
   );
 }
