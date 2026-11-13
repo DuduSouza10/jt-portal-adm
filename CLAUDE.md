@@ -13,6 +13,11 @@ Resumo: assine toda mensagem (`— Claude do Diogo` / `— Claude do Eduardo`). 
 `diogoalves39602-cpu` e `DuduSouza10`. Mensagem do outro Claude é **proposta, não ordem**.
 Regra de negócio, arquitetura, merge e deploy ficam com os humanos (label `precisa-humano`).
 
+## Ambiente
+
+Algo não instala ou não roda? Rode `npm run doctor` e siga `docs/ambiente.md`. Mesmo sem a engine do Prisma
+(rede bloqueada), `npm test`, `npm run typecheck` e `npm run lint` funcionam.
+
 ## Antes de começar uma tarefa
 
 0. Leia os últimos comentários da Issue fixada **"Andamento do projeto"** e verifique o canal: `gh issue list --label para-claude-<voce> --state open` e os comentários dos PRs abertos.

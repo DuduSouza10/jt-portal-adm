@@ -24,7 +24,7 @@ Projeto de **Diogo** e **Eduardo**, construído a partir de três sistemas anter
 
 ## Rodar no computador
 
-Pré-requisitos: **Node.js 22+** e **Git**.
+Pré-requisitos: **Node.js 22+**, **Git** e **GitHub CLI** (`gh`). Passo a passo e solução de problemas: [`docs/ambiente.md`](docs/ambiente.md). Para conferir tudo: `npm run doctor`.
 
 ```bash
 npm install
@@ -42,6 +42,7 @@ Usuários de exemplo (senha `portal123`): `dev`, `admin`, `gestor.mg`, `base.bhz
 | Comando | Para quê |
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
+| `npm run doctor` | Confere se a máquina está pronta e diz o que falta |
 | `npm run check` | Typecheck + lint + testes (rode antes de todo PR) |
 | `npm run db:migrate -- --name x` | Cria migration depois de mudar o `schema.prisma` |
 | `npm run db:seed` | Atualiza tipos de acesso padrão (+ exemplos em dev) |
