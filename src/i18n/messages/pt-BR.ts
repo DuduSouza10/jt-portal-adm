@@ -62,6 +62,7 @@ export const ptBR = {
     perfis: { label: "Tipos de acesso", description: "Permissões e alcance de cada perfil" },
     estrutura: { label: "Regionais e bases", description: "Estrutura organizacional" },
     auditoria: { label: "Auditoria", description: "Quem alterou o quê e quando" },
+    feishu: { label: "Feishu", description: "Avisos no Feishu: teste e mensagens enviadas" },
   },
   inicio: {
     bomDia: "Bom dia, {nome}",
@@ -205,6 +206,7 @@ export const ptBR = {
     solicitacoes: "Solicitações",
     expedicao: "Separação e expedição",
     relatorios: "Relatórios",
+    integracoes: "Integrações",
   },
   permissoes: {
     usuarios: {
@@ -236,6 +238,9 @@ export const ptBR = {
       ver: { label: "Ver solicitações", description: "Dentro do alcance do perfil." },
       aprovar: { label: "Aprovar, recusar e editar itens", description: "" },
       excluir: { label: "Excluir solicitações", description: "" },
+    },
+    integracoes: {
+      gerenciar: { label: "Feishu: ver mensagens, testar e reenviar", description: "Página Administração → Feishu." },
     },
     expedicao: {
       separar: { label: "Separar pedidos", description: "" },
@@ -547,6 +552,46 @@ export const ptBR = {
     titulo: "Escanear código",
     instrucao: "Aponte a câmera para o código. A leitura é automática.",
     erro: "Não foi possível abrir a câmera. Permita o acesso à câmera no navegador ou digite o código.",
+  },
+
+  notificacoes: {
+    titulo: "Notificações",
+    naoLidas: "{n} não lida(s)",
+    tudoLido: "Tudo lido.",
+    marcarTodas: "Marcar todas como lidas",
+    vazio: "Nenhuma notificação.",
+    naoLidaAria: "não lida",
+    sinoNaoLidas: "Notificações ({n} não lidas)",
+  },
+  feishu: {
+    titulo: "Feishu",
+    descricao: "Avisos das solicitações, lembretes e resumo diário enviados ao Feishu.",
+    configuracao: "Configuração",
+    configuracaoDesc: "Definida nas variáveis de ambiente (veja .env.example).",
+    configurado: "configurado",
+    naoConfigurado: "não configurado",
+    webhookEquipe: "Webhook do grupo da equipe:",
+    webhookExpedicao: "Webhook do grupo da expedição:",
+    naoConfiguradoExpedicao: "não configurado (vai para o destino da equipe)",
+    appPlataforma: "App da Open Platform (mensagem direta e grupos das bases):",
+    avisosEquipe: "Avisos da equipe (aprovação e separação) vão para:",
+    viaGrupoApp: "grupo da equipe (app)",
+    viaWebhook: "webhook do grupo da equipe",
+    viaDireta: "mensagem direta para cada pessoa com o open_id preenchido",
+    viaNenhum: "nenhum (configure o Feishu)",
+    notaBases: "Avisos para as bases vão por mensagem direta (open_id no cadastro do usuário) e para o grupo da base (chat_id no cadastro da base). Isso precisa do app. O sino do portal funciona sempre, com ou sem Feishu.",
+    ultimas: "Últimas mensagens",
+    resumo: "{sent} enviadas · {pending} na fila · {failed} com falha. Falhas são tentadas de novo automaticamente ({tempos}).",
+    minutos: "{n} min",
+    horas: "{n} h",
+    vazio: "Nenhuma mensagem ainda.",
+    status: { PENDING: "Na fila", SENT: "Enviada", FAILED: "Falhou" },
+    canal: { webhook: "Webhook do grupo", chat: "Grupo (app)", user: "Mensagem direta" },
+    tentarDeNovo: "Tentar de novo",
+    testarEquipe: "Testar aviso da equipe",
+    testarExpedicao: "Testar aviso da expedição",
+    testarEu: "Testar mensagem para mim",
+    rodarLembretes: "Rodar lembretes agora",
   },
 };
 

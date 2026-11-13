@@ -19,6 +19,7 @@ const NAV_KEY: Record<string, keyof Messages["nav"]> = {
   "/admin/perfis": "perfis",
   "/admin/estrutura": "estrutura",
   "/admin/auditoria": "auditoria",
+  "/admin/feishu": "feishu",
 };
 
 export function navText(t: Translator, item: { href: string; label: string; description: string }) {
