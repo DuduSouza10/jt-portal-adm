@@ -5,7 +5,7 @@ import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
 import { generateTempPassword, hashPassword } from "@/lib/auth/password";
 import { ALL, sanitizePermissions } from "@/lib/permissions/catalog";
-import { isSubsetOf, linksOutsideScopeError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
+import { isSubsetOf, linksOutsideScopeError, ownProfileEditError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
 import type { ProfileInput, UserInput } from "./schemas";
 
 // ============================================================ Usuários
@@ -146,6 +146,8 @@ export async function saveProfile(actor: CurrentUser, id: string | null, input: 
     throw new DomainError("Você não pode criar um tipo de acesso com alcance maior que o seu.");
 
   if (id) {
+    const ownError = ownProfileEditError({ permissions: actor.permissions, profileId: actor.profile.id }, id);
+    if (ownError) throw new DomainError(ownError);
     const before = await db.accessProfile.findUnique({ where: { id } });
     if (!before) throw new DomainError("Tipo de acesso não encontrado.");
     if (!isSubsetOf(before.permissions, actor.permissions))
