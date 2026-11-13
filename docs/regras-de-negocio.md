@@ -21,6 +21,7 @@ Formato sugerido: regra numerada, exemplo concreto, e onde está no código.
   - **Expedição**: só a expedição. Vê os pedidos já separados que aguardam envio e confirma o envio. Não vê as outras áreas.
   - O tipo de acesso de quem vem das bases é escolhido pelo Diogo/Eduardo quando a pessoa entra no sistema.
   - → `src/lib/permissions/default-profiles.ts` (teste em `default-profiles.test.ts`)
+- **E10.** Importação por planilha (CSV): quem já existe é encontrado pela **matrícula** (ou pelo login); o login e a senha de quem já existe não mudam; célula vazia não apaga e-mail/telefone; ativo = "não" desliga o acesso na hora (ex.: desligado no RH); quem não está na planilha não é tocado. Quem importa só concede o que tem (E4, E6) e não altera o próprio usuário. Novos recebem senha temporária, exibida uma única vez para download. → `modules/acessos/importacao*.ts`
 
 ## Solicitações — implementado em `src/modules/solicitacoes` (Diogo, trazido do sistema antigo)
 
