@@ -2,7 +2,7 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 // Migrations usam a conexão direta (no Supabase: porta 5432, não o pooler).
-// Se DATABASE_SCHEMA estiver definido (ex.: "insumos"), as tabelas são criadas nesse schema.
+// Se DATABASE_SCHEMA estiver definido (ex.: "portal"), as tabelas são criadas nesse schema.
 function migrationUrl() {
   const raw = process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"];
   const schema = process.env["DATABASE_SCHEMA"];

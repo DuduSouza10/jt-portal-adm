@@ -23,7 +23,7 @@ BASE SOLICITA → RESPONSÁVEL APROVA → ALMOXARIFADO SEPARA → EXPEDIÇÃO EN
 | Interface | **Tailwind CSS 4 + shadcn/ui** | Componentes prontos em `src/components/ui` |
 | Validação | **Zod** | Todo dado de formulário é validado no servidor |
 | Testes | **Vitest** | Regras de negócio puras testadas sem banco |
-| Deploy | **Netlify** + **Supabase** (Postgres) | Mesmo esquema do sistema `insumos`, plano gratuito |
+| Deploy | **Netlify** + **Supabase** (Postgres) | Mesmo banco do sistema de chamados, no schema `portal`; plano gratuito |
 
 ## Estrutura de pastas
 

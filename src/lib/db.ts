@@ -12,7 +12,7 @@ function createClient() {
       // Em serverless cada instância deve abrir poucas conexões; o pooler do Supabase faz o resto.
       max: Number(process.env.DATABASE_POOL_MAX ?? 3),
     },
-    // As tabelas podem ficar num schema próprio (ex.: "insumos") dentro de um banco compartilhado.
+    // As tabelas podem ficar num schema próprio (ex.: "portal") dentro de um banco compartilhado.
     { schema: dbSchema() },
   );
   return new PrismaClient({ adapter });
