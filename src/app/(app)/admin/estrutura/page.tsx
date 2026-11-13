@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
@@ -32,6 +32,11 @@ export default async function StructurePage() {
         actions={
           editable && (
             <>
+              <Button asChild variant="outline">
+                <Link href="/admin/estrutura/importar">
+                  <Upload /> {t("usuarios.importar")}
+                </Link>
+              </Button>
               <Button asChild variant="outline">
                 <Link href="/admin/estrutura/regionais/novo">
                   <Plus /> {t("estrutura.regional")}
