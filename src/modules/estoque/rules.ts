@@ -119,3 +119,57 @@ export function planShipment(reserved: number, shipped?: number): { baixa: numbe
   if (s > reserved) throw new DomainError(`Envio maior que o reservado (${reserved}).`);
   return { baixa: s, liberacao: reserved - s };
 }
+
+// ------------------------------------------------------------------ Custo (valor dos insumos)
+
+/** Maior custo unitário aceito (R$). Evita erro de digitação. */
+export const MAX_UNIT_COST = 10_000_000;
+
+const round4 = (v: number) => Math.round(v * 10_000) / 10_000;
+
+/**
+ * Custo médio ponderado (K5). Puro.
+ * - Entrada (e transferência recebida, ao custo da origem): pondera pelo valor unitário da NF.
+ *   Saldo sem custo conhecido (custo 0) não pesa: o custo passa a ser o da entrada.
+ * - Inventário que achou a mais: só pondera se vier valor; senão mantém o custo.
+ * - Saída, transferência enviada e baixa: não mudam o custo médio; o movimento grava o custo médio.
+ * - Reserva e liberação: sem valor.
+ * Devolve o novo custo médio e o custo unitário a gravar no movimento (null = sem custo).
+ */
+export function applyCost(before: { quantity: number; avgCost: number }, op: Operation, delta: number, unitCost?: number | null) {
+  const avg = before.avgCost;
+  const known = (c: number) => (c > 0 ? c : null);
+  const weigh = (q: number, c: number) => (before.quantity > 0 && avg > 0 ? round4((before.quantity * avg + q * c) / (before.quantity + q)) : round4(c));
+  switch (op.type) {
+    case "ENTRADA":
+    case "TRANSFERENCIA_ENTRADA":
+      if (unitCost == null) return { avgCost: avg, unitCost: null };
+      return { avgCost: weigh(delta, unitCost), unitCost: round4(unitCost) };
+    case "INVENTARIO":
+      if (delta > 0 && unitCost != null) return { avgCost: weigh(delta, unitCost), unitCost: round4(unitCost) };
+      return { avgCost: avg, unitCost: known(avg) };
+    case "SAIDA":
+    case "TRANSFERENCIA_SAIDA":
+    case "BAIXA":
+      return { avgCost: avg, unitCost: known(avg) };
+    case "RESERVA":
+    case "LIBERACAO":
+      return { avgCost: avg, unitCost: null };
+  }
+}
+
+/**
+ * Valor unitário por produto quando a mesma NF repete o produto em várias linhas: média ponderada.
+ * Se alguma linha do produto vier sem valor, o produto fica sem valor (não dá para ponderar).
+ */
+export function mergeUnitCosts(items: { produtoId: string; quantity: number; unitCost?: number | null }[]) {
+  const acc = new Map<string, { q: number; v: number; missing: boolean }>();
+  for (const it of items) {
+    const a = acc.get(it.produtoId) ?? { q: 0, v: 0, missing: false };
+    if (it.unitCost == null) a.missing = true;
+    else a.v += it.quantity * it.unitCost;
+    a.q += it.quantity;
+    acc.set(it.produtoId, a);
+  }
+  return new Map([...acc].map(([id, a]) => [id, a.missing || !a.q ? null : round4(a.v / a.q)]));
+}

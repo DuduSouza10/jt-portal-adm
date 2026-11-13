@@ -24,6 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   // ---- Estoque (Diogo)
   { href: "/estoque", label: "Estoque", description: "Saldos, entradas, saídas e inventário", permissions: ["estoque.ver"], section: "gestao" },
+  { href: "/relatorios", label: "Relatórios", description: "SLA das solicitações, valores e gasto por base", permissions: ["relatorios.ver"], section: "gestao" },
 
   // ---- Administração (núcleo)
   { href: "/admin/usuarios", label: "Usuários", description: "Contas, bases e redefinição de senha", permissions: ["usuarios.ver"], section: "admin" },
@@ -31,6 +32,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/estrutura", label: "Regionais e bases", description: "Estrutura organizacional", permissions: ["estrutura.ver"], section: "admin" },
   { href: "/admin/auditoria", label: "Auditoria", description: "Quem alterou o quê e quando", permissions: ["auditoria.ver"], section: "admin" },
   { href: "/admin/feishu", label: "Feishu", description: "Avisos no Feishu: teste e mensagens enviadas", permissions: ["integracoes.gerenciar"], section: "admin" },
+  { href: "/admin/configuracoes", label: "Configurações", description: "Prazos de SLA e horário comercial", permissions: ["configuracoes.editar"], section: "admin" },
 ];
 
 export const SECTION_LABEL: Record<NavItem["section"], string> = {

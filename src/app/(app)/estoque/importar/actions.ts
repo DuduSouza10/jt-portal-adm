@@ -33,6 +33,7 @@ const estoqueRow = z.object({
   produtoCode: z.string().min(1).max(40),
   quantity: qty,
   minimum: qty.nullable(),
+  unitCost: z.number().min(0).max(10_000_000).nullable(),
 });
 const estoqueOpts = z.object({
   mode: z.enum(["contado", "entrada"]),

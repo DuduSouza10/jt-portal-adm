@@ -199,6 +199,19 @@ const ZH: [string, string][] = [
   ["O saldo foi gravado, mas o mínimo não. Ajuste o mínimo na tela de saldos.", "库存已保存，但最低库存未保存。请在库存页面调整最低库存。"],
   ["Você não tem permissão para fazer inventário.", "你没有盘点权限。"],
   ["Você não tem permissão para lançar entradas.", "你没有入库权限。"],
+  ['Valor unitário "{v}" inválido.', "单价“{v}”无效。"],
+  ["valor unitário R$ {v}", "单价 R$ {v}"],
+  ["Valor unitário inválido.", "单价无效。"],
+  ["Valor unitário não pode ser negativo.", "单价不能为负数。"],
+  ["Valor unitário muito alto.", "单价过高。"],
+  // ------------------------------------------------------------- Configurações (SLA)
+  ["Prazo mínimo: 0,5 hora.", "最短时限：0.5 小时。"],
+  ["Prazo máximo: 720 horas.", "最长时限：720 小时。"],
+  ["Horário inválido. Use HH:MM.", "时间无效，请使用 HH:MM。"],
+  ["Escolha ao menos um dia útil.", "请至少选择一个工作日。"],
+  ["Feriado inválido. Use AAAA-MM-DD.", "节假日无效，请使用 AAAA-MM-DD。"],
+  ["O fim do expediente precisa ser depois do início.", "下班时间必须晚于上班时间。"],
+  ["Configurações salvas.", "设置已保存。"],
 ];
 
 type Rule = { re: RegExp; names: string[]; out: string };

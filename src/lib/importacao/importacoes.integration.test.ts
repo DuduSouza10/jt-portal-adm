@@ -50,6 +50,7 @@ const erow = (line: number, produtoCode: string, quantity: number, over: Partial
   produtoCode,
   quantity,
   minimum: null,
+  unitCost: null,
   ...over,
 });
 const bal = async (code: string) => {

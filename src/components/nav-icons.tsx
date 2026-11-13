@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Boxes,
   ClipboardList,
   History,
@@ -6,6 +7,7 @@ import {
   LayoutGrid,
   Network,
   Package,
+  Settings,
   ShieldCheck,
   ShoppingCart,
   Truck,
@@ -21,6 +23,8 @@ const ICONS: Record<string, LucideIcon> = {
   "/expedicao": Truck,
   "/produtos": Package,
   "/estoque": Boxes,
+  "/relatorios": BarChart3,
+  "/admin/configuracoes": Settings,
   "/admin/usuarios": Users,
   "/admin/perfis": ShieldCheck,
   "/admin/estrutura": Network,

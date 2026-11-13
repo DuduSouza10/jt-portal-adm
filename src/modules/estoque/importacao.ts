@@ -5,16 +5,17 @@
  *   - "entrada": soma ao saldo, como o recebimento de uma compra (exige o nº da NF/documento).
  * Sempre pelo livro-razão do estoque (StockMovement) e com auditoria. Coluna "minimo" opcional.
  */
-import { mapColumns, MAX_IMPORT_ROWS, parseIntBR, type RowError } from "@/lib/importacao/csv";
-import { MAX_QTY } from "./rules";
+import { mapColumns, MAX_IMPORT_ROWS, parseIntBR, parseMoneyBR, type RowError } from "@/lib/importacao/csv";
+import { MAX_QTY, MAX_UNIT_COST } from "./rules";
 
-type Campo = "produto" | "quantidade" | "almoxarifado" | "minimo";
+type Campo = "produto" | "quantidade" | "almoxarifado" | "minimo" | "custo";
 
 const ALIASES: Record<Campo, string[]> = {
   produto: ["produto", "codigo", "codigoproduto", "codigodoproduto", "sku", "item", "insumo"],
   quantidade: ["quantidade", "qtd", "qtde", "quant", "saldo", "contado", "quantidadecontada", "estoque"],
   almoxarifado: ["almoxarifado", "almox", "deposito", "cd", "siglaalmoxarifado"],
   minimo: ["minimo", "estoqueminimo", "min"],
+  custo: ["valorunitario", "valorunit", "custo", "custounitario", "preco", "precounitario", "valor"],
 };
 
 export type EstoqueImportMode = "contado" | "entrada";
@@ -26,6 +27,8 @@ export type EstoqueImportRow = {
   produtoCode: string;
   quantity: number;
   minimum: number | null;
+  /** Valor unitário (R$) da NF; null = sem valor (K5). */
+  unitCost: number | null;
 };
 
 export function parseEstoque(table: string[][]) {
@@ -52,13 +55,17 @@ export function parseEstoque(table: string[][]) {
     if (!produtoCode) return fail("Informe o código do produto.");
     if (quantity === null || quantity < 0 || quantity > MAX_QTY) return fail(`Quantidade "${qRaw}" inválida: use um número inteiro de 0 a ${MAX_QTY}.`);
     if (mRaw && (minimum === null || minimum < 0 || minimum > MAX_QTY)) return fail(`Mínimo "${mRaw}" inválido: use um número inteiro de 0 a ${MAX_QTY}.`);
+    const cRaw = cols.get(r, "custo");
+    const unitCost = cRaw ? parseMoneyBR(cRaw) : null;
+    if (cRaw && (unitCost === null || unitCost > MAX_UNIT_COST)) return fail(`Valor unitário "${cRaw}" inválido.`);
     const key = `${almoxCode ?? ""}|${produtoCode}`;
     const prev = seen.get(key);
     if (prev) return fail(`Produto "${produtoCode}" repetido para o mesmo almoxarifado (já está na linha ${prev}).`);
     seen.set(key, line);
-    rows.push({ line, almoxCode, produtoCode, quantity, minimum });
+    rows.push({ line, almoxCode, produtoCode, quantity, minimum, unitCost });
   });
   return { rows, errors, missing, unknown: cols.unknown };
 }
 
-export const ESTOQUE_TEMPLATE_CSV = "produto;quantidade;almoxarifado;minimo\n" + "LUVA-M;120;ALM-MG;20\n" + "FITA-48;300;ALM-MG;\n" + "ETIQ-100;45;;10\n";
+export const ESTOQUE_TEMPLATE_CSV =
+  "produto;quantidade;almoxarifado;minimo;valor_unitario\n" + "LUVA-M;120;ALM-MG;20;32,90\n" + "FITA-48;300;ALM-MG;;4,50\n" + "ETIQ-100;45;;10;\n";
