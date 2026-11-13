@@ -168,8 +168,12 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 | 2026-11-12 | Permissões por catálogo + tipos de acesso editáveis | Modelo do portal do Eduardo, já validado na operação |
 | 2026-11-12 | Administração de usuários filtrada pelo alcance (revisão do PR #1) | Permite admins regionais sem abrir brecha para conceder acesso fora da área |
 | 2026-11-12 | Limpeza de sessões e tentativas de login em ~1% dos logins | Tabelas não crescem sem parar; não precisa de job agendado |
+| 2026-11-12 | Importação de usuários lida no navegador e enviada em lotes (500 para conferir, 25 para gravar) | Cada requisição cabe no limite de 10 s do Netlify; 5.000 usuários ≈ 11 min com barra de progresso |
+| 2026-11-12 | Senha temporária com bcrypt custo 8 (a escolhida pela pessoa segue com 11) | Senha aleatória de ~69 bits não depende do custo; importar em massa ficou 5× mais rápido |
 | 2026-11-12 | Construir do zero usando os 3 projetos como referência | Evita herdar o monolito Flask e o escopo financeiro do sistema-estoque |
 | 2026-11-12 | Model `Produto` mínimo criado pelo Diogo; o resto é do Eduardo (Issue #3) | Estoque precisava de produto; Eduardo acrescenta campos em migrations novas |
 | 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |
 | 2026-11-12 | Trava de linha (`FOR UPDATE`) + regra pura, em vez de update condicional | Uma regra só, testável, e correta com muitos usuários simultâneos |
 | 2026-11-12 | Testes de integração com Postgres real no CI | Concorrência só se prova com conexões paralelas de verdade |
+| 2026-11-12 | Perfil "Expedição" só com `expedicao.enviar`; a fila da expedição é liberada por essa permissão, sem `solicitacoes.ver` (E9) | Quem é da expedição não enxerga as solicitações de outras etapas |
+| 2026-11-12 | Ninguém (exceto Dev) edita o próprio tipo de acesso (E8) | Com o Administrador gerenciando perfis (#9), evita que um admin derrube o acesso de todos |

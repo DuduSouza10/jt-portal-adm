@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
@@ -35,6 +35,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
         { name: { contains: q, mode: "insensitive" } },
         { login: { contains: q.toLowerCase() } },
         { email: { contains: q, mode: "insensitive" } },
+        { registration: { contains: q } },
       ],
     }),
     ...(perfil && { profileId: perfil }),
@@ -58,16 +59,23 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
         description={`${total} usuário(s)`}
         actions={
           can(me, "usuarios.editar") && (
-            <Button asChild>
-              <Link href="/admin/usuarios/novo">
-                <Plus /> Novo usuário
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="outline">
+                <Link href="/admin/usuarios/importar">
+                  <Upload /> Importar planilha
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/admin/usuarios/novo">
+                  <Plus /> Novo usuário
+                </Link>
+              </Button>
+            </>
           )
         }
       />
       <form className="flex flex-wrap gap-2">
-        <Input name="q" defaultValue={q} placeholder="Buscar por nome, login ou e-mail" className="max-w-xs" />
+        <Input name="q" defaultValue={q} placeholder="Buscar por nome, login, e-mail ou matrícula" className="max-w-xs" />
         <select name="perfil" defaultValue={perfil} className={`${selectClass} max-w-56`}>
           <option value="">Todos os tipos de acesso</option>
           {profiles.map((p) => (

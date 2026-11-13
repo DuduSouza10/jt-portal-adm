@@ -13,6 +13,7 @@ export const userSchema = z.object({
     .transform((v) => v?.toLowerCase() ?? v)
     .pipe(z.email("E-mail inválido.").nullable().optional()),
   phone: optionalText,
+  registration: optionalText, // matrícula (RH)
   profileId: z.string().min(1, "Escolha o tipo de acesso."),
   active: checkbox,
   baseIds: z.array(z.string()).default([]),
