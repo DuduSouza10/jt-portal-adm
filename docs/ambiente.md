@@ -70,6 +70,18 @@ No `npm install`, o Prisma baixa um programa (a engine de migrations) de `binari
 
 Depois, `npm run doctor` deve mostrar "✓ Prisma: engine de migrations".
 
+**Contorno sem liberar a rede** (usado pelo Claude do Eduardo na nuvem; não precisa da engine de migrations):
+
+```bash
+export PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
+export PRISMA_SCHEMA_ENGINE_BINARY=/bin/true
+npm install && npx prisma generate     # gera o cliente; typecheck e app funcionam
+# migrations: aplicar o SQL direto, em ordem
+for f in prisma/migrations/*/migration.sql; do psql "$DATABASE_URL" -f "$f"; done
+```
+
+Com isso `npm run check`, `npm run dev` e os testes de integração rodam. Só `db:migrate` (criar migration nova) continua precisando da engine.
+
 ### Comandos com `VAR=valor comando` não funcionam
 
 Isso é sintaxe de Linux/macOS. No PowerShell: `$env:VAR="valor"; comando`. Os scripts do `package.json`
