@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Camera } from "lucide-react";
+import { useT } from "@/i18n/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -11,14 +12,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
  */
 export function CameraScanButton({
   onResult,
-  title = "Escanear código",
+  title,
   label,
 }: {
   onResult: (text: string) => void;
   title?: string;
   label?: string;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
+  const heading = title ?? t("camera.titulo");
   return (
     <>
       <Button
@@ -26,16 +29,16 @@ export function CameraScanButton({
         variant="outline"
         className={label ? "h-11" : "h-11 w-11 shrink-0 p-0"}
         onClick={() => setOpen(true)}
-        aria-label={title}
-        title={title}
+        aria-label={heading}
+        title={heading}
       >
         <Camera className="size-5" /> {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>Aponte a câmera para o código. A leitura é automática.</DialogDescription>
+            <DialogTitle>{heading}</DialogTitle>
+            <DialogDescription>{t("camera.instrucao")}</DialogDescription>
           </DialogHeader>
           {open && (
             <Scanner
@@ -54,11 +57,14 @@ export function CameraScanButton({
 function Scanner({ onResult }: { onResult: (text: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const done = useRef(false);
+  const t = useT();
   const [error, setError] = useState("");
   const onResultRef = useRef(onResult);
+  const erroRef = useRef(t("camera.erro"));
   useEffect(() => {
     onResultRef.current = onResult;
-  }, [onResult]);
+    erroRef.current = t("camera.erro");
+  }, [onResult, t]);
 
   useEffect(() => {
     let controls: { stop: () => void } | undefined;
@@ -81,7 +87,7 @@ function Scanner({ onResult }: { onResult: (text: string) => void }) {
         );
         if (cancelled || done.current) controls.stop();
       } catch {
-        setError("Não foi possível abrir a câmera. Permita o acesso à câmera no navegador ou digite o código.");
+        setError(erroRef.current);
       }
     })();
     return () => {

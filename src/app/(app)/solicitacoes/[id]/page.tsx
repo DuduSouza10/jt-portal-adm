@@ -5,7 +5,9 @@ import { Check, Printer, Truck } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { ETAPAS, formatNumber, PRIORIDADE_LABEL, STATUS_LABEL, transitionError, type Acao } from "@/modules/solicitacoes/rules";
+import { getT } from "@/i18n/server";
+import { prioridadeText, statusText } from "@/i18n/labels";
+import { ETAPAS, formatNumber, transitionError, type Acao } from "@/modules/solicitacoes/rules";
 import { almoxarifadosAtivos, disponivelPorAlmox, getSolicitacao } from "@/modules/solicitacoes/queries";
 import { allowed, canSee } from "@/modules/solicitacoes/service";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -25,10 +27,14 @@ import {
 } from "../actions";
 import { BotaoForm, QuantidadesForm, TextoForm } from "./forms";
 
-export const metadata: Metadata = { title: "Solicitação" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("solicitacoes.um") };
+}
 
 export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[id]">) {
   const user = await requireUser();
+  const t = await getT();
   const { id } = await props.params;
   const sp = await props.searchParams;
   const s = await getSolicitacao(id);
@@ -47,13 +53,13 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
 
   const etapaAtual = ETAPAS.indexOf(s.status);
   const encerrada = s.status === "RECUSADA" || s.status === "CANCELADA";
-  const voltar = pode("separar") || pode("iniciarSeparacao") ? { href: "/separacao", label: "Separação" } : { href: "/solicitacoes", label: "Solicitações" };
+  const voltar = pode("separar") || pode("iniciarSeparacao") ? { href: "/separacao", label: t("nav.separacao.label") } : { href: "/solicitacoes", label: t("solicitacoes.titulo") };
 
   return (
     <div className="space-y-4">
       <PageHeader
         title={number}
-        description={`${s.base.code} · ${s.base.name} — pedida por ${s.createdBy.name} em ${fmtDateTime(s.createdAt)}`}
+        description={t("solicitacoes.detalhe.pedidaPor", { base: `${s.base.code} · ${s.base.name}`, nome: s.createdBy.name, data: fmtDateTime(s.createdAt, t.locale) })}
         back={voltar}
         actions={
           s.almoxarifado &&
@@ -61,23 +67,23 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           allowed(user, "separar", s) && (
             <Button asChild variant="outline">
               <Link href={`/solicitacoes/${s.id}/guia`} target="_blank">
-                <Printer /> Imprimir guia
+                <Printer /> {t("solicitacoes.detalhe.imprimirGuia")}
               </Link>
             </Button>
           )
         }
       />
       {sp.nova === "1" && (
-        <Alert>
-          <AlertDescription className="font-medium text-foreground">Pedido enviado. Acompanhe o andamento por aqui.</AlertDescription>
+        <Alert className="border-success/40 bg-success/5">
+          <AlertDescription className="font-medium text-foreground">{t("solicitacoes.detalhe.pedidoEnviado")}</AlertDescription>
         </Alert>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={s.status} />
         <PriorityBadge priority={s.priority} />
-        {s.partial && <span className="text-sm text-muted-foreground">Parcial: separado com menos que o aprovado.</span>}
-        {s.almoxarifado && <span className="text-sm text-muted-foreground">Atendida por {s.almoxarifado.code}</span>}
+        {s.partial && <span className="text-sm text-muted-foreground">{t("solicitacoes.detalhe.parcialAviso")}</span>}
+        {s.almoxarifado && <span className="text-sm text-muted-foreground">{t("solicitacoes.detalhe.atendidaPor", { code: s.almoxarifado.code })}</span>}
       </div>
 
       {/* Linha de progresso: o que a base acompanha (E9). */}
@@ -94,7 +100,7 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
               )}
             >
               {i < etapaAtual && <Check className="size-3.5 text-primary" />}
-              {STATUS_LABEL[e]}
+              {statusText(t, e)}
             </li>
           ))}
         </ol>
@@ -102,7 +108,7 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
       {encerrada && s.decisionNote && (
         <Alert variant="destructive">
           <AlertDescription>
-            {STATUS_LABEL[s.status]}: {s.decisionNote}
+            {statusText(t, s.status)}: {s.decisionNote}
           </AlertDescription>
         </Alert>
       )}
@@ -113,10 +119,10 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Insumo</TableHead>
-                  <TableHead className="text-right">Pedido</TableHead>
-                  <TableHead className="text-right">Aprovado</TableHead>
-                  <TableHead className="text-right">Separado</TableHead>
+                  <TableHead>{t("solicitacoes.detalhe.col.insumo")}</TableHead>
+                  <TableHead className="text-right">{t("solicitacoes.detalhe.col.pedido")}</TableHead>
+                  <TableHead className="text-right">{t("solicitacoes.detalhe.col.aprovado")}</TableHead>
+                  <TableHead className="text-right">{t("solicitacoes.detalhe.col.separado")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -137,7 +143,7 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
 
           {s.notes && (
             <p className="text-sm">
-              <span className="font-medium">Observação:</span> {s.notes}
+              <span className="font-medium">{t("solicitacoes.detalhe.observacao")}</span> {s.notes}
             </p>
           )}
 
@@ -145,28 +151,32 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Truck className="size-5" /> Envio
+                  <Truck className="size-5" /> {t("solicitacoes.detalhe.envio")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
-                <p>Enviada em {fmtDateTime(s.shippedAt)}</p>
-                {s.tripId && <p>ID da viagem: <span className="font-mono">{s.tripId}</span></p>}
-                {s.volumes && <p>{s.volumes} volume(s)</p>}
+                <p>{t("solicitacoes.detalhe.enviadaEm", { data: fmtDateTime(s.shippedAt, t.locale) })}</p>
+                {s.tripId && (
+                  <p>
+                    {t("solicitacoes.detalhe.idViagem")} <span className="font-mono">{s.tripId}</span>
+                  </p>
+                )}
+                {s.volumes && <p>{t("solicitacoes.detalhe.volumes", { n: s.volumes })}</p>}
                 {s.shippingNotes && <p>{s.shippingNotes}</p>}
                 {s.shipmentPhotoId && (
                   <a href={`/api/fotos-envio/${s.shipmentPhotoId}`} target="_blank" rel="noreferrer" className="inline-block pt-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/api/fotos-envio/${s.shipmentPhotoId}`} alt="Foto do carregamento" className="h-40 rounded-md border object-cover" />
+                    <img src={`/api/fotos-envio/${s.shipmentPhotoId}`} alt={t("solicitacoes.detalhe.fotoCarregamento")} className="h-40 rounded-md border object-cover" />
                   </a>
                 )}
-                {s.receivedAt && <p className="pt-2 font-medium">Recebida pela base em {fmtDateTime(s.receivedAt)}</p>}
+                {s.receivedAt && <p className="pt-2 font-medium">{t("solicitacoes.detalhe.recebidaEm", { data: fmtDateTime(s.receivedAt, t.locale) })}</p>}
               </CardContent>
             </Card>
           )}
 
           <Card>
             <CardHeader>
-              <CardTitle>Histórico</CardTitle>
+              <CardTitle>{t("solicitacoes.detalhe.historico")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <ol className="space-y-2 text-sm">
@@ -174,18 +184,18 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                   <li key={e.id} className="border-l-2 pl-3">
                     <p>
                       <span className="font-medium">
-                        {e.type === "CRIADA" ? "Pedido criado" : e.type === "COMENTARIO" ? "Comentário" : STATUS_LABEL[e.toStatus!]}
+                        {e.type === "CRIADA" ? t("solicitacoes.detalhe.criada") : e.type === "COMENTARIO" ? t("solicitacoes.detalhe.comentario") : statusText(t, e.toStatus!)}
                       </span>
                       <span className="text-muted-foreground">
                         {" "}
-                        · {e.actor?.name ?? "sistema"} · {fmtDateTime(e.createdAt)}
+                        · {e.actor?.name ?? t("comum.sistema")} · {fmtDateTime(e.createdAt, t.locale)}
                       </span>
                     </p>
                     {e.note && <p className="text-muted-foreground">{e.note}</p>}
                   </li>
                 ))}
               </ol>
-              <TextoForm id={s.id} action={comentarAction} name="text" label="Comentar" submitLabel="Comentar" required variant="outline" />
+              <TextoForm id={s.id} action={comentarAction} name="text" label={t("solicitacoes.detalhe.comentar")} submitLabel={t("solicitacoes.detalhe.comentar")} required variant="outline" />
             </CardContent>
           </Card>
         </div>
@@ -194,20 +204,20 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           {pode("aprovar") && (
             <Card>
               <CardHeader>
-                <CardTitle>Aprovar</CardTitle>
+                <CardTitle>{t("solicitacoes.detalhe.aprovar")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <QuantidadesForm
                   id={s.id}
                   action={aprovarAction}
-                  submitLabel="Aprovar e reservar estoque"
-                  colLabel="Aprovar"
+                  submitLabel={t("solicitacoes.detalhe.aprovarReservar")}
+                  colLabel={t("solicitacoes.detalhe.aprovar")}
                   itens={s.itens.map((i) => ({ produtoId: i.produtoId, code: i.produto.code, name: i.produto.name, unit: i.produto.unit, max: i.requested }))}
                   almoxarifados={almoxOrdenados}
                   almoxDefault={almoxDefault}
                   disponivel={disponivel}
                 />
-                <TextoForm id={s.id} action={recusarAction} name="reason" label="Ou recusar (motivo)" submitLabel="Recusar" required variant="destructive" />
+                <TextoForm id={s.id} action={recusarAction} name="reason" label={t("solicitacoes.detalhe.ouRecusar")} submitLabel={t("solicitacoes.detalhe.recusar")} required variant="destructive" />
               </CardContent>
             </Card>
           )}
@@ -215,10 +225,10 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           {pode("iniciarSeparacao") && (
             <Card>
               <CardHeader>
-                <CardTitle>Separação</CardTitle>
+                <CardTitle>{t("solicitacoes.detalhe.separacao")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <BotaoForm id={s.id} action={iniciarSeparacaoAction} label="Começar a separar" />
+                <BotaoForm id={s.id} action={iniciarSeparacaoAction} label={t("solicitacoes.detalhe.comecarSeparar")} />
               </CardContent>
             </Card>
           )}
@@ -226,14 +236,14 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           {pode("separar") && (
             <Card>
               <CardHeader>
-                <CardTitle>Concluir separação</CardTitle>
+                <CardTitle>{t("solicitacoes.detalhe.concluirSeparacao")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <QuantidadesForm
                   id={s.id}
                   action={separarAction}
-                  submitLabel="Separado: mandar para a expedição"
-                  colLabel="Separado"
+                  submitLabel={t("solicitacoes.detalhe.separadoEnviar")}
+                  colLabel={t("solicitacoes.detalhe.col.separado")}
                   itens={itensAprovados.map((i) => ({ produtoId: i.produtoId, code: i.produto.code, name: i.produto.name, unit: i.produto.unit, max: i.approved! }))}
                 />
               </CardContent>
@@ -243,12 +253,12 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           {pode("enviar") && (
             <Card>
               <CardHeader>
-                <CardTitle>Expedição</CardTitle>
+                <CardTitle>{t("solicitacoes.detalhe.expedicao")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Button asChild>
                   <Link href={`/expedicao?pedido=${s.id}`}>
-                    <Truck /> Confirmar envio
+                    <Truck /> {t("solicitacoes.detalhe.confirmarEnvio")}
                   </Link>
                 </Button>
               </CardContent>
@@ -258,16 +268,16 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           {pode("receber") && (
             <Card>
               <CardHeader>
-                <CardTitle>Chegou?</CardTitle>
+                <CardTitle>{t("solicitacoes.detalhe.chegou")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <TextoForm
                   id={s.id}
                   action={receberAction}
                   name="text"
-                  label="Observação (opcional)"
-                  placeholder="Ex.: faltou 1 caixa"
-                  submitLabel="Confirmar recebimento"
+                  label={t("solicitacoes.detalhe.observacaoOpc")}
+                  placeholder={t("solicitacoes.detalhe.recebimentoPh")}
+                  submitLabel={t("solicitacoes.detalhe.confirmarRecebimento")}
                 />
               </CardContent>
             </Card>
@@ -276,15 +286,15 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           {pode("cancelar") && (
             <Card>
               <CardHeader>
-                <CardTitle>Cancelar pedido</CardTitle>
+                <CardTitle>{t("solicitacoes.detalhe.cancelarPedido")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <TextoForm id={s.id} action={cancelarAction} name="reason" label="Motivo" submitLabel="Cancelar pedido" required variant="destructive" />
+                <TextoForm id={s.id} action={cancelarAction} name="reason" label={t("solicitacoes.detalhe.motivo")} submitLabel={t("solicitacoes.detalhe.cancelarPedido")} required variant="destructive" />
               </CardContent>
             </Card>
           )}
 
-          <p className="text-xs text-muted-foreground">Prioridade: {PRIORIDADE_LABEL[s.priority]}</p>
+          <p className="text-xs text-muted-foreground">{t("solicitacoes.detalhe.prioridadeLinha", { p: prioridadeText(t, s.priority) })}</p>
         </div>
       </div>
     </div>

@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
+import { getT } from "@/i18n/server";
 import { formatNumber } from "@/modules/solicitacoes/rules";
 import { filaExpedicao } from "@/modules/solicitacoes/queries";
 import { PageHeader } from "@/components/page-header";
 import { ShippingBoard, type ReadyOrder, type ShippedOrder } from "./shipping-board";
 
-export const metadata: Metadata = { title: "Expedição" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("nav.expedicao.label") };
+}
 
 /** Expedição (vinda do sistema antigo): só precisa de expedicao.enviar (perfil Expedição, regra E9). */
 export default async function ExpedicaoPage(props: PageProps<"/expedicao">) {
   const user = await requirePermission("expedicao.enviar");
+  const t = await getT();
   const { pedido } = await props.searchParams;
   const { ready, shipped } = await filaExpedicao(user);
 
@@ -35,7 +40,7 @@ export default async function ExpedicaoPage(props: PageProps<"/expedicao">) {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Expedição" description="Pedidos já separados pelo almoxarifado. Carregue no caminhão, bipe a guia e confirme o envio." />
+      <PageHeader title={t("nav.expedicao.label")} description={t("solicitacoes.expedicao.descricao")} />
       <div className="max-w-4xl">
         <ShippingBoard ready={readyRows} shipped={shippedRows} preselect={typeof pedido === "string" ? pedido : undefined} />
       </div>

@@ -12,6 +12,7 @@ const NAV_KEY: Record<string, keyof Messages["nav"]> = {
   "/solicitacoes/nova": "solicitarInsumos",
   "/solicitacoes": "solicitacoes",
   "/expedicao": "expedicao",
+  "/separacao": "separacao",
   "/produtos": "produtos",
   "/estoque": "estoque",
   "/admin/usuarios": "usuarios",
@@ -50,4 +51,13 @@ export function profileText(t: Translator, p: { key: string; name: string; descr
         ? (t.maybe(`perfisPadrao.${p.key}.descricao`) ?? original.descricao)
         : (p.description ?? ""),
   };
+}
+
+/** Nome do status de uma solicitação no idioma do usuário (E9: o que a base acompanha). */
+export function statusText(t: Translator, status: string) {
+  return t.maybe(`solicitacoes.status.${status}`) ?? status;
+}
+
+export function prioridadeText(t: Translator, priority: string) {
+  return t.maybe(`solicitacoes.prioridade.${priority}`) ?? priority;
 }
