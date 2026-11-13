@@ -113,6 +113,9 @@ export const zhCN: Messages = {
     entrando: "登录中...",
     destaque: "物料、库存与发货，一站管理。",
     detalhe: "为 J&T 极兔速递所有网点提交、审批、拣货并跟踪物料发货。",
+    mostrarSenha: "显示密码",
+    ocultarSenha: "隐藏密码",
+    capsLock: "大写锁定已开启。",
     rodape: "仅限授权员工访问。",
   },
   senha: {

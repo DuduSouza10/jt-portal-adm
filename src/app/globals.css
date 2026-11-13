@@ -171,3 +171,37 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Login: rotas do mapa (ver src/components/brasil-mapa.tsx). */
+@keyframes rota-desenhar {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes rota-aparecer {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes rota-halo {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.9); opacity: 0; }
+}
+.rota-arco {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: rota-desenhar 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.rota-no, .rota-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.rota-no {
+  opacity: 0;
+  animation: rota-aparecer 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.rota-halo {
+  animation: rota-halo 3.2s ease-out 1.6s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rota-arco { stroke-dashoffset: 0; animation: none; }
+  .rota-no { opacity: 1; animation: none; }
+  .rota-halo, .rota-pacote { display: none; }
+}

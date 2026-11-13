@@ -177,6 +177,13 @@ Todo gráfico (barra, coluna, ponto, linha) mostra os detalhes num cartão que s
 envolva a marca com `<ChartTooltip title rows note>` (`src/components/chart-tooltip.tsx`).
 Os textos do cartão também vêm do dicionário.
 
+### Tela de login
+
+Painel vermelho J&T com o Brasil em pontos (`src/components/brasil-mapa.tsx`): as rotas se desenham a partir do almoxarifado
+e duas encomendas percorrem as linhas. É a única animação da tela; com "reduzir movimento" fica tudo parado e já desenhado.
+Os pontos vêm de `src/components/brasil-mapa-dados.ts`, **gerado** por `node scripts/gen-mapa-brasil.mjs` (não editar à mão).
+É só ilustração, sem dado real: nada de números ou nomes de bases na tela de login, que é pública.
+
 ## Escala (≈ 5.000 usuários)
 
 - Toda lista é **paginada** no banco (50 por página) e filtrada pelo alcance do usuário. Nada de `findMany` sem `take` em tabela que cresce.
@@ -211,3 +218,4 @@ Os textos do cartão também vêm do dicionário.
 | 2026-11-12 | Idiomas pt-BR e zh-CN com dicionário tipado próprio, sem biblioteca de i18n | Dois idiomas só; o TypeScript acusa tradução faltando e não muda as rotas |
 | 2026-11-12 | Mensagens do servidor traduzidas por catálogo na tela, não nos services | Os módulos seguem lançando DomainError em português; um teste garante que toda mensagem tem tradução |
 | 2026-11-12 | Tema no `localStorage` + script no `<head>`; idioma em cookie | Tema sem piscar e sem ida ao servidor; idioma precisa ser conhecido no servidor para traduzir a página |
+| 2026-11-13 | Login com mapa de pontos gerado por script, em vez de imagem ou biblioteca de mapas | Um único `path` (≈19 KB), segue o tema claro/escuro por `currentColor` e não depende de serviço externo |

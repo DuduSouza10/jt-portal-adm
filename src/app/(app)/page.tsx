@@ -99,10 +99,10 @@ async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
     db.stockBalance.count({ where: { baseId: { in: baseIds }, quantity: { gt: 0 } } }),
     listSaldos({ baseIds, abaixoMinimo: true, page: 1 }),
     db.stockMovement.count({ where: { baseId: { in: baseIds }, createdAt: { gte: startOfDay(TZDate.tz(TZ)) } } }),
+    // Só os números, de todos os saldos com mínimo (sem limite): o "mais crítico" é escolhido abaixo, com nomes só dos 5.
     db.stockBalance.findMany({
       where: { baseId: { in: baseIds }, minimum: { gt: 0 } },
-      include: { produto: { select: { code: true, name: true } }, base: { select: { code: true } } },
-      take: 200,
+      select: { baseId: true, produtoId: true, quantity: true, reserved: true, minimum: true },
     }),
     db.stockMovement.findMany({
       where: { baseId: { in: baseIds } },
@@ -112,11 +112,22 @@ async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
     }),
   ]);
   const n = (v: number) => v.toLocaleString(t.locale);
-  // Os 5 mais perto (ou abaixo) do mínimo.
-  const top = criticos
+  // Os 5 mais perto (ou abaixo) do mínimo, de todos os saldos; só esses 5 buscam nome do produto e código da base.
+  const piores = criticos
     .map((c) => ({ ...c, disp: c.quantity - c.reserved, ratio: (c.quantity - c.reserved) / c.minimum }))
     .sort((a, b) => a.ratio - b.ratio)
     .slice(0, 5);
+  const [produtos, bases] = await Promise.all([
+    db.produto.findMany({ where: { id: { in: piores.map((c) => c.produtoId) } }, select: { id: true, code: true, name: true } }),
+    db.base.findMany({ where: { id: { in: piores.map((c) => c.baseId) } }, select: { id: true, code: true } }),
+  ]);
+  const produtoPorId = new Map(produtos.map((p) => [p.id, p]));
+  const basePorId = new Map(bases.map((b) => [b.id, b]));
+  const top = piores.flatMap((c) => {
+    const produto = produtoPorId.get(c.produtoId);
+    const base = basePorId.get(c.baseId);
+    return produto && base ? [{ ...c, produto, base }] : [];
+  });
 
   return (
     <>

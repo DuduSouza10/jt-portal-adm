@@ -110,6 +110,9 @@ export const ptBR = {
     entrando: "Entrando...",
     destaque: "Insumos, estoque e expedição em um só lugar.",
     detalhe: "Solicite, aprove, separe e acompanhe os envios de todas as bases da J&T Express.",
+    mostrarSenha: "Mostrar senha",
+    ocultarSenha: "Ocultar senha",
+    capsLock: "Caps Lock está ligado.",
     rodape: "Acesso restrito a colaboradores autorizados.",
   },
   senha: {

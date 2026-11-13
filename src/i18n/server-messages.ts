@@ -6,7 +6,7 @@ import type { Locale } from "./config";
  * um DomainError com o texto em português, sem saber de idioma.
  *
  * Cada linha é [texto em português, texto em chinês]. `{x}` casa com qualquer valor e é repetido
- * na tradução. O teste server-messages.test.ts falha se aparecer DomainError ou mensagem de
+ * na tradução. O teste i18n.test.ts falha se aparecer DomainError ou mensagem de
  * validação nova sem tradução aqui.
  *
  * Mensagens com prefixo ("LUVA-M Luva de látex M: Saldo disponível insuficiente...") são
