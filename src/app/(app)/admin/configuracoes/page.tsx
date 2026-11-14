@@ -99,6 +99,13 @@ export default async function ConfiguracoesPage() {
             <Field label={t("configuracoes.cicloMeses")} htmlFor="cicloMeses" hint={t("configuracoes.cicloMesesAjuda")}>
               <Input id="cicloMeses" name="cicloMeses" type="number" min={1} max={24} defaultValue={ped.cicloMeses} className="max-w-32" />
             </Field>
+            <div className="space-y-1 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="limitesAtivos" defaultChecked={ped.limitesAtivos} className="size-4" />
+                {t("configuracoes.limitesAtivos")}
+              </label>
+              <p className="text-xs text-muted-foreground">{t("configuracoes.limitesAjuda")}</p>
+            </div>
           </ActionForm>
         </CardContent>
       </Card>

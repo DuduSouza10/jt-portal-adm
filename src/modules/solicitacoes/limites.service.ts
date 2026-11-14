@@ -62,6 +62,7 @@ export async function checkBeforeCreate(
     const c = cfg.cicloAtivo ? await activeCycle(tx, base.id, now) : null;
     if (c) throw new DomainError(`Esta base está no ciclo de ${cfg.cicloMeses} meses e poderá fazer uma nova solicitação após ${fmtDateTime(c.blockedUntil)}.`);
   }
+  if (!cfg.limitesAtivos) return;
   const blocks = new Map((await tx.bloqueioProduto.findMany({ where: { baseId: base.id, produtoId: { in: produtos.map((p) => p.id) } } })).map((b) => [b.produtoId, b]));
   for (const it of itens) {
     const p = produtos.find((x) => x.id === it.produtoId)!;
@@ -78,7 +79,7 @@ export async function checkBeforeCreate(
 /** Depois de criar: bloqueia o produto que atingiu o limite e começa o ciclo da base. */
 export async function afterCreate(tx: Tx, user: CurrentUser, base: Base, solicitacaoId: string, produtos: Produto[], cfg: PedidoSettings, now = new Date()) {
   if (isExempt(user)) return;
-  for (const p of produtos) {
+  for (const p of cfg.limitesAtivos ? produtos : []) {
     const limit = limitFor(p, base.type);
     if (limit == null || limit <= 0) continue;
     const prev = await tx.bloqueioProduto.findUnique({ where: { baseId_produtoId: { baseId: base.id, produtoId: p.id } } });

@@ -786,6 +786,8 @@ export const zhCN: Messages = {
     },
   },
   configuracoes: {
+    limitesAtivos: "开启产品限额",
+    limitesAjuda: "关闭后，所有产品都不受限额和锁定（已设置的限额会保留）。只取消某个产品的限额：把它的限额留空；只放开某个网点：使用「申领单 → 周期与限制」。",
     pedidos: "网点周期",
     pedidosAjuda: "沿用 Eduardo 门户的规则：网点申领后，需等周期结束（从发货开始计算）才能再次申领。加盟商没有周期。",
     cicloAtivo: "开启周期",
@@ -810,6 +812,7 @@ export const zhCN: Messages = {
     comoContaAjuda: "审批：从申领到审批。拣货：从审批到拣货完成。发货：从拣货完成到发出。送达（从发出到网点确认）仅供参考，按自然小时计算。",
   },
   ciclos: {
+    limitesDesligados: "产品限额已在「管理 → 系统设置」中关闭：不会锁定任何产品。",
     titulo: "周期与限制",
     descricao: "处于 {meses} 个月周期内的网点，以及因限额被锁定的产品（沿用 Eduardo 门户的规则）。",
     desligado: "网点周期已在「管理 → 系统设置」中关闭。产品限额仍然有效。",

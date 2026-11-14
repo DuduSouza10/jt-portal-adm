@@ -125,3 +125,17 @@ describe("S1 desligado em Configurações", () => {
     }
   });
 });
+
+describe("S3 desligado em Configurações", () => {
+  it("com os limites desligados ninguém é barrado nem bloqueado; religando, volta a valer", async () => {
+    await db.bloqueioProduto.deleteMany({ where: { baseId: franquia } });
+    await db.setting.upsert({ where: { key: "pedidos" }, update: { value: { cicloAtivo: true, cicloMeses: 3, limitesAtivos: false } }, create: { key: "pedidos", value: { cicloAtivo: true, cicloMeses: 3, limitesAtivos: false } } });
+    try {
+      await pedir(franquia, luva, 50, null);
+      expect(await db.bloqueioProduto.count({ where: { baseId: franquia } })).toBe(0);
+    } finally {
+      await db.setting.deleteMany({ where: { key: "pedidos" } });
+    }
+    await expect(pedir(franquia, luva, 1, null)).rejects.toThrow(/limite/);
+  });
+});

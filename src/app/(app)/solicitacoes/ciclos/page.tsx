@@ -39,7 +39,7 @@ export default async function CiclosPage() {
     holdActive({ ...x, sourceStatus: x.sourceSolicitacaoId ? (origens.get(x.sourceSolicitacaoId)?.status ?? "CANCELADA") : null }, now);
   const origem = (id: string | null) => (id && origens.get(id) && COUNTED.includes(origens.get(id)!.status) ? formatNumber(origens.get(id)!.number) : "—");
   const ciclosAtivos = cfg.cicloAtivo ? ciclos.filter(valendo) : [];
-  const bloqueiosAtivos = bloqueios.filter(valendo);
+  const bloqueiosAtivos = cfg.limitesAtivos ? bloqueios.filter(valendo) : [];
 
   return (
     <div className="space-y-4">
@@ -47,6 +47,11 @@ export default async function CiclosPage() {
       {!cfg.cicloAtivo && (
         <Alert>
           <AlertDescription className="text-foreground">{t("ciclos.desligado")}</AlertDescription>
+        </Alert>
+      )}
+      {!cfg.limitesAtivos && (
+        <Alert>
+          <AlertDescription className="text-foreground">{t("ciclos.limitesDesligados")}</AlertDescription>
         </Alert>
       )}
 

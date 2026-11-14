@@ -40,7 +40,8 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     name: "Gestor regional",
     description: "Acompanha e aprova as solicitações das bases da sua regional.",
     scope: "REGIONAL",
-    permissions: ["estrutura.ver", "produtos.ver", "solicitacoes.ver", "solicitacoes.aprovar", "estoque.ver", "relatorios.ver"],
+    // produtos.precos: vê os valores (R$) nos relatórios (decisão do Diogo, 2026-11-13; igual ao protótipo).
+    permissions: ["estrutura.ver", "produtos.ver", "produtos.precos", "solicitacoes.ver", "solicitacoes.aprovar", "estoque.ver", "relatorios.ver"],
   },
   {
     key: "almoxarifado",

@@ -783,6 +783,8 @@ export const ptBR = {
     },
   },
   configuracoes: {
+    limitesAtivos: "Limites por produto ligados",
+    limitesAjuda: "Desligado, nenhum produto tem limite nem bloqueio (os limites cadastrados ficam guardados). Para tirar o limite de um produto só, deixe o limite dele vazio; para soltar uma base, use Solicitações → Ciclos e bloqueios.",
     pedidos: "Ciclo das bases",
     pedidosAjuda: "Regra do portal do Eduardo: depois de pedir, a base só faz um novo pedido quando o ciclo acabar (conta a partir do envio). Franquia não tem ciclo.",
     cicloAtivo: "Ciclo ligado",
@@ -807,6 +809,7 @@ export const ptBR = {
     comoContaAjuda: "Aprovação: do pedido até aprovar. Separação: da aprovação até separar. Expedição: de separado até enviar. A entrega (do envio até a base confirmar) aparece só para informação, em horas corridas.",
   },
   ciclos: {
+    limitesDesligados: "Os limites por produto estão desligados em Administração → Configurações: nenhum produto é bloqueado.",
     titulo: "Ciclos e bloqueios",
     descricao: "Bases no ciclo de {meses} meses e produtos bloqueados por limite (regras do portal do Eduardo).",
     desligado: "O ciclo das bases está desligado em Administração → Configurações. Os limites por produto continuam valendo.",

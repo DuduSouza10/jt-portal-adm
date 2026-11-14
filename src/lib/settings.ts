@@ -47,9 +47,11 @@ export const pedidoSettingsSchema = z.object({
   /** Ciclo da base ligado? (decisão do Eduardo: manter, com opção de tirar) */
   cicloAtivo: z.boolean(),
   cicloMeses: z.coerce.number().int("Use um número inteiro de meses.").min(1, "Ciclo mínimo: 1 mês.").max(24, "Ciclo máximo: 24 meses."),
+  /** Limites por produto (S3) ligados? (decisão do Diogo: deixar a opção de tirar). Ausente = ligado. */
+  limitesAtivos: z.boolean().default(true),
 });
 export type PedidoSettings = z.infer<typeof pedidoSettingsSchema>;
-export const DEFAULT_PEDIDO_SETTINGS: PedidoSettings = { cicloAtivo: true, cicloMeses: 3 };
+export const DEFAULT_PEDIDO_SETTINGS: PedidoSettings = { cicloAtivo: true, cicloMeses: 3, limitesAtivos: true };
 const PEDIDO_KEY = "pedidos";
 
 export async function getPedidoSettings(): Promise<PedidoSettings> {
@@ -68,7 +70,7 @@ export async function savePedidoSettings(actor: CurrentUser, value: PedidoSettin
         action: "configuracao.pedidos",
         entity: "Setting",
         entityId: PEDIDO_KEY,
-        summary: value.cicloAtivo ? `Ciclo da base ligado (${value.cicloMeses} meses)` : "Ciclo da base desligado",
+        summary: `${value.cicloAtivo ? `Ciclo da base ligado (${value.cicloMeses} meses)` : "Ciclo da base desligado"} · ${value.limitesAtivos ? "limites por produto ligados" : "limites por produto desligados"}`,
         data: { de: (before?.value ?? DEFAULT_PEDIDO_SETTINGS) as object, para: value },
       },
       tx,
