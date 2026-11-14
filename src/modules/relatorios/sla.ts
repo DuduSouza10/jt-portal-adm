@@ -204,3 +204,32 @@ export function spendByMonth(lines: SpendLine[], months: string[]) {
 
 /** Variação % em relação ao período anterior (null quando não há base de comparação). */
 export const deltaPct = (cur: number, prev: number) => (prev ? ((cur - prev) / prev) * 100 : null);
+
+/** Chave "AAAA-MM-DD" de uma data no fuso de São Paulo. */
+export const dayKeyOf = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+
+/**
+ * Todos os dias do mês "AAAA-MM", com a quantidade de solicitações criadas em cada um (inclusive os zerados).
+ * Dias que ainda não chegaram (mês corrente) vêm com `future: true`.
+ */
+export function countByDay(dates: Date[], monthKey: string, now: Date) {
+  const [y, m] = monthKey.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const today = dayKeyOf(now);
+  const by = new Map<string, number>();
+  for (const d of dates) by.set(dayKeyOf(d), (by.get(dayKeyOf(d)) ?? 0) + 1);
+  const out: { key: string; day: number; count: number; future: boolean }[] = [];
+  for (let day = 1; day <= last; day++) {
+    const key = `${monthKey}-${String(day).padStart(2, "0")}`;
+    out.push({ key, day, count: by.get(key) ?? 0, future: key > today });
+  }
+  return out;
+}
+
+/** Duração legível: minutos abaixo de 1 h, horas até 2 dias, dias acima (`dias`: horas corridas). */
+export function durationParts(hours: number | null, { dias = false } = {}): { value: number; unit: "min" | "h" | "d" } | null {
+  if (hours == null) return null;
+  if (hours < 1) return { value: Math.round(hours * 60), unit: "min" };
+  if (!dias || hours < 48) return { value: Math.round(hours * 10) / 10, unit: "h" };
+  return { value: Math.round((hours / 24) * 10) / 10, unit: "d" };
+}

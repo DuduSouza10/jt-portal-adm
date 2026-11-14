@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BUSINESS_HOURS } from "@/lib/sla";
-import { deltaPct, lastMonths, lateNow, monthRange, spendBy, spendByMonth, stageTime, summarize, summarizeBy, type SlaOrder, type Targets } from "./sla";
+import { countByDay, deltaPct, durationParts, lastMonths, lateNow, monthRange, spendBy, spendByMonth, stageTime, summarize, summarizeBy, type SlaOrder, type Targets } from "./sla";
 
 const bh = DEFAULT_BUSINESS_HOURS; // seg–sex 08:00–18:00
 const targets: Targets = { aprovacao: { normal: 8, urgente: 2 }, separacao: { normal: 24, urgente: 4 }, expedicao: { normal: 8, urgente: 2 } };
@@ -100,5 +100,24 @@ describe("valores", () => {
     expect(r.start.toISOString()).toBe("2026-11-01T03:00:00.000Z");
     expect(r.end.toISOString()).toBe("2026-12-01T03:00:00.000Z");
     expect(monthRange("lixo", sp("2026-02-10T10:00:00")).key).toBe("2026-02");
+  });
+});
+
+describe("gráficos", () => {
+  it("todos os dias do mês, com os zerados; dias que não chegaram ficam marcados", () => {
+    const now = sp("2026-11-05T10:00:00");
+    const r = countByDay([sp("2026-11-02T09:00:00"), sp("2026-11-02T17:00:00"), sp("2026-11-04T23:30:00")], "2026-11", now);
+    expect(r).toHaveLength(30);
+    expect(r.slice(0, 5).map((x) => x.count)).toEqual([0, 2, 0, 1, 0]);
+    expect(r[4].future).toBe(false);
+    expect(r[5].future).toBe(true);
+    expect(countByDay([], "2026-10", now)).toHaveLength(31);
+  });
+  it("duração legível", () => {
+    expect(durationParts(0.25)).toEqual({ value: 15, unit: "min" });
+    expect(durationParts(3.44)).toEqual({ value: 3.4, unit: "h" });
+    expect(durationParts(60)).toEqual({ value: 60, unit: "h" });
+    expect(durationParts(60, { dias: true })).toEqual({ value: 2.5, unit: "d" });
+    expect(durationParts(null)).toBeNull();
   });
 });
