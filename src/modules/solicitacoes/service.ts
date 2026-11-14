@@ -9,6 +9,8 @@ import { baixarReserva, liberarReserva, reservar, STOCK_TX } from "@/modules/est
 import { formatNumber, planQuantities, TO, transitionError, type Acao } from "./rules";
 import type { AprovarInput, CriarInput, EnvioInput, SepararInput } from "./schemas";
 import { notificar } from "./notify";
+import * as limites from "./limites.service";
+import { getPedidoSettings } from "@/lib/settings";
 
 type Tx = Prisma.TransactionClient;
 type BaseRef = { id: string; regionalId: string };
@@ -101,9 +103,11 @@ function plan(linhas: Parameters<typeof planQuantities>[0], informado: Record<st
 // ------------------------------------------------------------------ Base
 
 export async function criar(user: CurrentUser, input: CriarInput) {
+  const cfg = await getPedidoSettings();
   return db.$transaction(async (tx) => {
     const base = await tx.base.findUnique({ where: { id: input.baseId } });
     if (!base || !canAccessBase(user, base)) throw new DomainError("Base não encontrada.");
+    await limites.lockBase(tx, base.id);
     if (!base.active) throw new DomainError(`A base ${base.code} está inativa.`);
     if (base.type === "ALMOXARIFADO") throw new DomainError("Almoxarifado não faz pedido de insumos.");
 
@@ -113,6 +117,8 @@ export async function criar(user: CurrentUser, input: CriarInput) {
     if (produtos.length !== ids.length) throw new DomainError("Produto não encontrado.");
     const inativo = produtos.find((p) => !p.active);
     if (inativo) throw new DomainError(`${inativo.code} não está mais disponível para pedido.`);
+    // S1–S3 (regras do portal do Eduardo): ciclo de 3 meses, nº de pessoas e limite por produto.
+    await limites.checkBeforeCreate(tx, user, base, input.itens, produtos, input.peopleCount, cfg);
 
     const s = await tx.solicitacao.create({
       data: {
@@ -120,6 +126,7 @@ export async function criar(user: CurrentUser, input: CriarInput) {
         createdById: user.id,
         priority: input.priority,
         notes: input.notes,
+        peopleCount: input.peopleCount ?? null,
         itens: { create: input.itens.map((i) => ({ produtoId: i.produtoId, requested: i.quantity })) },
         eventos: { create: { type: "CRIADA", toStatus: "PENDENTE", actorId: user.id, note: input.notes } },
       },
@@ -134,6 +141,7 @@ export async function criar(user: CurrentUser, input: CriarInput) {
       },
       tx,
     );
+    await limites.afterCreate(tx, user, base, s.id, produtos, cfg);
     await notificar(tx, s.id, { tipo: "criada" }, user);
     return s;
   });
@@ -150,6 +158,7 @@ export async function cancelar(user: CurrentUser, id: string, reason: string) {
   return db.$transaction(async (tx) => {
     const s = await load(tx, user, id, "cancelar");
     await transition(tx, user, s, "cancelar", { decisionNote: reason }, reason);
+    await limites.onDropped(tx, s.id, user.id);
     if (s.status === "APROVADA") await liberarReserva(tx, { solicitacaoId: s.id, actorId: user.id });
   }, STOCK_TX);
 }
@@ -199,6 +208,7 @@ export async function recusar(user: CurrentUser, id: string, reason: string) {
   return db.$transaction(async (tx) => {
     const s = await load(tx, user, id, "recusar");
     await transition(tx, user, s, "recusar", { decisionNote: reason }, reason);
+    await limites.onDropped(tx, s.id, user.id);
   });
 }
 
@@ -253,13 +263,15 @@ async function enviarUm(user: CurrentUser, id: string, data: EnvioInput & { phot
     const info = [`Viagem: ${data.tripId}`, data.volumesDeste && `${data.volumesDeste} volume(s)`, data.shippingNotes]
       .filter(Boolean)
       .join(" · ");
+    const shippedAt = new Date();
+    await limites.onShipped(tx, s.id, s.baseId, shippedAt);
     await transition(
       tx,
       user,
       s,
       "enviar",
       {
-        shippedAt: new Date(),
+        shippedAt,
         tripId: data.tripId,
         shipmentPhotoId: data.photoId,
         volumes: data.volumesDeste ?? null,

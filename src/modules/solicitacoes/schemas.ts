@@ -21,6 +21,11 @@ export const criarSchema = z.object({
   baseId: z.string().min(1, "Escolha a base."),
   priority: z.enum(["NORMAL", "URGENTE"]).default("NORMAL"),
   notes: optionalText,
+  /** S2: pessoas na base (obrigatório para base; checado no service). */
+  peopleCount: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number({ error: "Informe um número de pessoas válido." }).int("Informe um número de pessoas válido.").min(1, "Informe um número de pessoas válido.").max(99_999, "Informe um número de pessoas válido.").optional(),
+  ),
   itens: json(
     z
       .array(z.object({ produtoId: z.string().min(1, "Escolha o produto."), quantity: qty.min(1, "Quantidade mínima: 1.") }))

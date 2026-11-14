@@ -88,6 +88,7 @@ export const PERMISSION_GROUPS = [
       { key: "solicitacoes.ver", label: "Ver solicitações", description: "Dentro do alcance do perfil." },
       { key: "solicitacoes.aprovar", label: "Aprovar, recusar e editar itens" },
       { key: "solicitacoes.excluir", label: "Excluir solicitações" },
+      { key: "solicitacoes.liberar", label: "Liberar ciclo de 3 meses e produtos bloqueados", description: "Tela Solicitações → Ciclos e bloqueios." },
     ],
   },
   {

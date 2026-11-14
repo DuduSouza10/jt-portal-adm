@@ -2,7 +2,7 @@
  * Avisos (sino + fila do Feishu) contra o banco (npm run test:integration).
  * Usuários com os perfis padrão, cada um com o seu alcance: confere quem recebe cada aviso e quem NÃO recebe.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/session";
 import { lancarEntrada } from "@/modules/estoque/service";
@@ -68,6 +68,11 @@ beforeAll(async () => {
   await lancarEntrada(u.dev, { baseId: almox, document: "NF", reason: null, itens: [{ produtoId: produto, quantity: 50 }] });
 });
 
+// O ciclo de 3 meses (S1) barraria o segundo pedido da mesma base: cada teste começa sem ciclo.
+beforeEach(async () => {
+  await db.cicloBase.deleteMany({ where: { base: { code: { startsWith: tag } } } });
+});
+
 afterAll(async () => {
   delete process.env.FEISHU_WEBHOOK_URL;
   delete process.env.FEISHU_SHIPPING_WEBHOOK_URL;
@@ -93,7 +98,7 @@ describe("avisos das solicitações", () => {
   let id = "";
 
   it("nova: só quem aprova aquela base (não o de outra regional, nem o Dev, nem quem pediu)", async () => {
-    id = (await criar(u.base, { baseId: base, priority: "URGENTE", notes: null, itens: [{ produtoId: produto, quantity: 5 }] })).id;
+    id = (await criar(u.base, { baseId: base, priority: "URGENTE", peopleCount: 5, notes: null, itens: [{ produtoId: produto, quantity: 5 }] })).id;
     expect(await notifs("gestor")).toEqual([expect.stringMatching(/URGENTE · Nova solicitação SOL-/)]);
     for (const nome of ["gestorfora", "dev", "base", "almox", "expedicao"]) expect(await notifs(nome), nome).toEqual([]);
     const fila = await db.feishuOutbox.findMany({ where: { createdAt: { gte: started }, event: { startsWith: "solicitacao.criada" } } });

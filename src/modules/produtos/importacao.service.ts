@@ -14,15 +14,15 @@ import type { ProdutoImportRow } from "./importacao";
 export const VALIDATE_BATCH = 500;
 export const APPLY_BATCH = 100;
 
-const FIELDS = ["name", "unit", "active"] as const;
-const LABEL = { name: "nome", unit: "unidade", active: "ativo" } as const;
+const FIELDS = ["name", "unit", "active", "limitBase", "limitFranquia", "limitBlockDays"] as const;
+const LABEL = { name: "nome", unit: "unidade", active: "ativo", limitBase: "limite base", limitFranquia: "limite franquia", limitBlockDays: "dias de bloqueio" } as const;
 
-type Existing = { id: string; code: string; name: string; unit: string; active: boolean };
+type Existing = { id: string; code: string; name: string; unit: string; active: boolean; limitBase: number | null; limitFranquia: number | null; limitBlockDays: number };
 
 function plan(r: ProdutoImportRow, existing: Existing | undefined): ImportResult {
   const base = { line: r.line, key: r.code, label: `${r.code} ${r.name}` };
   if (!existing) return { ...base, action: "criar", message: `Novo produto (${r.unit})` };
-  const changes = FIELDS.filter((f) => existing[f] !== r[f]).map((f) =>
+  const changes = FIELDS.filter((f) => r[f] !== undefined && existing[f] !== r[f]).map((f) =>
     f === "active" ? (r.active ? "reativa" : "desativa") : f === "unit" ? `unidade ${existing.unit} → ${r.unit}` : LABEL[f],
   );
   return changes.length ? { ...base, action: "atualizar", message: `Muda: ${changes.join(", ")}` } : { ...base, action: "igual", message: "Sem mudança." };
@@ -46,7 +46,15 @@ export async function aplicarLote(actor: CurrentUser, rows: ProdutoImportRow[]):
       out.push(result);
       continue;
     }
-    const data = { code: r.code, name: r.name, unit: r.unit, active: r.active };
+    const data = {
+      code: r.code,
+      name: r.name,
+      unit: r.unit,
+      active: r.active,
+      ...(r.limitBase !== undefined && { limitBase: r.limitBase }),
+      ...(r.limitFranquia !== undefined && { limitFranquia: r.limitFranquia }),
+      ...(r.limitBlockDays !== undefined && { limitBlockDays: r.limitBlockDays }),
+    };
     try {
       await db.$transaction(async (tx) => {
         if (before) {

@@ -46,11 +46,18 @@ export default async function SolicitacoesPage(props: PageProps<"/solicitacoes">
         title={t("solicitacoes.titulo")}
         description={t("solicitacoes.descricao")}
         actions={
-          can(user, "solicitacoes.criar") && (
-            <Button asChild>
-              <Link href="/solicitacoes/nova">{t("solicitacoes.solicitar")}</Link>
-            </Button>
-          )
+          <>
+            {can(user, "solicitacoes.aprovar") && (
+              <Button asChild variant="outline">
+                <Link href="/solicitacoes/ciclos">{t("ciclos.titulo")}</Link>
+              </Button>
+            )}
+            {can(user, "solicitacoes.criar") && (
+              <Button asChild>
+                <Link href="/solicitacoes/nova">{t("solicitacoes.solicitar")}</Link>
+              </Button>
+            )}
+          </>
         }
       />
       <form className="flex flex-wrap items-center gap-2">

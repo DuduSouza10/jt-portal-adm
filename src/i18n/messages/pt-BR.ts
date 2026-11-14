@@ -237,6 +237,7 @@ export const ptBR = {
       precos: { label: "Ver e editar preços", description: "" },
     },
     solicitacoes: {
+      liberar: { label: "Liberar ciclo de 3 meses e produtos bloqueados", description: "Tela Solicitações → Ciclos e bloqueios." },
       criar: { label: "Solicitar insumos", description: "Para as bases do usuário." },
       ver: { label: "Ver solicitações", description: "Dentro do alcance do perfil." },
       aprovar: { label: "Aprovar, recusar e editar itens", description: "" },
@@ -437,6 +438,9 @@ export const ptBR = {
     },
     prioridade: { NORMAL: "Normal", URGENTE: "Urgente" },
     nova: {
+    pessoas: "Pessoas na base",
+    pessoasAjuda: "Quantas pessoas trabalham na base hoje.",
+    noCiclo: "Esta base está no ciclo de 3 meses e poderá fazer uma nova solicitação após {data}.",
       descricao: "Monte o pedido. Depois de aprovado, você acompanha a separação, a expedição e o envio.",
       semBase: "Seu usuário não está vinculado a nenhuma base. Fale com o administrador.",
       semProdutos: "Nenhum insumo disponível para pedido ainda.",
@@ -456,6 +460,7 @@ export const ptBR = {
       enviar: "Enviar pedido",
     },
     detalhe: {
+    pessoas: "Pessoas na base:",
       pedidaPor: "{base} — pedida por {nome} em {data}",
       imprimirGuia: "Imprimir guia",
       pedidoEnviado: "Pedido enviado. Acompanhe o andamento por aqui.",
@@ -759,6 +764,11 @@ export const ptBR = {
     },
   },
   configuracoes: {
+    pedidos: "Ciclo das bases",
+    pedidosAjuda: "Regra do portal do Eduardo: depois de pedir, a base só faz um novo pedido quando o ciclo acabar (conta a partir do envio). Franquia não tem ciclo.",
+    cicloAtivo: "Ciclo ligado",
+    cicloMeses: "Duração do ciclo (meses)",
+    cicloMesesAjuda: "Padrão: 3 meses. Para soltar uma base só, use Solicitações → Ciclos e bloqueios.",
     titulo: "Configurações",
     descricao: "Prazos de SLA de cada etapa das solicitações e horário comercial usado na contagem.",
     prazos: "Prazos de SLA (horas úteis)",
@@ -776,6 +786,24 @@ export const ptBR = {
     feriadosAjuda: "Um por linha, no formato 25/12/2026.",
     comoConta: "Como o SLA é contado",
     comoContaAjuda: "Aprovação: do pedido até aprovar. Separação: da aprovação até separar. Expedição: de separado até enviar. A entrega (do envio até a base confirmar) aparece só para informação, em horas corridas.",
+  },
+  ciclos: {
+    titulo: "Ciclos e bloqueios",
+    descricao: "Bases no ciclo de {meses} meses e produtos bloqueados por limite (regras do portal do Eduardo).",
+    desligado: "O ciclo das bases está desligado em Administração → Configurações. Os limites por produto continuam valendo.",
+    basesNoCiclo: "Bases no ciclo ({n})",
+    produtosBloqueados: "Produtos bloqueados ({n})",
+    nenhumCiclo: "Nenhuma base no ciclo agora.",
+    nenhumBloqueio: "Nenhum produto bloqueado agora.",
+    base: "Base",
+    produto: "Produto",
+    ate: "Até",
+    origem: "Pedido de origem",
+    motivo: "Motivo",
+    acoes: "Ações",
+    novaData: "Nova data final",
+    mudarData: "Mudar data",
+    liberar: "Liberar agora",
   },
 };
 

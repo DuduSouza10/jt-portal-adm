@@ -212,6 +212,26 @@ const ZH: [string, string][] = [
   ["Feriado inválido. Use AAAA-MM-DD.", "节假日无效，请使用 AAAA-MM-DD。"],
   ["O fim do expediente precisa ser depois do início.", "下班时间必须晚于上班时间。"],
   ["Configurações salvas.", "设置已保存。"],
+  // ------------------------------------------------------------- Ciclo e limites (S1–S3, regras do portal do Eduardo)
+  ["Informe o número de pessoas na base.", "请填写网点人数。"],
+  ["Informe um número de pessoas válido.", "请填写有效的人数。"],
+  ["Esta base está no ciclo de {m} meses e poderá fazer uma nova solicitação após {data}.", "该网点处于 {m} 个月周期内，{data} 之后才能再次申领。"],
+  ["{p} está bloqueado para nova solicitação até {data}.", "{p} 在 {data} 之前不能再次申领。"],
+  ["Limite de insumos excedido para {p}. Limite permitido: {n} {u}.", "{p} 超出申领限额。允许上限：{n} {u}。"],
+  ["Você já atingiu o limite de {n} {u} para {p}.", "你已达到 {p} 的限额 {n} {u}。"],
+  ["Limite de insumos excedido para {p}. Restam {n} {u} no período de bloqueio.", "{p} 超出申领限额。本周期内还剩 {n} {u}。"],
+  ['Limite "{v}" inválido: use um número inteiro (vazio = sem limite).', "限额“{v}”无效：请填写整数（留空 = 不限）。"],
+  ['Dias de bloqueio "{v}" inválido: use de 1 a 3650.', "锁定天数“{v}”无效：请填写 1 到 3650。"],
+  ["limite base", "网点限额"],
+  ["limite franquia", "加盟商限额"],
+  ["dias de bloqueio", "锁定天数"],
+  ["Use um número inteiro de meses.", "请填写整数月数。"],
+  ["Ciclo mínimo: 1 mês.", "周期最短 1 个月。"],
+  ["Ciclo máximo: 24 meses.", "周期最长 24 个月。"],
+  ["Informe uma data válida.", "请填写有效日期。"],
+  ["Registro não encontrado.", "未找到记录。"],
+  ["Liberado.", "已解除。"],
+  ["Data atualizada.", "日期已更新。"],
 ];
 
 type Rule = { re: RegExp; names: string[]; out: string };

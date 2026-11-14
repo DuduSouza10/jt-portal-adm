@@ -31,7 +31,7 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
       "usuarios.ver", "usuarios.editar", "perfis.gerenciar", "estrutura.ver", "estrutura.editar", "auditoria.ver", "integracoes.gerenciar", "configuracoes.editar",
       "estoque.ver", "estoque.movimentar", "estoque.inventario",
       "produtos.ver", "produtos.editar", "produtos.precos",
-      "solicitacoes.criar", "solicitacoes.ver", "solicitacoes.aprovar", "solicitacoes.excluir",
+      "solicitacoes.criar", "solicitacoes.ver", "solicitacoes.aprovar", "solicitacoes.excluir", "solicitacoes.liberar",
       "expedicao.separar", "expedicao.enviar", "relatorios.ver",
     ],
   },

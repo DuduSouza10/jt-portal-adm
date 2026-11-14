@@ -16,7 +16,7 @@ export function basesParaPedir(actor: Actor) {
   const scope = baseScopeWhere(actor);
   return db.base.findMany({
     where: { active: true, type: { not: "ALMOXARIFADO" }, ...(scope && { AND: [scope] }) },
-    select: { id: true, code: true, name: true },
+    select: { id: true, code: true, name: true, type: true },
     orderBy: { code: "asc" },
   });
 }

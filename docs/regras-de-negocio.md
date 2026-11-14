@@ -25,9 +25,10 @@ Formato sugerido: regra numerada, exemplo concreto, e onde está no código.
 
 ## Solicitações — implementado em `src/modules/solicitacoes` (Diogo, trazido do sistema antigo)
 
-- **S1.** Ciclo de troca de 3 meses para bases (franquia não tem ciclo). _A definir. Ainda não implementado._
-- **S2.** Base informa o número de pessoas a cada pedido. _A definir. Ainda não implementado._
-- **S3.** Limites por produto. _A definir. Ainda não implementado._
+- **S1.** Ciclo de 3 meses (regra do portal do Eduardo, `jt-portal-insumos`). Só **base** (franquia não tem). Depois de pedir, a base não abre pedido novo até o fim do ciclo; quando o pedido é **enviado**, os 3 meses passam a contar do envio. O ciclo cai se o pedido de origem for recusado ou cancelado. **Pode ser tirado** (decisão do Eduardo, 2026-11-13): por base em Solicitações → Ciclos e bloqueios (`solicitacoes.liberar`, liberar ou mudar a data) ou para todas em Administração → Configurações (liga/desliga e nº de meses). → `modules/solicitacoes/limites.ts`, `limites.service.ts`
+- **S2.** A base informa o **número de pessoas** em cada pedido (obrigatório, como no portal do Eduardo). É informativo: não limita quantidade. Aparece no pedido.
+- **S3.** **Limite por produto** (portal do Eduardo): limite para base e para franquia, num período (padrão 60 dias). Soma o que a base pediu no período (pedidos não recusados/cancelados); passou do limite, o pedido é barrado com a mesma mensagem do sistema antigo. Ao atingir o limite, o produto fica **bloqueado** para a base até o fim do período; recusar/cancelar o pedido desfaz o bloqueio. Liberação manual na mesma tela do S1. Limites pela planilha de produtos (`limite_base`, `limite_franquia`, `dias_bloqueio`) até existir a tela de produtos.
+- Quem aprova (`solicitacoes.aprovar`) não entra em S1–S3, como o admin no portal do Eduardo. As regras barram (não só avisam), como lá.
 - **S4.** Status (proposta, igual ao sistema antigo + aprovação). → `modules/solicitacoes/rules.ts`
 
   | De | Para | Quem (permissão + alcance) |
