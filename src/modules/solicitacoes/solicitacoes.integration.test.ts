@@ -3,7 +3,7 @@
  * base pede → gestor aprova (reserva) → almoxarifado separa (parcial) → expedição envia (baixa) → base recebe.
  * Também confere a divisão de acesso da E9 (cada perfil só faz a sua parte).
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/session";
 import { lancarEntrada } from "@/modules/estoque/service";
@@ -60,6 +60,11 @@ beforeAll(async () => {
   await lancarEntrada(actor({}), { baseId: almox, document: "NF", reason: null, itens: [{ produtoId: p1, quantity: 100 }, { produtoId: p2, quantity: 10 }] });
 });
 
+// O ciclo de 3 meses (S1) barraria o segundo pedido da mesma base: cada teste começa sem ciclo.
+beforeEach(async () => {
+  await db.cicloBase.deleteMany({ where: { base: { code: { startsWith: tag } } } });
+});
+
 afterAll(async () => {
   const baseIds = [almox, base, outraBase];
   // Avisos dos pedidos de teste também chegam a usuários de verdade do banco (ex.: um admin global).
@@ -81,7 +86,7 @@ afterAll(async () => {
 
 describe("fluxo completo", () => {
   it("pede → aprova → separa parcial → envia → recebe, com o estoque certo em cada etapa", async () => {
-    const s = await criar(basePerfil(), { baseId: base, priority: "URGENTE", notes: null, itens: [{ produtoId: p1, quantity: 30 }, { produtoId: p2, quantity: 5 }] });
+    const s = await criar(basePerfil(), { baseId: base, priority: "URGENTE", peopleCount: 5, notes: null, itens: [{ produtoId: p1, quantity: 30 }, { produtoId: p2, quantity: 5 }] });
     expect(s.status).toBe("PENDENTE");
 
     // Base e expedição não aprovam.
@@ -123,7 +128,7 @@ describe("fluxo completo", () => {
   });
 
   it("aprovação sem estoque falha inteira e o pedido continua pendente", async () => {
-    const s = await criar(basePerfil(), { baseId: base, priority: "NORMAL", notes: null, itens: [{ produtoId: p2, quantity: 50 }] });
+    const s = await criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p2, quantity: 50 }] });
     await expect(aprovar(gestor(), { id: s.id, almoxarifadoId: almox, quantidades: {}, note: null })).rejects.toThrow(/insuficiente|disponível/);
     expect(await status(s.id)).toBe("PENDENTE");
     await recusar(gestor(), s.id, "sem estoque");
@@ -131,13 +136,13 @@ describe("fluxo completo", () => {
   });
 
   it("cancelar aprovada devolve a reserva; base não pede para base de fora", async () => {
-    const s = await criar(basePerfil(), { baseId: base, priority: "NORMAL", notes: null, itens: [{ produtoId: p1, quantity: 10 }] });
+    const s = await criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p1, quantity: 10 }] });
     await aprovar(gestor(), { id: s.id, almoxarifadoId: almox, quantidades: {}, note: null });
     expect((await bal(p1)).reserved).toBe(10);
     await cancelar(basePerfil(), s.id, "pedido errado");
     expect((await bal(p1)).reserved).toBe(0);
     await expect(
-      criar(basePerfil(), { baseId: outraBase, priority: "NORMAL", notes: null, itens: [{ produtoId: p1, quantity: 1 }] }),
+      criar(basePerfil(), { baseId: outraBase, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p1, quantity: 1 }] }),
     ).rejects.toThrow(/não encontrada/);
   });
 });

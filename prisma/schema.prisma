@@ -64,8 +64,10 @@ model Base {
   stockReservations StockReservation[]
 
   // módulo solicitações
-  solicitacoes          Solicitacao[] @relation("SolicitacaoBase")
-  solicitacoesAtendidas Solicitacao[] @relation("SolicitacaoAlmoxarifado")
+  solicitacoes          Solicitacao[]     @relation("SolicitacaoBase")
+  solicitacoesAtendidas Solicitacao[]     @relation("SolicitacaoAlmoxarifado")
+  cicloPedido           CicloBase?
+  bloqueiosProduto      BloqueioProduto[]
 
   @@index([regionalId])
   @@index([type, active])
@@ -216,14 +218,20 @@ model AuditLog {
 // ---------------------------------------------------------------------------
 
 model Produto {
-  id        String   @id @default(cuid())
-  code      String   @unique // sempre maiúsculo
-  name      String
-  unit      String   @default("un") // un, cx, kit, pct...
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  code           String   @unique // sempre maiúsculo
+  name           String
+  unit           String   @default("un") // un, cx, kit, pct...
+  active         Boolean  @default(true)
+  /// S3 (regra do portal do Eduardo): quanto uma base/franquia pode pedir deste produto no período. null = sem limite.
+  limitBase      Int?
+  limitFranquia  Int?
+  /// Período do limite (dias). Ao atingir o limite, o produto fica bloqueado para a base por este tempo.
+  limitBlockDays Int      @default(60)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
+  bloqueios         BloqueioProduto[]
   stockBalances     StockBalance[]
   stockMovements    StockMovement[]
   stockReservations StockReservation[]
@@ -368,6 +376,7 @@ model Solicitacao {
   notes          String? // observação de quem pediu
   decisionNote   String? // motivo da recusa/cancelamento ou observação da aprovação
   partial        Boolean           @default(false) // separado/enviado com menos que o aprovado
+  peopleCount    Int? // S2: pessoas na base no momento do pedido (obrigatório para base)
 
   // expedição
   tripId          String? // ID da viagem (a "saca"/carga que leva o pedido)
@@ -510,4 +519,46 @@ model Setting {
   value       Json
   updatedById String?
   updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Regras de pedido trazidas do portal do Eduardo (S1 e S3)
+// ---------------------------------------------------------------------------
+
+/// S1: ciclo de 3 meses da base (tipo BASE; franquia não tem). Enquanto ativo, a base não abre pedido novo.
+/// Começa ao pedir e recomeça a contar do ENVIO. Cai se o pedido de origem for recusado ou cancelado.
+model CicloBase {
+  baseId              String    @id
+  blockedUntil        DateTime
+  sourceSolicitacaoId String?
+  reason              String
+  revokedAt           DateTime?
+  updatedById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  base Base @relation(fields: [baseId], references: [id], onDelete: Cascade)
+
+  @@index([blockedUntil])
+}
+
+/// S3: produto bloqueado para uma base até `blockedUntil` (limite do período atingido, ou bloqueio manual).
+model BloqueioProduto {
+  id                  String    @id @default(cuid())
+  baseId              String
+  produtoId           String
+  blockedUntil        DateTime
+  reason              String
+  /// Solicitação que atingiu o limite. Se ela for recusada/cancelada, o bloqueio cai.
+  sourceSolicitacaoId String?
+  revokedAt           DateTime?
+  updatedById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  base    Base    @relation(fields: [baseId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([baseId, produtoId])
+  @@index([blockedUntil])
 }

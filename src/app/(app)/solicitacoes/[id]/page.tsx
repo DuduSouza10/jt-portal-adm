@@ -141,6 +141,11 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
             </Table>
           </Card>
 
+          {s.peopleCount != null && (
+            <p className="text-sm">
+              <span className="font-medium">{t("solicitacoes.detalhe.pessoas")}</span> {s.peopleCount}
+            </p>
+          )}
           {s.notes && (
             <p className="text-sm">
               <span className="font-medium">{t("solicitacoes.detalhe.observacao")}</span> {s.notes}

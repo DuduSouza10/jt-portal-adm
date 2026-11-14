@@ -68,6 +68,9 @@ const produtoRow = z.object({
   name: z.string().trim().min(2).max(200),
   unit: z.string().trim().min(1).max(10),
   active: z.boolean(),
+  limitBase: z.number().int().min(0).max(1_000_000).nullable().optional(),
+  limitFranquia: z.number().int().min(0).max(1_000_000).nullable().optional(),
+  limitBlockDays: z.number().int().min(1).max(3650).optional(),
 });
 
 async function runProdutos(name: string, rows: unknown, max: number, fn: typeof produtos.validarLote) {

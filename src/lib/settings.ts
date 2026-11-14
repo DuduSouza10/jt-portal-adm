@@ -41,6 +41,43 @@ export const DEFAULT_SLA_SETTINGS: SlaSettings = {
 
 const KEY = "sla";
 
+// ------------------------------------------------------------------ Pedidos (ciclo de 3 meses, S1)
+
+export const pedidoSettingsSchema = z.object({
+  /** Ciclo da base ligado? (decisão do Eduardo: manter, com opção de tirar) */
+  cicloAtivo: z.boolean(),
+  cicloMeses: z.coerce.number().int("Use um número inteiro de meses.").min(1, "Ciclo mínimo: 1 mês.").max(24, "Ciclo máximo: 24 meses."),
+  /** Limites por produto (S3) ligados? (decisão do Diogo: deixar a opção de tirar). Ausente = ligado. */
+  limitesAtivos: z.boolean().default(true),
+});
+export type PedidoSettings = z.infer<typeof pedidoSettingsSchema>;
+export const DEFAULT_PEDIDO_SETTINGS: PedidoSettings = { cicloAtivo: true, cicloMeses: 3, limitesAtivos: true };
+const PEDIDO_KEY = "pedidos";
+
+export async function getPedidoSettings(): Promise<PedidoSettings> {
+  const row = await db.setting.findUnique({ where: { key: PEDIDO_KEY } });
+  const parsed = row ? pedidoSettingsSchema.safeParse(row.value) : null;
+  return parsed?.success ? parsed.data : DEFAULT_PEDIDO_SETTINGS;
+}
+
+export async function savePedidoSettings(actor: CurrentUser, value: PedidoSettings) {
+  await db.$transaction(async (tx) => {
+    const before = await tx.setting.findUnique({ where: { key: PEDIDO_KEY } });
+    await tx.setting.upsert({ where: { key: PEDIDO_KEY }, update: { value, updatedById: actor.id }, create: { key: PEDIDO_KEY, value, updatedById: actor.id } });
+    await audit(
+      {
+        actorId: actor.id,
+        action: "configuracao.pedidos",
+        entity: "Setting",
+        entityId: PEDIDO_KEY,
+        summary: `${value.cicloAtivo ? `Ciclo da base ligado (${value.cicloMeses} meses)` : "Ciclo da base desligado"} · ${value.limitesAtivos ? "limites por produto ligados" : "limites por produto desligados"}`,
+        data: { de: (before?.value ?? DEFAULT_PEDIDO_SETTINGS) as object, para: value },
+      },
+      tx,
+    );
+  });
+}
+
 export async function getSlaSettings(): Promise<SlaSettings> {
   const row = await db.setting.findUnique({ where: { key: KEY } });
   const parsed = row ? slaSettingsSchema.safeParse(row.value) : null;

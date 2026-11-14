@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { getT } from "@/i18n/server";
-import { getSlaSettings, type SlaStageKey } from "@/lib/settings";
+import { getPedidoSettings, getSlaSettings, type SlaStageKey } from "@/lib/settings";
 import { ActionForm } from "@/components/action-form";
 import { Field } from "@/components/form-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { salvarSlaAction } from "./actions";
+import { salvarPedidosAction, salvarSlaAction } from "./actions";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -21,7 +21,7 @@ const DAYS = [1, 2, 3, 4, 5, 6, 0];
 export default async function ConfiguracoesPage() {
   await requirePermission("configuracoes.editar");
   const t = await getT();
-  const s = await getSlaSettings();
+  const [s, ped] = await Promise.all([getSlaSettings(), getPedidoSettings()]);
   const br = (d: string) => d.split("-").reverse().join("/");
 
   return (
@@ -82,6 +82,30 @@ export default async function ConfiguracoesPage() {
                 <Textarea id="holidays" name="holidays" rows={4} defaultValue={s.businessHours.holidays.map(br).join("\n")} placeholder="25/12/2026" />
               </Field>
             </section>
+          </ActionForm>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent>
+          <ActionForm action={salvarPedidosAction} submitLabel={t("comum.salvar")} className="space-y-4">
+            <div>
+              <h2 className="font-semibold">{t("configuracoes.pedidos")}</h2>
+              <p className="text-sm text-muted-foreground">{t("configuracoes.pedidosAjuda")}</p>
+            </div>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" name="cicloAtivo" defaultChecked={ped.cicloAtivo} className="size-4" />
+              {t("configuracoes.cicloAtivo")}
+            </label>
+            <Field label={t("configuracoes.cicloMeses")} htmlFor="cicloMeses" hint={t("configuracoes.cicloMesesAjuda")}>
+              <Input id="cicloMeses" name="cicloMeses" type="number" min={1} max={24} defaultValue={ped.cicloMeses} className="max-w-32" />
+            </Field>
+            <div className="space-y-1 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="limitesAtivos" defaultChecked={ped.limitesAtivos} className="size-4" />
+                {t("configuracoes.limitesAtivos")}
+              </label>
+              <p className="text-xs text-muted-foreground">{t("configuracoes.limitesAjuda")}</p>
+            </div>
           </ActionForm>
         </CardContent>
       </Card>
