@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlarmClock, ChevronLeft, ChevronRight, ClipboardList, Download, Receipt, Timer, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { AlarmClock, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, Download, Hourglass, Package, PackageCheck, Receipt, Timer, TrendingDown, TrendingUp, Truck, Wallet, X } from "lucide-react";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,8 @@ import {
   type StageKey,
   type StageSummary,
 } from "@/modules/relatorios/sla";
-import { countCreated, openOrders, ordersInPeriod, shippedStats, spendLines, stockValue } from "@/modules/relatorios/queries";
+import { countInPeriod, filtroOptions, openOrders, ordersInPeriod, shippedStats, spendLines, stockValue, type Filtro, type ReportOrder } from "@/modules/relatorios/queries";
+import { selectClass } from "@/components/form-field";
 import { ChartTooltip } from "@/components/chart-tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,48 +51,76 @@ type Fmt = {
   tone: (v: number | null) => string;
 };
 
+export const VISOES = ["tudo", "consumo", "sla", "separacao", "expedicao"] as const;
+type Visao = (typeof VISOES)[number];
+
 export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
   const user = await requirePermission("relatorios.ver");
   const t = await getT();
   const now = new Date();
-  const { start, end, key } = monthRange(param(await props.searchParams, "mes"), now);
+  const sp = await props.searchParams;
+  const { start, end, key } = monthRange(param(sp, "mes"), now);
   const mesAtual = key === monthKeyOf(now);
   const verValores = can(user, "produtos.precos");
+  const pedida = param(sp, "visao") as Visao;
+  const visao: Visao = VISOES.includes(pedida) && (pedida !== "consumo" || verValores) ? pedida : "tudo";
   const cfg = await getSlaSettings();
   const bh = cfg.businessHours;
   const targets = cfg.targets;
 
-  // Gasto por mês: os 6 meses terminando no mês escolhido (como no protótipo). Mês anterior: para as comparações.
+  // Filtros (regional, base, almoxarifado): só aceita o que está no alcance de quem vê.
+  const opts = await filtroOptions(user);
+  const pick = <T extends { id: string }>(list: T[], id: string | undefined) => (id && list.some((x) => x.id === id) ? id : undefined);
+  const filtro: Filtro = { regionalId: pick(opts.regionais, param(sp, "regional")), baseId: pick(opts.bases, param(sp, "base")), almoxId: pick(opts.almoxarifados, param(sp, "almox")) };
+  const query = (over: Record<string, string | undefined>) => {
+    const q = new URLSearchParams();
+    const all = { mes: key, visao: visao === "tudo" ? undefined : visao, regional: filtro.regionalId, base: filtro.baseId, almox: filtro.almoxId, ...over };
+    for (const [k, v] of Object.entries(all)) if (v) q.set(k, v);
+    const s = q.toString();
+    return s ? `?${s}` : "";
+  };
+
+  const ver = {
+    consumo: verValores && (visao === "tudo" || visao === "consumo"),
+    sla: visao === "tudo" || visao === "sla",
+    separacao: visao === "separacao",
+    expedicao: visao === "expedicao",
+  };
+
   const meses = lastMonths(key, 6);
   const [mesAntes] = lastMonths(key, 2);
-  const proximo = lastMonths(key, 1)[0] === monthKeyOf(now) ? null : nextMonth(key);
+  const proximo = key === monthKeyOf(now) ? null : nextMonth(key);
   const inicio6 = monthRange(meses[0], now).start;
   const anterior = monthRange(mesAntes, now);
-  const [orders, abertas, linhas6, estoque, criadasAntes, enviadas, enviadasAntes] = await Promise.all([
-    ordersInPeriod(user, start, end),
-    openOrders(user),
-    verValores ? spendLines(user, inicio6, end) : Promise.resolve([]),
-    verValores ? stockValue(user) : Promise.resolve(null),
-    countCreated(user, anterior.start, anterior.end),
-    shippedStats(user, start, end),
-    shippedStats(user, anterior.start, anterior.end),
+  // Separação e expedição olham o que foi separado/enviado no mês; o resto, o que foi pedido no mês.
+  const campo = visao === "separacao" ? "separatedAt" : visao === "expedicao" ? "shippedAt" : "createdAt";
+  const [orders, abertas, linhas6, estoque, contAntes, enviadas, enviadasAntes] = await Promise.all([
+    ordersInPeriod(user, start, end, filtro, campo),
+    openOrders(user, filtro),
+    ver.consumo ? spendLines(user, inicio6, end, filtro) : Promise.resolve([]),
+    ver.consumo ? stockValue(user, filtro) : Promise.resolve(null),
+    countInPeriod(user, anterior.start, anterior.end, filtro, campo),
+    shippedStats(user, start, end, filtro),
+    shippedStats(user, anterior.start, anterior.end, filtro),
   ]);
   const linhas = linhas6.filter((l) => monthKeyOf(l.shippedAt) === key);
   const geral = summarize(orders, now, bh, targets);
   const porBase = summarizeBy(orders, (o) => o.base, now, bh, targets);
   const porAlmox = summarizeBy(orders, (o) => o.almoxarifado, now, bh, targets);
-  const atrasadas = lateNow(abertas, now, bh, targets);
-  const gasto = verValores ? spendBy(linhas) : null;
-  const porMes = verValores ? spendByMonth(linhas6, meses) : [];
+  const atrasadasTodas = lateNow(abertas, now, bh, targets);
+  const atrasadas = ver.separacao ? atrasadasTodas.filter((a) => a.stage === "separacao") : ver.expedicao ? atrasadasTodas.filter((a) => a.stage === "expedicao") : atrasadasTodas;
+  const gasto = ver.consumo ? spendBy(linhas) : null;
+  const porMes = ver.consumo ? spendByMonth(linhas6, meses) : [];
   const gastoAntes = porMes[4]?.value ?? 0;
   const topProdutos = gasto ? [...gasto.byProduto].sort((x, y) => y.quantity - x.quantity).slice(0, 10) : [];
   const ticket = gasto && enviadas.count ? gasto.total / enviadas.count : null;
   const ticketAntes = enviadasAntes.count ? gastoAntes / enviadasAntes.count : null;
-  const dias = countByDay(
-    orders.map((o) => o.createdAt),
-    key,
-    now,
-  );
+  const dataDoDia = (o: ReportOrder) => (campo === "separatedAt" ? o.separatedAt! : campo === "shippedAt" ? o.shippedAt! : o.createdAt);
+  const dias = countByDay(orders.map(dataDoDia), key, now);
+  const fila = {
+    separar: abertas.filter((o) => o.status === "APROVADA" || o.status === "EM_SEPARACAO").length,
+    enviar: abertas.filter((o) => o.status === "SEPARADA").length,
+  };
 
   const nf = new Intl.NumberFormat(t.locale, { maximumFractionDigits: 1 });
   const money = new Intl.NumberFormat(t.locale, { style: "currency", currency: "BRL" });
@@ -111,6 +140,55 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
   const semDadosSla = TARGET_STAGES.every((k) => geral[k].done === 0 && geral[k].running === 0);
   const mesNome = new Date(`${key}-15T12:00:00Z`).toLocaleDateString(t.locale, { month: "long", year: "numeric" });
   const mesLabel = mesNome.charAt(0).toUpperCase() + mesNome.slice(1);
+  const filtroAtivo = [
+    filtro.regionalId && opts.regionais.find((r) => r.id === filtro.regionalId)?.code,
+    filtro.baseId && opts.bases.find((b) => b.id === filtro.baseId)?.code,
+    filtro.almoxId && opts.almoxarifados.find((a) => a.id === filtro.almoxId)?.code,
+  ].filter(Boolean);
+  const visoes = VISOES.filter((v) => v !== "consumo" || verValores);
+  const basesDaRegional = filtro.regionalId ? opts.bases.filter((b) => b.regionalId === filtro.regionalId) : opts.bases;
+
+  const slaPanel = (
+    <Panel
+      title={t("relatorios.slaPorEtapa")}
+      note={t("relatorios.slaPorEtapaNota")}
+      aside={
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+            fora ? "bg-warning/15 text-warning" : semDadosSla ? "bg-muted text-muted-foreground" : "bg-success/12 text-success",
+          )}
+        >
+          {fora ? t("relatorios.foraNoMes", { n: fora }) : semDadosSla ? t("relatorios.semDadosMes") : t("relatorios.tudoNoPrazo")}
+        </span>
+      }
+    >
+      {(ver.separacao ? (["separacao"] as StageKey[]) : ver.expedicao ? (["expedicao", "entrega"] as StageKey[]) : STAGES).map((s) => (
+        <StageRow key={s} t={t} fmt={fmt} stage={s} sum={geral[s]} target={s === "entrega" ? null : targets[s]} />
+      ))}
+    </Panel>
+  );
+  const atrasadasPanel = (
+    <Panel
+      title={t("relatorios.atrasadasAgora")}
+      note={t("relatorios.atrasadasAgoraNota")}
+      aside={<span className={cn("text-2xl font-semibold tabular-nums", atrasadas.length ? "text-warning" : "text-muted-foreground")}>{atrasadas.length}</span>}
+    >
+      {atrasadas.length === 0 ? (
+        <p className="px-[18px] pt-2 pb-6 text-sm text-muted-foreground">{t("relatorios.nenhumaAtrasada")}</p>
+      ) : (
+        atrasadas.slice(0, 12).map((a) => (
+          <Link key={`${a.order.id}:${a.stage}`} href={`/solicitacoes/${a.order.id}`} className="flex items-center gap-3 border-t px-[18px] py-2.5 text-sm first:border-t-0 hover:bg-muted/50">
+            <span className="font-mono font-semibold">{formatNumber(a.order.number)}</span>
+            <span className="text-muted-foreground">{a.order.base.code}</span>
+            <span className="flex-1 truncate">{t(`relatorios.etapa.${a.stage}`)}</span>
+            <span className="font-semibold tabular-nums text-accent-foreground">{fmt.h(a.hours)}</span>
+            <span className="text-xs text-muted-foreground">/ {fmt.h(a.target)}</span>
+          </Link>
+        ))
+      )}
+    </Panel>
+  );
 
   return (
     <>
@@ -118,81 +196,133 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
         title={t("relatorios.titulo")}
         description={t("relatorios.descricao")}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <form className="flex items-center gap-1">
-              <Button asChild variant="outline" size="icon" aria-label={t("relatorios.mesAnterior")}>
-                <Link href={`/relatorios?mes=${mesAntes}`}>
-                  <ChevronLeft />
-                </Link>
-              </Button>
-              <Input type="month" name="mes" defaultValue={key} max={monthKeyOf(now)} className="w-48" aria-label={t("relatorios.mes")} />
-              {proximo ? (
-                <Button asChild variant="outline" size="icon" aria-label={t("relatorios.mesSeguinte")}>
-                  <Link href={`/relatorios?mes=${proximo}`}>
-                    <ChevronRight />
-                  </Link>
-                </Button>
-              ) : (
-                <Button variant="outline" size="icon" disabled aria-label={t("relatorios.mesSeguinte")}>
-                  <ChevronRight />
-                </Button>
-              )}
-              <Button type="submit" variant="outline">
-                {t("comum.filtrar")}
-              </Button>
-            </form>
-            <Button asChild variant="outline">
-              <a href={`/api/relatorios/sla?mes=${key}`}>
-                <Download /> {t("relatorios.exportar")}
-              </a>
-            </Button>
-          </div>
+          <Button asChild variant="outline">
+            <a href={`/api/relatorios/sla${query({})}`}>
+              <Download /> {t("relatorios.exportar")}
+            </a>
+          </Button>
         }
       />
-      <p className="-mt-3 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">{mesLabel}</span>
-        {mesAtual && <> · {t("relatorios.mesEmAndamento", { dia: now.toLocaleDateString(t.locale, { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }) })}</>}
-      </p>
 
-      {/* Visão geral do mês (como no protótipo), comparada com o mês anterior */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {gasto && (
-          <Kpi
-            icon={Wallet}
-            label={t("relatorios.kpiGasto")}
-            value={money.format(gasto.total)}
-            delta={deltaPct(gasto.total, gastoAntes)}
-            t={t}
-            note={gasto.semCusto ? t("relatorios.semCustoNota", { n: gasto.semCusto }) : t("relatorios.kpiGastoNota")}
-          />
-        )}
-        <Kpi icon={ClipboardList} label={t("relatorios.kpiSolicitacoes")} value={nf.format(orders.length)} delta={deltaPct(orders.length, criadasAntes)} t={t} note={t("relatorios.kpiSolicitacoesNota")} />
-        {gasto && (
-          <Kpi
-            icon={Receipt}
-            label={t("relatorios.kpiTicket")}
-            value={ticket == null ? "—" : money.format(ticket)}
-            delta={ticket != null && ticketAntes ? deltaPct(ticket, ticketAntes) : null}
-            t={t}
-            note={t("relatorios.kpiTicketNota", { n: enviadas.count })}
-          />
-        )}
-        <Kpi
-          icon={Timer}
-          label={t("relatorios.kpiPrazoEnvio")}
-          value={fmt.dur(enviadas.avgDays == null ? null : enviadas.avgDays * 24)}
-          delta={enviadas.avgDays != null && enviadasAntes.avgDays ? deltaPct(enviadas.avgDays, enviadasAntes.avgDays) : null}
-          better="down"
-          t={t}
-          note={t("relatorios.kpiPrazoEnvioNota")}
-        />
-        {!gasto && (
-          <>
-            <Kpi icon={AlarmClock} label={t("relatorios.kpiAtrasadas")} value={nf.format(atrasadas.length)} valueClass={atrasadas.length ? "text-warning" : ""} note={t("relatorios.kpiAtrasadasNota", { n: fora })} />
-            <Kpi icon={Timer} label={t("relatorios.kpiSeparacao")} value={fmt.p(geral.separacao.okPct)} valueClass={fmt.tone(geral.separacao.okPct)} note={t("relatorios.kpiMedia", { h: fmt.h(geral.separacao.avgHours) })} />
-          </>
-        )}
+      {/* Abas de visão + filtros */}
+      <div className="space-y-3">
+        <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b">
+          {visoes.map((v) => (
+            <Link
+              key={v}
+              href={`/relatorios${query({ visao: v === "tudo" ? undefined : v })}`}
+              aria-current={visao === v ? "page" : undefined}
+              className={cn(
+                "relative flex h-10 items-center px-3 font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
+                visao === v && "text-foreground after:absolute after:inset-x-2.5 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
+              )}
+            >
+              {t(`relatorios.visao.${v}`)}
+            </Link>
+          ))}
+        </nav>
+        <form className="flex flex-wrap items-center gap-2">
+          {visao !== "tudo" && <input type="hidden" name="visao" value={visao} />}
+          <div className="flex items-center gap-1">
+            <Button asChild variant="outline" size="icon" aria-label={t("relatorios.mesAnterior")}>
+              <Link href={`/relatorios${query({ mes: mesAntes })}`}>
+                <ChevronLeft />
+              </Link>
+            </Button>
+            <Input type="month" name="mes" defaultValue={key} max={monthKeyOf(now)} className="w-48" aria-label={t("relatorios.mes")} />
+            {proximo ? (
+              <Button asChild variant="outline" size="icon" aria-label={t("relatorios.mesSeguinte")}>
+                <Link href={`/relatorios${query({ mes: proximo })}`}>
+                  <ChevronRight />
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="outline" size="icon" disabled aria-label={t("relatorios.mesSeguinte")}>
+                <ChevronRight />
+              </Button>
+            )}
+          </div>
+          {opts.regionais.length > 1 && (
+            <select name="regional" defaultValue={filtro.regionalId ?? ""} className={`${selectClass} w-auto max-w-52`} aria-label={t("relatorios.filtroRegional")}>
+              <option value="">{t("relatorios.todasRegionais")}</option>
+              {opts.regionais.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.code} · {r.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {basesDaRegional.length > 1 && (
+            <select name="base" defaultValue={filtro.baseId ?? ""} className={`${selectClass} w-auto max-w-52`} aria-label={t("relatorios.filtroBase")}>
+              <option value="">{t("relatorios.todasBases")}</option>
+              {basesDaRegional.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code} · {b.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {opts.almoxarifados.length > 1 && (
+            <select name="almox" defaultValue={filtro.almoxId ?? ""} className={`${selectClass} w-auto max-w-52`} aria-label={t("relatorios.filtroAlmox")}>
+              <option value="">{t("relatorios.todosAlmox")}</option>
+              {opts.almoxarifados.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.code} · {a.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <Button type="submit" variant="outline">
+            {t("comum.filtrar")}
+          </Button>
+          {filtroAtivo.length > 0 && (
+            <Button asChild variant="ghost">
+              <Link href={`/relatorios${query({ regional: undefined, base: undefined, almox: undefined })}`}>
+                <X /> {t("relatorios.limparFiltros")}
+              </Link>
+            </Button>
+          )}
+        </form>
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{mesLabel}</span>
+          {mesAtual && <> · {t("relatorios.mesEmAndamento", { dia: now.toLocaleDateString(t.locale, { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }) })}</>}
+          {filtroAtivo.length > 0 && <> · {t("relatorios.filtrandoPor", { quais: filtroAtivo.join(", ") })}</>}
+        </p>
       </div>
+
+      {/* ---------------- Visão geral / Consumo */}
+      {(visao === "tudo" || visao === "consumo") && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {gasto && (
+            <Kpi icon={Wallet} label={t("relatorios.kpiGasto")} value={money.format(gasto.total)} delta={deltaPct(gasto.total, gastoAntes)} t={t} note={gasto.semCusto ? t("relatorios.semCustoNota", { n: gasto.semCusto }) : t("relatorios.kpiGastoNota")} />
+          )}
+          {visao === "tudo" ? (
+            <Kpi icon={ClipboardList} label={t("relatorios.kpiSolicitacoes")} value={nf.format(orders.length)} delta={deltaPct(orders.length, contAntes)} t={t} note={t("relatorios.kpiSolicitacoesNota")} />
+          ) : (
+            <Kpi icon={Package} label={t("relatorios.kpiItensEnviados")} value={nf.format(gasto?.byProduto.reduce((s, p) => s + p.quantity, 0) ?? 0)} note={t("relatorios.kpiItensEnviadosNota", { n: gasto?.byProduto.length ?? 0 })} />
+          )}
+          {gasto && <Kpi icon={Receipt} label={t("relatorios.kpiTicket")} value={ticket == null ? "—" : money.format(ticket)} delta={ticket != null && ticketAntes ? deltaPct(ticket, ticketAntes) : null} t={t} note={t("relatorios.kpiTicketNota", { n: enviadas.count })} />}
+          {visao === "tudo" ? (
+            <Kpi
+              icon={Timer}
+              label={t("relatorios.kpiPrazoEnvio")}
+              value={fmt.dur(enviadas.avgDays == null ? null : enviadas.avgDays * 24)}
+              delta={enviadas.avgDays != null && enviadasAntes.avgDays ? deltaPct(enviadas.avgDays, enviadasAntes.avgDays) : null}
+              better="down"
+              t={t}
+              note={t("relatorios.kpiPrazoEnvioNota")}
+            />
+          ) : (
+            <Kpi icon={Truck} label={t("relatorios.kpiEnviadas")} value={nf.format(enviadas.count)} delta={deltaPct(enviadas.count, enviadasAntes.count)} t={t} note={t("relatorios.kpiEnviadasNota")} />
+          )}
+          {!gasto && (
+            <>
+              <Kpi icon={AlarmClock} label={t("relatorios.kpiAtrasadas")} value={nf.format(atrasadas.length)} valueClass={atrasadas.length ? "text-warning" : ""} note={t("relatorios.kpiAtrasadasNota", { n: fora })} />
+              <Kpi icon={Timer} label={t("relatorios.kpiSeparacao")} value={fmt.p(geral.separacao.okPct)} valueClass={fmt.tone(geral.separacao.okPct)} note={t("relatorios.kpiMedia", { h: fmt.h(geral.separacao.avgHours) })} />
+            </>
+          )}
+        </div>
+      )}
 
       {gasto && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -211,51 +341,36 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel
-          title={t("relatorios.slaPorEtapa")}
-          note={t("relatorios.slaPorEtapaNota")}
-          aside={
-            <span
-              className={cn(
-                "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-                fora ? "bg-warning/15 text-warning" : semDadosSla ? "bg-muted text-muted-foreground" : "bg-success/12 text-success",
-              )}
-            >
-              {fora ? t("relatorios.foraNoMes", { n: fora }) : semDadosSla ? t("relatorios.semDadosMes") : t("relatorios.tudoNoPrazo")}
-            </span>
-          }
-        >
-          {STAGES.map((s) => (
-            <StageRow key={s} t={t} fmt={fmt} stage={s} sum={geral[s]} target={s === "entrega" ? null : targets[s]} />
-          ))}
-        </Panel>
-
-        <Panel
-          title={t("relatorios.atrasadasAgora")}
-          note={t("relatorios.atrasadasAgoraNota")}
-          aside={<span className={cn("text-2xl font-semibold tabular-nums", atrasadas.length ? "text-warning" : "text-muted-foreground")}>{atrasadas.length}</span>}
-        >
-          {atrasadas.length === 0 ? (
-            <p className="px-[18px] pt-2 pb-6 text-sm text-muted-foreground">{t("relatorios.nenhumaAtrasada")}</p>
+      {/* ---------------- Separação / Expedição: números da etapa */}
+      {(ver.separacao || ver.expedicao) && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {ver.separacao ? (
+            <>
+              <Kpi icon={PackageCheck} label={t("relatorios.kpiSeparadas")} value={nf.format(orders.length)} delta={deltaPct(orders.length, contAntes)} t={t} note={t("relatorios.kpiParciais", { n: orders.filter((o) => o.partial).length })} />
+              <Kpi icon={CheckCircle2} label={t("relatorios.kpiNoPrazoEtapa")} value={fmt.p(geral.separacao.okPct)} valueClass={fmt.tone(geral.separacao.okPct)} note={t("relatorios.prazoNormal", { h: fmt.h(targets.separacao.normal) })} />
+              <Kpi icon={Timer} label={t("relatorios.kpiTempoMedio")} value={fmt.h(geral.separacao.avgHours)} note={t("relatorios.etapaAjuda.separacao")} />
+              <Kpi icon={Hourglass} label={t("relatorios.kpiAguardandoSeparar")} value={nf.format(fila.separar)} valueClass={atrasadas.length ? "text-warning" : ""} note={t("relatorios.kpiAtrasadasN", { n: atrasadas.length })} />
+            </>
           ) : (
-            atrasadas.slice(0, 12).map((a) => (
-              <Link
-                key={`${a.order.id}:${a.stage}`}
-                href={`/solicitacoes/${a.order.id}`}
-                className="flex items-center gap-3 border-t px-[18px] py-2.5 text-sm first:border-t-0 hover:bg-muted/50"
-              >
-                <span className="font-mono font-semibold">{formatNumber(a.order.number)}</span>
-                <span className="text-muted-foreground">{a.order.base.code}</span>
-                <span className="flex-1 truncate">{t(`relatorios.etapa.${a.stage}`)}</span>
-                <span className="font-semibold tabular-nums text-accent-foreground">{fmt.h(a.hours)}</span>
-                <span className="text-xs text-muted-foreground">/ {fmt.h(a.target)}</span>
-              </Link>
-            ))
+            <>
+              <Kpi icon={Truck} label={t("relatorios.kpiEnviadas")} value={nf.format(orders.length)} delta={deltaPct(orders.length, contAntes)} t={t} note={t("relatorios.kpiRecebidas", { n: orders.filter((o) => o.receivedAt).length })} />
+              <Kpi icon={CheckCircle2} label={t("relatorios.kpiNoPrazoEtapa")} value={fmt.p(geral.expedicao.okPct)} valueClass={fmt.tone(geral.expedicao.okPct)} note={t("relatorios.prazoNormal", { h: fmt.h(targets.expedicao.normal) })} />
+              <Kpi icon={Timer} label={t("relatorios.kpiTempoMedio")} value={fmt.h(geral.expedicao.avgHours)} note={t("relatorios.etapaAjuda.expedicao")} />
+              <Kpi icon={Hourglass} label={t("relatorios.kpiAguardandoEnvio")} value={nf.format(fila.enviar)} valueClass={atrasadas.length ? "text-warning" : ""} note={t("relatorios.kpiAtrasadasN", { n: atrasadas.length })} />
+            </>
           )}
-        </Panel>
-      </div>
+        </div>
+      )}
 
+      {/* ---------------- SLA */}
+      {(ver.sla || ver.separacao || ver.expedicao) && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {slaPanel}
+          {atrasadasPanel}
+        </div>
+      )}
+
+      {/* ---------------- Consumo: por base, estoque e produtos */}
       {(gasto || estoque) && (
         <div className="grid gap-4 lg:grid-cols-2">
           {gasto && (
@@ -265,13 +380,7 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
                 total={gasto.total}
                 fmt={fmt}
                 labels={{ valor: t("relatorios.valor"), participacao: t("relatorios.participacao") }}
-                items={gasto.byBase.slice(0, 15).map((b) => ({
-                  key: b.id,
-                  label: `${b.code} · ${b.name}`,
-                  value: b.value,
-                  text: money.format(b.value),
-                  extra: b.semCusto ? t("relatorios.itensSemCusto", { n: b.semCusto }) : undefined,
-                }))}
+                items={gasto.byBase.slice(0, 15).map((b) => ({ key: b.id, label: `${b.code} · ${b.name}`, value: b.value, text: money.format(b.value), extra: b.semCusto ? t("relatorios.itensSemCusto", { n: b.semCusto }) : undefined }))}
               />
             </Panel>
           )}
@@ -282,13 +391,7 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
                 total={estoque.total}
                 fmt={fmt}
                 labels={{ valor: t("relatorios.valor"), participacao: t("relatorios.participacao") }}
-                items={estoque.byAlmox.map((a) => ({
-                  key: a.id,
-                  label: `${a.code} · ${a.name}`,
-                  value: a.value,
-                  text: money.format(a.value),
-                  extra: a.semCusto ? t("relatorios.produtosSemCustoN", { n: a.semCusto }) : undefined,
-                }))}
+                items={estoque.byAlmox.map((a) => ({ key: a.id, label: `${a.code} · ${a.name}`, value: a.value, text: money.format(a.value), extra: a.semCusto ? t("relatorios.produtosSemCustoN", { n: a.semCusto }) : undefined }))}
               />
             </Panel>
           )}
@@ -327,12 +430,21 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
         </section>
       )}
 
-      <Panel title={t("relatorios.porDia")} note={t("relatorios.porDiaNota", { n: orders.length })}>
-        <DayBars t={t} items={dias} />
-      </Panel>
+      {/* ---------------- Por dia e tabelas */}
+      {visao !== "consumo" && (
+        <Panel
+          title={t(ver.separacao ? "relatorios.separadasPorDia" : ver.expedicao ? "relatorios.enviadasPorDia" : "relatorios.porDia")}
+          note={t(ver.separacao ? "relatorios.separadasPorDiaNota" : ver.expedicao ? "relatorios.enviadasPorDiaNota" : "relatorios.porDiaNota", { n: orders.length })}
+        >
+          <DayBars t={t} items={dias} />
+        </Panel>
+      )}
 
-      <GroupTable t={t} fmt={fmt} title={t("relatorios.porBase")} rows={porBase} stages={["aprovacao", "separacao", "expedicao"]} />
-      <GroupTable t={t} fmt={fmt} title={t("relatorios.porAlmox")} rows={porAlmox} stages={["separacao", "expedicao"]} />
+      {ver.sla && <GroupTable t={t} fmt={fmt} title={t("relatorios.porBase")} rows={porBase} stages={["aprovacao", "separacao", "expedicao"]} />}
+      {ver.sla && <GroupTable t={t} fmt={fmt} title={t("relatorios.porAlmox")} rows={porAlmox} stages={["separacao", "expedicao"]} />}
+      {ver.separacao && <GroupTable t={t} fmt={fmt} title={t("relatorios.porAlmox")} rows={porAlmox} stages={["separacao"]} />}
+      {ver.expedicao && <GroupTable t={t} fmt={fmt} title={t("relatorios.porAlmox")} rows={porAlmox} stages={["expedicao", "entrega"]} />}
+      {(ver.separacao || ver.expedicao) && <GroupTable t={t} fmt={fmt} title={t("relatorios.porBase")} rows={porBase} stages={ver.separacao ? ["separacao"] : ["expedicao", "entrega"]} />}
       <p className="text-xs text-muted-foreground">{t("relatorios.rodape", { quando: fmtDateTime(now, t.locale) })}</p>
     </>
   );
@@ -585,7 +697,9 @@ function GroupTable({
               <TableCell className="text-right tabular-nums">{r.total}</TableCell>
               {stages.map((s) => (
                 <TableCell key={s} className="text-right tabular-nums">
-                  {r.stages[s].done ? (
+                  {s === "entrega" ? (
+                    <span className="text-muted-foreground">{r.stages[s].done ? fmt.dur(r.stages[s].avgHours) : "—"}</span>
+                  ) : r.stages[s].done ? (
                     <>
                       <span className={cn("font-semibold", fmt.tone(r.stages[s].okPct))}>{fmt.p(r.stages[s].okPct)}</span>
                       <span className="ml-1.5 text-xs text-muted-foreground">{fmt.h(r.stages[s].avgHours)}</span>
