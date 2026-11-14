@@ -10,7 +10,6 @@ import { getT } from "@/i18n/server";
 import type { Translator } from "@/i18n/translate";
 import { formatNumber } from "@/modules/solicitacoes/rules";
 import {
-  countByDay,
   deltaPct,
   durationParts,
   lastMonths,
@@ -29,6 +28,8 @@ import {
 import { countInPeriod, filtroOptions, openOrders, ordersInPeriod, shippedStats, spendLines, stockValue, type Filtro, type ReportOrder } from "@/modules/relatorios/queries";
 import { selectClass } from "@/components/form-field";
 import { ChartTooltip } from "@/components/chart-tooltip";
+import { Grafico3D } from "@/components/charts/grafico-3d";
+import { dayCalendarGrid, spendMonthGrid } from "@/modules/relatorios/graficos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -116,7 +117,6 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
   const ticket = gasto && enviadas.count ? gasto.total / enviadas.count : null;
   const ticketAntes = enviadasAntes.count ? gastoAntes / enviadasAntes.count : null;
   const dataDoDia = (o: ReportOrder) => (campo === "separatedAt" ? o.separatedAt! : campo === "shippedAt" ? o.shippedAt! : o.createdAt);
-  const dias = countByDay(orders.map(dataDoDia), key, now);
   const fila = {
     separar: abertas.filter((o) => o.status === "APROVADA" || o.status === "EM_SEPARACAO").length,
     enviar: abertas.filter((o) => o.status === "SEPARADA").length,
@@ -146,6 +146,17 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
     filtro.almoxId && opts.almoxarifados.find((a) => a.id === filtro.almoxId)?.code,
   ].filter(Boolean);
   const visoes = VISOES.filter((v) => v !== "consumo" || verValores);
+
+  // Gráficos 3D/2D: uma cor por regional.
+  const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
+  const mesCurto = meses.map((k) => cap(new Date(`${k}-15T12:00:00Z`).toLocaleDateString(t.locale, { month: "short", timeZone: "UTC" }).replace(".", "")));
+  const metaGrafico = [mesLabel, filtroAtivo.length ? t("relatorios.filtrandoPor", { quais: filtroAtivo.join(", ") }) : null].filter(Boolean).join(" · ");
+  const gridMes = ver.consumo ? spendMonthGrid(linhas6, meses) : null;
+  const gridDia = dayCalendarGrid(orders.map((o) => ({ date: dataDoDia(o), regional: o.base.regional })), key, now);
+  // 01/11/2026 foi domingo: dá os nomes curtos dos dias da semana no idioma da tela.
+  const diasSemana = Array.from({ length: 7 }, (_, i) => cap(new Date(Date.UTC(2026, 10, 1 + i, 12)).toLocaleDateString(t.locale, { weekday: "short", timeZone: "UTC" }).replace(".", "")));
+  const tituloDia = (k: string, i: number) =>
+    new Date(`${k}T12:00:00Z`).toLocaleDateString(t.locale, { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" }) + (i === gridDia.todayIndex ? ` · ${t("grafico3d.hoje")}` : "");
   const basesDaRegional = filtro.regionalId ? opts.bases.filter((b) => b.regionalId === filtro.regionalId) : opts.bases;
 
   const slaPanel = (
@@ -324,21 +335,22 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
         </div>
       )}
 
-      {gasto && (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <Panel title={t("relatorios.gastoPorMes")} note={t("relatorios.gastoPorMesNota")}>
-            <MonthBars t={t} fmt={fmt} items={porMes} current={key} />
-          </Panel>
-          <Panel title={t("relatorios.gastoPorRegional")} note={t("relatorios.noMes")}>
-            <Bars
-              empty={t("relatorios.semEnvios")}
-              total={gasto.total}
-              fmt={fmt}
-              labels={{ valor: t("relatorios.valor"), participacao: t("relatorios.participacao") }}
-              items={gasto.byRegional.map((r) => ({ key: r.id, label: `${r.code} · ${r.name}`, value: r.value, text: money.format(r.value) }))}
-            />
-          </Panel>
-        </div>
+      {gasto && gridMes && (
+        <Grafico3D
+          kind="meses"
+          title={t("relatorios.gastoPorMes")}
+          note={t("relatorios.gastoPorMesNota")}
+          meta={metaGrafico}
+          fileName={`gasto-por-mes-${key}`}
+          series={gridMes.series}
+          cells={gridMes.cells}
+          xLabels={mesCurto}
+          zLabels={gridMes.series.map((r) => r.code)}
+          cellTitles={gridMes.cells.map((c) => `${gridMes.series[c.z].code} · ${mesCurto[c.x]}`)}
+          highlightX={meses.length - 1}
+          format="money"
+          emptyText={t("relatorios.semEnvios")}
+        />
       )}
 
       {/* ---------------- Separação / Expedição: números da etapa */}
@@ -372,7 +384,18 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
 
       {/* ---------------- Consumo: por base, estoque e produtos */}
       {(gasto || estoque) && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {gasto && (
+            <Panel title={t("relatorios.gastoPorRegional")} note={t("relatorios.noMes")}>
+              <Bars
+                empty={t("relatorios.semEnvios")}
+                total={gasto.total}
+                fmt={fmt}
+                labels={{ valor: t("relatorios.valor"), participacao: t("relatorios.participacao") }}
+                items={gasto.byRegional.map((r) => ({ key: r.id, label: `${r.code} · ${r.name}`, value: r.value, text: money.format(r.value) }))}
+              />
+            </Panel>
+          )}
           {gasto && (
             <Panel title={t("relatorios.gastoPorBase")} note={t("relatorios.gastoPorBaseNota")}>
               <Bars
@@ -432,12 +455,21 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
 
       {/* ---------------- Por dia e tabelas */}
       {visao !== "consumo" && (
-        <Panel
+        <Grafico3D
+          kind="calendario"
           title={t(ver.separacao ? "relatorios.separadasPorDia" : ver.expedicao ? "relatorios.enviadasPorDia" : "relatorios.porDia")}
           note={t(ver.separacao ? "relatorios.separadasPorDiaNota" : ver.expedicao ? "relatorios.enviadasPorDiaNota" : "relatorios.porDiaNota", { n: orders.length })}
-        >
-          <DayBars t={t} items={dias} />
-        </Panel>
+          meta={metaGrafico}
+          fileName={`${visao === "tudo" ? "solicitacoes" : visao}-por-dia-${key}`}
+          series={gridDia.series}
+          cells={gridDia.cells}
+          xLabels={diasSemana}
+          zLabels={Array.from({ length: gridDia.weeks }, (_, i) => t("grafico3d.semana", { n: i + 1 }))}
+          cellTitles={gridDia.cells.map((c, i) => tituloDia(c.key, i))}
+          todayIndex={gridDia.todayIndex}
+          format="count"
+          emptyText={t("relatorios.semSolicitacoes")}
+        />
       )}
 
       {ver.sla && <GroupTable t={t} fmt={fmt} title={t("relatorios.porBase")} rows={porBase} stages={["aprovacao", "separacao", "expedicao"]} />}
@@ -518,57 +550,6 @@ function Kpi({
         </p>
       )}
       {note && <p className="text-xs text-muted-foreground">{note}</p>}
-    </div>
-  );
-}
-
-/** Colunas dos 6 meses, com o valor em cima e o mês escolhido em destaque. */
-function MonthBars({ t, fmt, items, current }: { t: Translator; fmt: Fmt; items: { key: string; value: number }[]; current: string }) {
-  const max = Math.max(1, ...items.map((x) => x.value));
-  const compact = new Intl.NumberFormat(t.locale, { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
-  return (
-    <div className="flex h-56 items-end gap-3 px-[18px] pt-2 pb-3">
-      {items.map((m) => (
-        <ChartTooltip key={m.key} className="flex h-full flex-1 flex-col items-center justify-end gap-1" title={m.key.split("-").reverse().join("/")} rows={[{ label: t("relatorios.gasto"), value: fmt.money.format(m.value) }]}>
-          <span className={cn("text-[11px] tabular-nums", m.key === current ? "font-semibold text-foreground" : "text-muted-foreground")}>{m.value ? compact.format(m.value) : "—"}</span>
-          <div
-            className={cn("w-full max-w-14 rounded-t-md transition-colors", m.key === current ? "bg-primary" : "bg-muted-foreground/25 hover:bg-muted-foreground/40")}
-            style={{ height: `${m.value ? Math.max(3, (m.value / max) * 82) : 1}%` }}
-          />
-          <span className={cn("text-xs capitalize", m.key === current ? "font-semibold text-foreground" : "text-muted-foreground")}>
-            {new Date(`${m.key}-15T12:00:00Z`).toLocaleDateString(t.locale, { month: "short" })}
-          </span>
-        </ChartTooltip>
-      ))}
-    </div>
-  );
-}
-
-/** Uma coluna fina por dia do mês (inclusive os sem pedido), com os dias marcados embaixo. */
-function DayBars({ t, items }: { t: Translator; items: { key: string; day: number; count: number; future: boolean }[] }) {
-  if (!items.some((d) => d.count)) return <p className="px-[18px] pt-2 pb-6 text-sm text-muted-foreground">{t("relatorios.semSolicitacoes")}</p>;
-  const max = Math.max(1, ...items.map((d) => d.count));
-  const weekday = (k: string) => new Date(`${k}T12:00:00Z`).toLocaleDateString(t.locale, { weekday: "short", day: "2-digit", month: "2-digit" });
-  return (
-    <div className="px-[18px] pt-2 pb-3">
-      <div className="flex h-32 items-end gap-[3px] border-b border-border">
-        {items.map((d) => (
-          <ChartTooltip key={d.key} className="flex h-full flex-1 items-end" title={weekday(d.key)} rows={[{ label: t("relatorios.kpiSolicitacoes"), value: String(d.count) }]}>
-            <div
-              className={cn("w-full rounded-t-sm", d.count ? "bg-primary/80 hover:bg-primary" : d.future ? "bg-transparent" : "bg-muted-foreground/30")}
-              style={{ height: d.count ? `${Math.max(6, (d.count / max) * 100)}%` : "3px" }}
-            />
-          </ChartTooltip>
-        ))}
-      </div>
-      <div className="mt-1 flex gap-[3px] text-[10px] text-muted-foreground tabular-nums">
-        {items.map((d) => (
-          <span key={d.key} className="flex-1 text-center">
-            {d.day === 1 || d.day % 5 === 0 ? d.day : ""}
-          </span>
-        ))}
-      </div>
-      <p className="mt-1 text-right text-[11px] text-muted-foreground">{t("relatorios.maxDia", { n: max })}</p>
     </div>
   );
 }
