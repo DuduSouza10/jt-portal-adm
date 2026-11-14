@@ -21,11 +21,12 @@ const orderSelect = {
   shippedAt: true,
   receivedAt: true,
   partial: true,
-  base: { select: { id: true, code: true, name: true } },
+  base: { select: { id: true, code: true, name: true, regional: { select: { id: true, code: true, name: true } } } },
   almoxarifado: { select: { id: true, code: true, name: true } },
 } as const satisfies Prisma.SolicitacaoSelect;
 
-export type ReportOrder = SlaOrder & { partial: boolean };
+type Ref = { id: string; code: string; name: string };
+export type ReportOrder = SlaOrder & { partial: boolean; base: Ref & { regional: Ref } };
 
 /** Alcance do usuário + filtros escolhidos. */
 function where(actor: Actor, f: Filtro = {}): Prisma.SolicitacaoWhereInput {

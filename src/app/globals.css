@@ -86,6 +86,15 @@
   --chart-3: #0b7d47;
   --chart-4: #1d5bd0;
   --chart-5: #6847c9;
+  /* Uma cor por regional nos gráficos dos relatórios. */
+  --serie-1: #e60012;
+  --serie-2: #f07a1a;
+  --serie-3: #6d5dfc;
+  --serie-4: #0f9d8f;
+  --serie-5: #2f6fe4;
+  --serie-6: #c99000;
+  --serie-7: #d63384;
+  --serie-8: #3a9d23;
   --radius: 0.75rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #17171a;
@@ -124,6 +133,14 @@
   --chart-3: #45d18f;
   --chart-4: #79a6ff;
   --chart-5: #ab95ff;
+  --serie-1: #f0283a;
+  --serie-2: #ff8a3d;
+  --serie-3: #8b7cff;
+  --serie-4: #2cc9b5;
+  --serie-5: #5b9bff;
+  --serie-6: #f3b54a;
+  --serie-7: #f06aa8;
+  --serie-8: #5fcf4a;
   --sidebar: #161619;
   --sidebar-foreground: #f2f2f4;
   --sidebar-primary: #f0283a;
