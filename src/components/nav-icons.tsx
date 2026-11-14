@@ -7,6 +7,8 @@ import {
   LayoutGrid,
   Network,
   Package,
+  PackageCheck,
+  Send,
   Settings,
   ShieldCheck,
   ShoppingCart,
@@ -20,6 +22,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/": LayoutDashboard,
   "/solicitacoes/nova": ShoppingCart,
   "/solicitacoes": ClipboardList,
+  "/separacao": PackageCheck,
   "/expedicao": Truck,
   "/produtos": Package,
   "/estoque": Boxes,
@@ -29,6 +32,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/admin/perfis": ShieldCheck,
   "/admin/estrutura": Network,
   "/admin/auditoria": History,
+  "/admin/feishu": Send,
 };
 
 export function NavIcon({ href, className }: { href: string; className?: string }) {
