@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useKeepForm } from "@/components/use-keep-form";
+
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,9 @@ import { changePasswordAction, type PasswordState } from "./actions";
 export function PasswordForm() {
   const t = useT();
   const tm = useServerMessage();
-  const [state, action, pending] = useActionState<PasswordState, FormData>(changePasswordAction, {});
+  const { state, pending, formProps } = useKeepForm<PasswordState>(changePasswordAction, {});
   return (
-    <form action={action} className="space-y-4">
+    <form {...formProps} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="current">{t("senha.atual")}</Label>
         <Input id="current" name="current" type="password" autoComplete="current-password" required />

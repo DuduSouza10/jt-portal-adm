@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useKeepForm } from "@/components/use-keep-form";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +53,7 @@ export function QuantidadesForm({
   disponivel?: Record<string, Record<string, number>>;
 }) {
   const t = useT();
-  const [state, formAction, pending] = useActionState(action, {});
+  const { state, pending, formProps } = useKeepForm(action, {});
   const [q, setQ] = useState<Record<string, string>>(() => Object.fromEntries(itens.map((i) => [i.produtoId, String(i.max)])));
   const [almox, setAlmox] = useState(almoxDefault ?? "");
   const quantidades = Object.fromEntries(Object.entries(q).map(([k, v]) => [k, Number(v)]));
@@ -61,7 +62,7 @@ export function QuantidadesForm({
   if (state.ok) return <Feedback state={state} />;
 
   return (
-    <form action={formAction} className="space-y-3">
+    <form {...formProps} className="space-y-3">
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="quantidades" value={JSON.stringify(quantidades)} />
       {almoxarifados && (
@@ -145,9 +146,9 @@ export function TextoForm({
   placeholder?: string;
 }) {
   const t = useT();
-  const [state, formAction, pending] = useActionState(action, {});
+  const { state, pending, formProps } = useKeepForm(action, {});
   return (
-    <form action={formAction} className="space-y-2">
+    <form {...formProps} className="space-y-2">
       <input type="hidden" name="id" value={id} />
       <Field label={label} htmlFor={`${name}-${submitLabel}`}>
         <Input id={`${name}-${submitLabel}`} name={name} required={required} minLength={required ? 3 : undefined} maxLength={1000} placeholder={placeholder} />
@@ -173,9 +174,9 @@ export function BotaoForm({
   variant?: "default" | "outline";
 }) {
   const t = useT();
-  const [state, formAction, pending] = useActionState(action, {});
+  const { state, pending, formProps } = useKeepForm(action, {});
   return (
-    <form action={formAction} className="space-y-2">
+    <form {...formProps} className="space-y-2">
       <input type="hidden" name="id" value={id} />
       <Feedback state={state} />
       <Button type="submit" variant={variant} disabled={pending}>

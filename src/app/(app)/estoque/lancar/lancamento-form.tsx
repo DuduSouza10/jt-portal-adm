@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useKeepForm } from "@/components/use-keep-form";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CircleAlert, CircleCheck, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,7 +29,7 @@ export function LancamentoForm({
 }) {
   const t = useT();
   const tm = useServerMessage();
-  const [state, action, pending] = useActionState<LancamentoState, FormData>(lancarAction, {});
+  const { state, pending, formProps } = useKeepForm<LancamentoState>(lancarAction, {});
   const nextKey = useRef(1);
   const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", texto: "", quantity: "", unitCost: "" }]);
 
@@ -65,7 +66,7 @@ export function LancamentoForm({
   }
 
   return (
-    <form action={action} className="space-y-4">
+    <form {...formProps} className="space-y-4">
       <input type="hidden" name="tipo" value={tipo} />
       <input type="hidden" name="itens" value={JSON.stringify(itens)} />
 

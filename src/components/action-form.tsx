@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useKeepForm } from "@/components/use-keep-form";
+
 import { CircleCheck, CircleAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,9 +29,9 @@ export function ActionForm({
 }) {
   const t = useT();
   const tm = useServerMessage();
-  const [state, formAction, pending] = useActionState(action, {});
+  const { state, pending, formProps } = useKeepForm(action, {});
   return (
-    <form action={formAction} className={className}>
+    <form {...formProps} className={className}>
       {children}
       {state.error && (
         <Alert variant="destructive">

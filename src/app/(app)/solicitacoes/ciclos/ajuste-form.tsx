@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useKeepForm } from "@/components/use-keep-form";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useServerMessage, useT } from "@/i18n/client";
@@ -11,9 +12,9 @@ import { ajustarCicloAction } from "./actions";
 export function AjusteForm({ tipo, id, ate }: { tipo: "ciclo" | "bloqueio"; id: string; ate: string }) {
   const t = useT();
   const tm = useServerMessage();
-  const [state, action, pending] = useActionState<FormState, FormData>(ajustarCicloAction, {});
+  const { state, pending, formProps } = useKeepForm<FormState>(ajustarCicloAction, {});
   return (
-    <form action={action} className="flex flex-wrap items-center justify-end gap-2">
+    <form {...formProps} className="flex flex-wrap items-center justify-end gap-2">
       <input type="hidden" name="tipo" value={tipo} />
       <input type="hidden" name="id" value={id} />
       <Input type="date" name="ate" defaultValue={ate} className="w-40" aria-label={t("ciclos.novaData")} />
