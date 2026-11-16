@@ -8,9 +8,14 @@ export const optionalText = z
   .nullable()
   .optional();
 
-/** Checkbox HTML: marcado envia "on", desmarcado não envia nada. */
+/**
+ * Checkbox HTML: marcado envia "on", desmarcado não envia nada (o campo some do formulário).
+ * O `.optional()` é obrigatório: no zod 4.6, `z.undefined()` dentro do union não aceita o campo AUSENTE,
+ * e desmarcar "ativo" em qualquer formulário dava "expected nonoptional" (Issue #18).
+ */
 export const checkbox = z
-  .union([z.literal("on"), z.literal("true"), z.undefined(), z.null()])
+  .union([z.literal("on"), z.literal("true"), z.null()])
+  .optional()
   .transform((v) => v === "on" || v === "true");
 
 /** Sigla (código) sempre maiúscula: BHZ01, MG, SPN. */
