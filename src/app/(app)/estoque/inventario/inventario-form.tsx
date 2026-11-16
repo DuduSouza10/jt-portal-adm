@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useKeepForm } from "@/components/use-keep-form";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ type Linha = { produtoId: string; code: string; name: string; unit: string; atua
 export function InventarioForm({ baseId, baseLabel, linhas }: { baseId: string; baseLabel: string; linhas: Linha[] }) {
   const t = useT();
   const tm = useServerMessage();
-  const [state, action, pending] = useActionState<LancamentoState, FormData>(inventarioAction, {});
+  const { state, pending, formProps } = useKeepForm<LancamentoState>(inventarioAction, {});
   const [contagem, setContagem] = useState<Record<string, string>>({});
   const [filtro, setFiltro] = useState("");
 
@@ -65,7 +66,7 @@ export function InventarioForm({ baseId, baseLabel, linhas }: { baseId: string; 
   }
 
   return (
-    <form action={action} className="space-y-4">
+    <form {...formProps} className="space-y-4">
       <input type="hidden" name="baseId" value={baseId} />
       <input type="hidden" name="itens" value={JSON.stringify(itens)} />
       <p className="text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useKeepForm } from "@/components/use-keep-form";
+import { useMemo, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ type Linha = { key: number; produtoId: string; texto: string; quantity: string }
 export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produto[] }) {
   const t = useT();
   const tm = useServerMessage();
-  const [state, action, pending] = useActionState<FormState, FormData>(criarAction, {});
+  const { state, pending, formProps } = useKeepForm<FormState>(criarAction, {});
   const nextKey = useRef(1);
   const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", texto: "", quantity: "" }]);
 
@@ -34,7 +35,7 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
   const invalid = itens.length === 0 || itens.some((i) => !i.produtoId || !(i.quantity > 0)) || !!base?.cicloAte;
 
   return (
-    <form action={action} className="space-y-4">
+    <form {...formProps} className="space-y-4">
       <input type="hidden" name="itens" value={JSON.stringify(itens)} />
 
       <div className="grid gap-4 sm:grid-cols-2">

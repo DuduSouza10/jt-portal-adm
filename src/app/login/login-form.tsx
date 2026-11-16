@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useKeepForm } from "@/components/use-keep-form";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, CircleAlert, Eye, EyeOff, Lock, TriangleAlert, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,14 +19,14 @@ export function LoginForm() {
   const tm = useServerMessage();
   const params = useSearchParams();
   const next = params.get("next") ?? "";
-  const [state, action, pending] = useActionState<LoginState, FormData>(loginAction, {});
+  const { state, pending, formProps } = useKeepForm<LoginState>(loginAction, {});
   // O React limpa os campos não controlados depois da action; o usuário fica, só a senha é refeita.
   const [usuario, setUsuario] = useState("");
   const [verSenha, setVerSenha] = useState(false);
   const [caps, setCaps] = useState(false);
 
   return (
-    <form action={action} className="space-y-5">
+    <form {...formProps} className="space-y-5">
       <input type="hidden" name="next" value={next} />
       <div className="space-y-2">
         <Label htmlFor="login">{t("login.usuario")}</Label>
