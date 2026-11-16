@@ -1,7 +1,7 @@
 "use client";
 
 import { useKeepForm } from "@/components/use-keep-form";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, CircleAlert, Eye, EyeOff, Lock, TriangleAlert, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,8 +20,15 @@ export function LoginForm() {
   const params = useSearchParams();
   const next = params.get("next") ?? "";
   const { state, pending, formProps } = useKeepForm<LoginState>(loginAction, {});
-  // O React limpa os campos não controlados depois da action; o usuário fica, só a senha é refeita.
+  // Erro de login: o usuário fica no campo (useKeepForm), mas a senha digitada some. Senha errada não deve ficar na tela.
   const [usuario, setUsuario] = useState("");
+  const senhaRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (state.error && senhaRef.current) {
+      senhaRef.current.value = "";
+      senhaRef.current.focus();
+    }
+  }, [state]);
   const [verSenha, setVerSenha] = useState(false);
   const [caps, setCaps] = useState(false);
 
@@ -51,6 +58,7 @@ export function LoginForm() {
           <Lock className={icone} aria-hidden />
           <Input
             id="password"
+            ref={senhaRef}
             name="password"
             type={verSenha ? "text" : "password"}
             autoComplete="current-password"
