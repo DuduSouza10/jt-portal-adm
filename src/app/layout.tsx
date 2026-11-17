@@ -7,7 +7,7 @@ const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Portal ADM", template: "%s · Portal ADM" },
+  title: { default: "Supply Dock", template: "%s · Supply Dock" },
   description: "Portal administrativo de insumos — J&T Express",
 };
 

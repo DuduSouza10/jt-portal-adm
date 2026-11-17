@@ -19,7 +19,7 @@ export default function LoginPage() {
             priority
             className="mx-auto mb-2 size-24 rounded-2xl shadow-md"
           />
-          <CardTitle className="text-xl">Portal ADM</CardTitle>
+          <CardTitle className="text-xl">Supply Dock</CardTitle>
           <CardDescription>Entre com seu usuário e senha</CardDescription>
         </CardHeader>
         <CardContent>
