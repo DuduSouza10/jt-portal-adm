@@ -27,7 +27,7 @@ function Brand() {
     <Link href="/" className="flex items-center gap-2 font-semibold">
       <Image src="/jt-coelho.png" alt="" width={32} height={32} className="size-8 rounded-md ring-1 ring-white/40" priority />
       <span className="leading-tight">
-        Portal ADM
+        Supply Dock
         <span className="hidden text-[11px] font-normal text-white/80 sm:block">J&amp;T Express</span>
       </span>
     </Link>

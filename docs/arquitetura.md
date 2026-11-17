@@ -1,4 +1,4 @@
-# Arquitetura do JT Portal ADM
+# Arquitetura do Supply Dock
 
 Documento vivo. Toda decisão técnica que afeta os dois desenvolvedores entra aqui.
 
@@ -173,3 +173,4 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 | 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |
 | 2026-11-12 | Trava de linha (`FOR UPDATE`) + regra pura, em vez de update condicional | Uma regra só, testável, e correta com muitos usuários simultâneos |
 | 2026-11-12 | Testes de integração com Postgres real no CI | Concorrência só se prova com conexões paralelas de verdade |
+| 2026-11-17 | Nome do sistema passa a ser **Supply Dock** (antes "Portal ADM"); repositório e pacote seguem `jt-portal-adm` | Já é o nome do app no Feishu (aprovado pela China em 17/11); um nome só em todo lugar |

@@ -1,4 +1,6 @@
-# JT Portal ADM
+# Supply Dock
+
+(Nome anterior: Portal ADM; o repositório continua `jt-portal-adm`.)
 
 Portal administrativo de insumos da J&T Express: solicitações das bases, aprovação, separação,
 expedição, estoque e administração de acessos, num sistema só.
