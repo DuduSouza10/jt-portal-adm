@@ -4,6 +4,7 @@ import Image from "next/image";
 import { getT } from "@/i18n/server";
 import { BrasilMapa } from "@/components/brasil-mapa";
 import { LanguageSwitch, ThemeToggle } from "@/components/preferences";
+import { isFeishuLoginEnabled } from "@/lib/feishu/config";
 import { LoginForm } from "./login-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -36,7 +37,7 @@ export default async function LoginPage() {
             <p className="text-[15px] text-muted-foreground">{t("login.subtitulo")}</p>
           </div>
           <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-muted" />}>
-            <LoginForm />
+            <LoginForm feishu={isFeishuLoginEnabled()} />
           </Suspense>
         </div>
         <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 text-xs text-muted-foreground">
