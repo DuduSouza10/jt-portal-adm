@@ -22,12 +22,13 @@ datasource db {
 
 /// Regional da J&T (ex.: MG, SPN). Agrupa bases.
 model Regional {
-  id        String   @id @default(cuid())
-  code      String   @unique // sigla, sempre maiúscula
-  name      String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  code               String   @unique // sigla, sempre maiúscula
+  name               String
+  feishuDepartmentId String?  @unique // "Subsidiária X" no Feishu (login pelo Feishu, E11)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   bases Base[]
   users UserRegional[]
@@ -41,19 +42,21 @@ enum BaseType {
 
 /// Base, franquia ou almoxarifado. Sempre pertence a uma regional.
 model Base {
-  id           String   @id @default(cuid())
-  code         String   @unique // sigla, sempre maiúscula
-  name         String
-  type         BaseType @default(BASE)
-  regionalId   String
-  cnpj         String?
-  city         String?
-  state        String? // UF
-  address      String?
-  feishuChatId String? // oc_... grupo da base no Feishu (avisos dos pedidos dela)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  code               String   @unique // sigla, sempre maiúscula
+  name               String
+  type               BaseType @default(BASE)
+  regionalId         String
+  cnpj               String?
+  city               String?
+  state              String? // UF
+  address            String?
+  feishuChatId       String? // oc_... grupo da base no Feishu (avisos dos pedidos dela)
+  feishuDepartmentId String?  @unique // departamento da unidade no Feishu (login pelo Feishu, E11)
+  autoCreated        Boolean  @default(false) // criada sozinha no primeiro login pelo Feishu (admin confere)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   regional Regional   @relation(fields: [regionalId], references: [id])
   users    UserBase[]

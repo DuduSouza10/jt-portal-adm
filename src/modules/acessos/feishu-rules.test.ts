@@ -1,0 +1,73 @@
+import { describe, expect, it } from "vitest";
+import { codigoBase, codigoRegional, detectar, detectarTodas, loginSugerido, tipoBase, type Dept } from "./feishu-rules";
+
+// Cadeias como o Feishu devolve: do setor da pessoa até a raiz. Nomes do organograma real.
+const d = (name: string, id = name) => ({ id: `od-${id}`, name });
+const MN = d("Subsidiária MN");
+const SPN = d("Subsidiária São Paulo Norte", "spn");
+const MG = d("Subsidiária Minas Gerais", "mg");
+const GR_SPN = d("Gestão Regional", "gr-spn");
+const GR_MG = d("Gestão Regional", "gr-mg");
+
+const chain = (...xs: Dept[]) => xs;
+
+describe("detectar", () => {
+  it("SPN: a unidade abaixo de Gestão Regional é a base", () => {
+    const r = detectar(chain(d("SJP SP"), GR_SPN, SPN, MN));
+    expect(r).toEqual({
+      regional: { feishuId: "od-spn", name: "São Paulo Norte", code: "SPN" },
+      base: { feishuId: "od-SJP SP", name: "SJP SP", code: "SJP-SP", type: "BASE" },
+    });
+  });
+
+  it("MG: cada CD é uma base (dois níveis abaixo de Gestão Regional)", () => {
+    const r = detectar(chain(d("CD CTG 001"), d("DC MNH 001"), GR_MG, MG, MN));
+    expect(r?.base).toMatchObject({ name: "CD CTG 001", code: "CD-CTG-001" });
+    expect(r?.regional).toMatchObject({ name: "Minas Gerais", code: "MG" });
+  });
+
+  it("MG: quem está direto no DC cai na base do DC", () => {
+    expect(detectar(chain(d("DC MNH 001"), GR_MG, MG, MN))?.base.code).toBe("DC-MNH-001");
+  });
+
+  it("subsetor dentro da unidade não vira base", () => {
+    expect(detectar(chain(d("Operação"), d("CD CTG 001"), d("DC MNH 001"), GR_MG, MG, MN))?.base.code).toBe("CD-CTG-001");
+  });
+
+  it("SPN: subsetor dentro da unidade não vira base", () => {
+    expect(detectar(chain(d("Expedição"), d("SJP SP"), GR_SPN, SPN, MN))?.base.code).toBe("SJP-SP");
+  });
+
+  it("franquia pelo prefixo F", () => {
+    expect(detectar(chain(d("F ORLN SP"), GR_SPN, SPN, MN))?.base.type).toBe("FRANQUIA");
+  });
+
+  it("administrativo, Gestão Regional em si, ou fora de subsidiária: sem base", () => {
+    expect(detectar(chain(d("Gestão Administrativa"), d("Gestão Integrada"), MN))).toBeNull();
+    expect(detectar(chain(GR_SPN, SPN, MN))).toBeNull();
+    expect(detectar(chain(d("SP RAO"), d("SC de Regional"), SPN, MN))).toBeNull();
+    expect(detectar(chain(d("X"), d("Gestão Regional"), d("Outra coisa")))).toBeNull();
+    expect(detectar([])).toBeNull();
+  });
+
+  it("duas cadeias para a mesma base contam uma vez", () => {
+    const c = chain(d("SJP SP"), GR_SPN, SPN, MN);
+    expect(detectarTodas([c, c, chain(d("Gestão Integrada"), MN)])).toHaveLength(1);
+  });
+});
+
+describe("siglas e login", () => {
+  it("siglas", () => {
+    expect(codigoRegional("Subsidiária São Paulo Norte")).toBe("SPN");
+    expect(codigoRegional("Subsidiária Minas Gerais")).toBe("MG");
+    expect(codigoBase("DC  DIQ 001")).toBe("DC-DIQ-001");
+    expect(codigoBase("PA SHOPEE CRV SP")).toBe("PA-SHOPEE-CRV-SP");
+    expect(tipoBase("FRC SP")).toBe("BASE");
+  });
+
+  it("login sugerido", () => {
+    expect(loginSugerido({ name: "João da Silva", openId: "ou_1" })).toBe("joao.da.silva");
+    expect(loginSugerido({ name: "X", email: "Maria.Souza@jtexpress.com.br", openId: "ou_1" })).toBe("maria.souza");
+    expect(loginSugerido({ name: "李", openId: "ou_abcdef123456" })).toBe("feishu.ef123456");
+  });
+});
