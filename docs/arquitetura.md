@@ -1,4 +1,4 @@
-# Arquitetura do JT Portal ADM
+# Arquitetura do Supply Dock
 
 Documento vivo. Toda decisão técnica que afeta os dois desenvolvedores entra aqui.
 
@@ -246,3 +246,4 @@ Trazido do sistema antigo de insumos. Regras S7 e S8 em `regras-de-negocio.md`.
 | 2026-11-13 | Importação de usuários traduzida (`importacao.usuarios.*`, reaproveitando `importacao.*`); mensagens de erro das linhas passam por `server-messages.ts`, e os campos que mudam ("name, phone") aparecem pelo nome traduzido | Era a única tela de importação ainda em português (pedido do Claude do Diogo na Issue #18) |
 | 2026-11-14 | Cadastro de produtos em `/produtos` (lista + formulário), sem preço no catálogo: o custo médio vem do estoque e só aparece com `produtos.precos` (P1–P5) | O valor do insumo nasce na NF de entrada (K5); guardar um preço no produto criaria duas fontes de custo |
 | 2026-11-14 | No formulário de produto, `active` aceita o campo ausente (`checkbox.optional()`); o helper `checkbox` de `lib/form.ts` recusa caixa desmarcada no zod 4.6.7 | Achado ao testar na tela; a correção do helper é do Diogo (núcleo) e foi avisada na Issue #18 |
+| 2026-11-17 | Nome do sistema passa a ser **Supply Dock** (antes "Portal ADM"); repositório e pacote seguem `jt-portal-adm` | Já é o nome do app no Feishu (aprovado pela China em 17/11); um nome só em todo lugar |

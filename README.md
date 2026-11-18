@@ -1,4 +1,6 @@
-# JT Portal ADM
+# Supply Dock
+
+(Nome anterior: Portal ADM; o repositório continua `jt-portal-adm`.)
 
 Portal administrativo de insumos da J&T Express: solicitações das bases, aprovação, separação,
 expedição, estoque e administração de acessos, num sistema só.
@@ -18,7 +20,6 @@ Projeto de **Diogo** e **Eduardo**, construído a partir de três sistemas anter
 | Troca de senha obrigatória após senha temporária | ✅ |
 | Tipos de acesso com permissões por ação e alcance (global / regional / base) | ✅ |
 | Usuários, regionais e bases | ✅ |
-| Importação de usuários por planilha (CSV), com matrícula | ✅ |
 | Auditoria de todas as alterações | ✅ |
 | Estoque | a fazer (Diogo) |
 | Produtos, solicitações, expedição, Feishu, relatórios | a fazer (Eduardo) |

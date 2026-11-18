@@ -35,7 +35,7 @@ export const cardTitle = (c: Card) => (c as { header?: { title?: { content?: str
 
 export function testCard(appUrl: string, who: string) {
   return card(
-    "✅ Teste do Portal ADM",
+    "✅ Teste do Supply Dock",
     "green",
     [`Mensagem de teste enviada por **${escapeMd(who)}**. Se você está lendo isto, a integração com o Feishu está funcionando.`],
     appUrl,

@@ -5,7 +5,7 @@
  */
 export const ptBR = {
   app: {
-    nome: "Portal ADM",
+    nome: "Supply Dock",
     empresa: "J&T Express",
     descricao: "Portal administrativo de insumos da J&T Express",
     creditos: "Developed by: Eduardo Rodrigues & Diogo Alves",
@@ -106,7 +106,7 @@ export const ptBR = {
     voltar: "Ir para o início",
   },
   login: {
-    titulo: "Entrar no Portal ADM",
+    titulo: "Entrar no Supply Dock",
     subtitulo: "Use o seu usuário ou e-mail e a senha.",
     usuario: "Usuário ou e-mail",
     senha: "Senha",
@@ -755,7 +755,7 @@ export const ptBR = {
     oculto: "oculto",
     hoje: "hoje",
     semana: "Sem {n}",
-    marca: "J&T Express · Portal ADM",
+    marca: "J&T Express · Supply Dock",
     geradoEm: "Gerado em {quando}",
     sem3d: "Este computador não mostra 3D; exibindo em 2D.",
   },

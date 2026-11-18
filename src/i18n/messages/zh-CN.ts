@@ -8,7 +8,7 @@ import type { Messages } from "./pt-BR";
  */
 export const zhCN: Messages = {
   app: {
-    nome: "Portal ADM",
+    nome: "Supply Dock",
     empresa: "J&T 极兔速递",
     descricao: "J&T 极兔速递物料管理后台",
     creditos: "Developed by: Eduardo Rodrigues & Diogo Alves",
@@ -109,7 +109,7 @@ export const zhCN: Messages = {
     voltar: "返回首页",
   },
   login: {
-    titulo: "登录 Portal ADM",
+    titulo: "登录 Supply Dock",
     subtitulo: "请使用用户名或邮箱及密码登录。",
     usuario: "用户名或邮箱",
     senha: "密码",
@@ -758,7 +758,7 @@ export const zhCN: Messages = {
     oculto: "已隐藏",
     hoje: "今天",
     semana: "第 {n} 周",
-    marca: "J&T Express · Portal ADM",
+    marca: "J&T Express · Supply Dock",
     geradoEm: "生成于 {quando}",
     sem3d: "此电脑不支持 3D，以 2D 显示。",
   },
