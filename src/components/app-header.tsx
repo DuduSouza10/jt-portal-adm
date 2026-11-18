@@ -1,20 +1,25 @@
+import { cache } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { navFor, SECTION_LABEL, type NavItem } from "@/lib/navigation";
 import { unreadCount } from "@/modules/notificacoes/queries";
+import { contadores } from "@/modules/solicitacoes/queries";
 import { getT } from "@/i18n/server";
 import { navText, profileText } from "@/i18n/labels";
-import { Breadcrumb, MobileNav, SidebarNav, UserCard, type NavGroup } from "@/components/app-nav";
+import { Breadcrumb, MobileNav, SidebarNav, TopAvatar, UserCard, type NavGroup } from "@/components/app-nav";
 import { LanguageSwitch, ThemeToggle } from "@/components/preferences";
 
 /**
  * Casca do portal: barra lateral (desktop), barra superior com o caminho da página e,
  * no celular, o menu em gaveta. Os itens vêm de src/lib/navigation.ts (com "Início" no topo).
  */
-async function loadNav() {
+const loadNav = cache(async function loadNav() {
   const [user, t] = await Promise.all([requireUser({ allowPendingPasswordChange: true }), getT()]);
+  // Contadores do menu: o que está esperando por esta pessoa (aprovar, separar, enviar).
+  const c = await contadores(user);
+  const badges: Record<string, number> = { "/solicitacoes": c.pendentes, "/separacao": c.separar, "/expedicao": c.enviar };
   const items = navFor(user);
   const sections = Object.keys(SECTION_LABEL) as NavItem["section"][];
   const groups: NavGroup[] = [
@@ -22,14 +27,14 @@ async function loadNav() {
     ...sections
       .map((s) => ({
         label: t.maybe(`secoes.${s}`) ?? SECTION_LABEL[s],
-        items: items.filter((i) => i.section === s).map((i) => ({ href: i.href, label: navText(t, i).label })),
+        items: items.filter((i) => i.section === s).map((i) => ({ href: i.href, label: navText(t, i).label, badge: badges[i.href] })),
       }))
       .filter((g) => g.items.length),
   ];
   const profile = profileText(t, user.profile).name;
   const subtitle = [profile, user.bases.map((b) => b.code).join(", ")].filter(Boolean).join(" · ");
   return { user, t, groups, subtitle };
-}
+});
 
 export async function AppSidebar() {
   const { user, t, groups, subtitle } = await loadNav();
@@ -67,6 +72,7 @@ export async function AppTopbar() {
         <div className="lg:hidden">
           <ThemeToggle className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-ring" />
         </div>
+        <TopAvatar name={user.name} label={t("menu.trocarSenha")} />
       </div>
     </div>
   );
