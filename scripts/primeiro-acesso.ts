@@ -19,12 +19,13 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { dbSchema } from "../src/lib/db-schema";
 
-const password = process.env.FIRST_ADMIN_PASSWORD;
-if (!password) {
+const rawPassword = process.env.FIRST_ADMIN_PASSWORD;
+if (!rawPassword) {
   console.log("[primeiro-acesso] FIRST_ADMIN_PASSWORD não definida: nada a fazer.");
   process.exit(0);
 }
 
+const password: string = rawPassword;
 const login = (process.env.FIRST_ADMIN_LOGIN ?? "").trim().toLowerCase();
 const name = (process.env.FIRST_ADMIN_NAME ?? "").trim();
 const fail = (msg: string): never => {
