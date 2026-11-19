@@ -37,3 +37,19 @@ o reenvio do Feishu e as limpezas. Na Vercel:
 3. Região das funções: **São Paulo (`gru1`)**, perto do Supabase (`sa-east-1`).
 4. Agendador: ver acima.
 5. Depois do primeiro deploy: mandar o pedido de OA do login Feishu com a URL final (`/api/auth/feishu/callback`).
+
+## Primeiro usuário pelo deploy (sem terminal)
+
+`scripts/primeiro-acesso.ts` roda no início do `npm run build`. Sem `FIRST_ADMIN_PASSWORD` ele não faz nada.
+Com ela definida, ele aplica as migrations, cria os tipos de acesso padrão (seed em modo produção, sem dados de exemplo)
+e cria o usuário Dev `FIRST_ADMIN_LOGIN` / `FIRST_ADMIN_NAME`, **só se esse login ainda não existir**.
+
+Como usar (Vercel → Settings → Environment Variables, ambiente Production):
+
+1. `FIRST_ADMIN_LOGIN`, `FIRST_ADMIN_NAME` e `FIRST_ADMIN_PASSWORD` (provisória, mínimo 10 caracteres).
+2. Publique de novo (Deployments → Redeploy). No log do build aparecem as linhas `[primeiro-acesso]`.
+3. Entre com o login e a senha provisória; o portal exige trocar a senha.
+4. Apague `FIRST_ADMIN_PASSWORD` do Vercel.
+
+Requisitos: `DATABASE_URL` precisa ser uma URL `postgres://` (não `prisma+postgres://`). As migrations usam `DIRECT_URL`
+se existir, senão `DATABASE_URL`. Se algo falhar, o build para e o motivo aparece no log.
