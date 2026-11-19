@@ -39,6 +39,22 @@ export const PERMISSION_GROUPS = [
     owner: "núcleo",
     permissions: [{ key: "auditoria.ver", label: "Ver o histórico de alterações" }],
   },
+  {
+    module: "integracoes",
+    label: "Integrações",
+    owner: "núcleo",
+    permissions: [
+      { key: "integracoes.gerenciar", label: "Feishu: ver mensagens, testar e reenviar", description: "Página Administração → Feishu." },
+    ],
+  },
+  {
+    module: "configuracoes",
+    label: "Configurações",
+    owner: "núcleo",
+    permissions: [
+      { key: "configuracoes.editar", label: "Editar prazos de SLA e horário comercial", description: "Página Administração → Configurações." },
+    ],
+  },
 
   // --------------------------------------------------------------- Estoque (Diogo)
   {
@@ -72,6 +88,7 @@ export const PERMISSION_GROUPS = [
       { key: "solicitacoes.ver", label: "Ver solicitações", description: "Dentro do alcance do perfil." },
       { key: "solicitacoes.aprovar", label: "Aprovar, recusar e editar itens" },
       { key: "solicitacoes.excluir", label: "Excluir solicitações" },
+      { key: "solicitacoes.liberar", label: "Liberar ciclo de 3 meses e produtos bloqueados", description: "Tela Solicitações → Ciclos e bloqueios." },
     ],
   },
   {

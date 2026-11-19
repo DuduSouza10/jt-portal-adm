@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { pickClientIp } from "@/lib/client-ip";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -19,14 +20,10 @@ const schema = z.object({
   next: z.string().optional(),
 });
 
+// Só cabeçalho preenchido pela hospedagem (ver src/lib/client-ip.ts): o cliente não consegue forjar.
 async function clientIp() {
   const h = await headers();
-  // No Netlify, x-nf-client-connection-ip é preenchido pela plataforma e o cliente não consegue forjar.
-  // x-forwarded-for (o primeiro valor vem do cliente) só é usado fora de produção (desenvolvimento local).
-  const nf = h.get("x-nf-client-connection-ip");
-  if (nf) return nf;
-  if (process.env.NODE_ENV !== "production") return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  return "desconhecido";
+  return pickClientIp((n) => h.get(n), process.env);
 }
 
 // Hash de uma senha qualquer: usuário inexistente também gasta um bcrypt, para o tempo de resposta

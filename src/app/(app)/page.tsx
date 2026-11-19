@@ -1,44 +1,396 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { TZDate } from "@date-fns/tz";
+import { startOfDay } from "date-fns";
+import { ArrowDownToLine, ArrowRight, ArrowUpRight, ClipboardList, PackageCheck, Plus, Repeat2, Send, TriangleAlert, Warehouse } from "lucide-react";
+import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
+import { fmtDateTime, TZ } from "@/lib/format";
+import { can } from "@/lib/permissions/check";
 import { navFor, SECTION_LABEL, type NavItem } from "@/lib/navigation";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { listAlmoxarifados, listSaldos } from "@/modules/estoque/queries";
+import { resumoSolicitacoes, solicitacoesRecentes } from "@/modules/solicitacoes/queries";
+import { formatNumber } from "@/modules/solicitacoes/rules";
+import { getT } from "@/i18n/server";
+import { navText } from "@/i18n/labels";
+import type { Translator } from "@/i18n/translate";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/page-header";
+import { NavIcon } from "@/components/nav-icons";
+import { ChartTooltip } from "@/components/chart-tooltip";
+import { Sparkline } from "@/components/sparkline";
+import { StatusBadge } from "./solicitacoes/badges";
+
+type User = Awaited<ReturnType<typeof requireUser>>;
+type Sol = { resumo: Awaited<ReturnType<typeof resumoSolicitacoes>>; recentes: Awaited<ReturnType<typeof solicitacoesRecentes>> };
 
 export default async function HomePage() {
-  const user = await requireUser();
+  const [user, t] = await Promise.all([requireUser(), getT()]);
   const items = navFor(user);
   const sections = Object.keys(SECTION_LABEL) as NavItem["section"][];
+  const now = TZDate.tz(TZ);
+  const hour = now.getHours();
+  const nome = user.name.split(" ")[0];
+  const greeting = t(hour < 12 ? "inicio.bomDia" : hour < 18 ? "inicio.boaTarde" : "inicio.boaNoite", { nome });
+  const today = new Intl.DateTimeFormat(t.locale, { weekday: "long", day: "numeric", month: "long", timeZone: TZ }).format(now);
+  const sol: Sol | null = can(user, "solicitacoes.ver")
+    ? { resumo: await resumoSolicitacoes(user), recentes: await solicitacoesRecentes(user) }
+    : null;
 
   return (
     <>
-      <div>
-        <h1 className="text-2xl font-semibold">Olá, {user.name.split(" ")[0]}</h1>
-        <p className="text-sm text-muted-foreground">{user.profile.name}</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-[22px] font-semibold tracking-tight sm:text-[26px]">{greeting}</h1>
+          <p className="text-muted-foreground first-letter:uppercase">{t("inicio.resumo", { data: today })}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {can(user, "estoque.movimentar") && (
+            <Button asChild variant={can(user, "solicitacoes.criar") ? "outline" : "default"}>
+              <Link href="/estoque/lancar?tipo=entrada">
+                <ArrowDownToLine /> {t("inicio.lancarEntrada")}
+              </Link>
+            </Button>
+          )}
+          {can(user, "solicitacoes.criar") && (
+            <Button asChild>
+              <Link href="/solicitacoes/nova">
+                <Plus /> {t("inicio.novaSolicitacao")}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
-      {items.length === 0 && (
-        <EmptyState>Seu usuário ainda não tem acesso a nenhuma área. Fale com o administrador.</EmptyState>
+
+      {(sol || can(user, "estoque.ver")) && <Resumo user={user} t={t} sol={sol} />}
+
+      {items.length === 0 && <EmptyState>{t("inicio.semAcesso")}</EmptyState>}
+
+      {items.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-[15px] font-semibold">{t("inicio.acessoRapido")}</h2>
+          {sections.map((s) => {
+            const list = items.filter((i) => i.section === s);
+            if (!list.length) return null;
+            return (
+              <div key={s} className="space-y-2">
+                <p className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+                  {t.maybe(`secoes.${s}`) ?? SECTION_LABEL[s]}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {list.map((i) => {
+                    const text = navText(t, i);
+                    return (
+                      <Link
+                        key={i.href}
+                        href={i.href}
+                        className="group relative flex h-full items-start gap-3.5 rounded-[14px] border bg-card p-4 shadow-xs transition hover:border-input hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-muted text-muted-foreground transition-colors group-hover:bg-accent group-hover:text-accent-foreground">
+                          <NavIcon href={i.href} className="size-[18px]" />
+                        </span>
+                        <span className="min-w-0 space-y-0.5 pr-4">
+                          <span className="block font-semibold">{text.label}</span>
+                          <span className="block text-[13px] text-muted-foreground">{text.description}</span>
+                        </span>
+                        <ArrowUpRight className="absolute top-4 right-4 size-4 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </section>
       )}
-      {sections.map((s) => {
-        const list = items.filter((i) => i.section === s);
-        if (!list.length) return null;
-        return (
-          <section key={s} className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{SECTION_LABEL[s]}</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {list.map((i) => (
-                <Link key={i.href} href={i.href} className="group">
-                  <Card className="h-full transition group-hover:border-primary group-hover:shadow-md">
-                    <CardHeader>
-                      <CardTitle>{i.label}</CardTitle>
-                      <CardDescription>{i.description}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                </Link>
+    </>
+  );
+}
+
+/** Números, estoque crítico e últimas movimentações, no alcance do usuário. */
+async function Resumo({ user, t, sol }: { user: User; t: Translator; sol: Sol | null }) {
+  const almox = can(user, "estoque.ver") ? await listAlmoxarifados(user) : [];
+  if (!almox.length) return sol ? <ResumoSolicitacoes t={t} sol={sol} /> : null;
+  const baseIds = almox.map((a) => a.id);
+  const [comSaldo, abaixo, hoje, criticos, movs] = await Promise.all([
+    db.stockBalance.count({ where: { baseId: { in: baseIds }, quantity: { gt: 0 } } }),
+    listSaldos({ baseIds, abaixoMinimo: true, page: 1 }),
+    db.stockMovement.count({ where: { baseId: { in: baseIds }, createdAt: { gte: startOfDay(TZDate.tz(TZ)) } } }),
+    // Só os números, de todos os saldos com mínimo (sem limite): o "mais crítico" é escolhido abaixo, com nomes só dos 5.
+    db.stockBalance.findMany({
+      where: { baseId: { in: baseIds }, minimum: { gt: 0 } },
+      select: { baseId: true, produtoId: true, quantity: true, reserved: true, minimum: true },
+    }),
+    db.stockMovement.findMany({
+      where: { baseId: { in: baseIds } },
+      include: { produto: { select: { code: true, name: true } }, base: { select: { code: true } }, actor: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+  ]);
+  const n = (v: number) => v.toLocaleString(t.locale);
+  // Os 5 mais perto (ou abaixo) do mínimo, de todos os saldos; só esses 5 buscam nome do produto e código da base.
+  const piores = criticos
+    .map((c) => ({ ...c, disp: c.quantity - c.reserved, ratio: (c.quantity - c.reserved) / c.minimum }))
+    .sort((a, b) => a.ratio - b.ratio)
+    .slice(0, 5);
+  const [produtos, bases] = await Promise.all([
+    db.produto.findMany({ where: { id: { in: piores.map((c) => c.produtoId) } }, select: { id: true, code: true, name: true } }),
+    db.base.findMany({ where: { id: { in: piores.map((c) => c.baseId) } }, select: { id: true, code: true } }),
+  ]);
+  const produtoPorId = new Map(produtos.map((p) => [p.id, p]));
+  const basePorId = new Map(bases.map((b) => [b.id, b]));
+  const top = piores.flatMap((c) => {
+    const produto = produtoPorId.get(c.produtoId);
+    const base = basePorId.get(c.baseId);
+    return produto && base ? [{ ...c, produto, base }] : [];
+  });
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {sol ? (
+          <SolicitacoesKpis t={t} sol={sol} />
+        ) : (
+          <>
+            <Kpi icon={Warehouse} label={t("inicio.kpiAlmox")} value={n(almox.length)} href="/estoque" />
+            <Kpi icon={PackageCheck} label={t("inicio.kpiProdutos")} value={n(comSaldo)} href="/estoque" />
+          </>
+        )}
+        <Kpi
+          icon={TriangleAlert}
+          label={t("inicio.kpiAbaixo")}
+          value={n(abaixo.total)}
+          tone={abaixo.total ? "warning" : undefined}
+          note={abaixo.total ? t("inicio.kpiAbaixoVer") : t("inicio.kpiAbaixoOk")}
+          href={abaixo.total ? "/estoque?min=1" : "/estoque"}
+        />
+        {!sol && <Kpi icon={Repeat2} label={t("inicio.kpiHoje")} value={n(hoje)} href="/estoque/movimentacoes" />}
+      </div>
+
+      <div className={cn("grid gap-4", sol ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]")}>
+        {sol && <SolicitacoesRecentes t={t} recentes={sol.recentes} />}
+        <Panel title={t("inicio.estoqueCritico")} href="/estoque?min=1" link={t("inicio.verEstoque")}>
+          {top.length === 0 ? (
+            <p className="px-[18px] py-6 text-sm text-muted-foreground">{t("inicio.semCritico")}</p>
+          ) : (
+            top.map((c) => {
+              const low = c.disp < c.minimum;
+              const crit = c.disp < c.minimum / 2;
+              const pct = Math.max(0, Math.min(100, (c.disp / (c.minimum * 2)) * 100));
+              return (
+                <div key={`${c.baseId}:${c.produtoId}`} className="border-t px-[18px] py-3 first:border-t-0">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate font-semibold">{c.produto.name}</span>
+                    <span className={cn("tabular-nums", low ? "font-semibold text-accent-foreground" : "text-muted-foreground")}>{n(c.disp)}</span>
+                  </div>
+                  <div className="flex justify-between gap-3 text-xs text-muted-foreground">
+                    <span>
+                      {c.base.code} · <span className="font-mono">{c.produto.code}</span>
+                    </span>
+                    <span>{t("inicio.minimo", { n: c.minimum })}</span>
+                  </div>
+                  <ChartTooltip
+                    className="mt-2"
+                    title={`${c.produto.name} · ${c.base.code}`}
+                    rows={[
+                      { label: t("grafico.disponivel"), value: n(c.disp), color: low ? (crit ? "var(--primary)" : "var(--warning)") : "var(--success)" },
+                      { label: t("grafico.fisico"), value: n(c.quantity) },
+                      { label: t("grafico.reservado"), value: n(c.reserved) },
+                      { label: t("grafico.minimo"), value: n(c.minimum) },
+                      { label: t("grafico.situacao"), value: t(low ? (crit ? "grafico.critico" : "grafico.baixo") : "grafico.ok") },
+                    ]}
+                    note={t("grafico.doMinimo", { p: n(Math.round((c.disp / c.minimum) * 1000) / 10) })}
+                  >
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted transition-[box-shadow] hover:shadow-[0_0_0_3px_var(--muted)]">
+                      <div
+                        className={cn("h-full rounded-full", low ? (crit ? "bg-primary" : "bg-warning") : "bg-success")}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </ChartTooltip>
+                </div>
+              );
+            })
+          )}
+        </Panel>
+
+        <Panel className={sol ? "lg:col-span-2" : undefined} title={t("inicio.ultimasMov")} href="/estoque/movimentacoes" link={t("inicio.verTodas")}>
+          {movs.length === 0 ? (
+            <p className="px-[18px] py-6 text-sm text-muted-foreground">{t("inicio.semMov")}</p>
+          ) : (
+            movs.map((m) => (
+              <div key={m.id} className="flex items-center gap-3 border-t px-[18px] py-3 first:border-t-0">
+                <span
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-full",
+                    m.quantity > 0 ? "bg-success/12 text-success" : m.quantity < 0 ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground",
+                  )}
+                  aria-hidden
+                >
+                  <Repeat2 className="size-3.5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate">
+                    <span className="font-semibold">{t(`tiposMovimento.${m.type}`)}</span> · {m.produto.name}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {m.base.code} · {m.actor?.name ?? t("comum.sistema")} · {fmtDateTime(m.createdAt, t.locale)}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "font-semibold tabular-nums",
+                    m.quantity > 0 ? "text-success" : m.quantity < 0 ? "text-accent-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {m.quantity > 0 ? `+${n(m.quantity)}` : m.quantity ? n(m.quantity) : "—"}
+                </span>
+              </div>
+            ))
+          )}
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+function Panel({ title, href, link, children, className }: { title: string; href: string; link: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn("overflow-hidden rounded-[14px] border bg-card shadow-xs", className)}>
+      <div className="flex items-center justify-between gap-3 px-[18px] pt-4 pb-2">
+        <h2 className="text-[15px] font-semibold">{title}</h2>
+        <Link href={href} className="inline-flex items-center gap-1 text-[13px] font-medium text-accent-foreground hover:underline">
+          {link} <ArrowRight className="size-3.5" />
+        </Link>
+      </div>
+      <div>{children}</div>
+    </section>
+  );
+}
+
+function Kpi({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  note,
+  href,
+  spark,
+  sparkClass,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  tone?: "warning";
+  note?: ReactNode;
+  href: string;
+  spark?: number[];
+  sparkClass?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col gap-1.5 rounded-[14px] border bg-card px-[18px] py-4 shadow-xs transition hover:border-input hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    >
+      <div className="flex items-center justify-between gap-2 text-[13px] font-medium text-muted-foreground">
+        <span>{label}</span>
+        <span className={cn("flex size-[30px] items-center justify-center rounded-[9px] bg-muted", tone === "warning" && "bg-warning/15 text-warning")}>
+          <Icon className="size-4" />
+        </span>
+      </div>
+      <div className="flex items-end justify-between gap-2">
+        <p className={cn("text-[28px] leading-tight font-semibold tracking-tight tabular-nums", tone === "warning" && "text-warning")}>{value}</p>
+        {spark && <Sparkline data={spark} className={sparkClass} label={label} />}
+      </div>
+      {note && <div className={cn("text-xs", tone === "warning" ? "font-medium text-warning" : "text-muted-foreground")}>{note}</div>}
+    </Link>
+  );
+}
+
+/** Três primeiros cartões do início: o que está esperando e o que já saiu. */
+function SolicitacoesKpis({ t, sol }: { t: Translator; sol: Sol }) {
+  const { pendentes, separacao, enviadas } = sol.resumo;
+  const n = (v: number) => v.toLocaleString(t.locale);
+  return (
+    <>
+      <Kpi icon={ClipboardList} label={t("inicio.kpiAguardando")} value={n(pendentes.total)} href="/solicitacoes?status=PENDENTE" spark={pendentes.serie} sparkClass="text-warning" note={t("inicio.hojeN", { n: pendentes.hoje })} />
+      <Kpi icon={PackageCheck} label={t("inicio.kpiSeparacao")} value={n(separacao.total)} href="/separacao" spark={separacao.serie} sparkClass="text-chart-2" note={t("inicio.hojeN", { n: separacao.hoje })} />
+      <Kpi
+        icon={Send}
+        label={t("inicio.kpiEnviadas")}
+        value={n(enviadas.total)}
+        href="/solicitacoes?status=ENVIADA"
+        spark={enviadas.serie}
+        sparkClass="text-success"
+        note={
+          enviadas.variacao === null ? (
+            t("inicio.hojeN", { n: enviadas.hoje })
+          ) : (
+            <span>
+              <span className={cn("font-semibold", enviadas.variacao >= 0 ? "text-success" : "text-accent-foreground")}>
+                {enviadas.variacao >= 0 ? "▲" : "▼"} {n(Math.abs(enviadas.variacao))}%
+              </span>{" "}
+              {t("inicio.vsMes")}
+            </span>
+          )
+        }
+      />
+    </>
+  );
+}
+
+function SolicitacoesRecentes({ t, recentes }: { t: Translator; recentes: Sol["recentes"] }) {
+  return (
+    <Panel title={t("inicio.solicRecentes")} href="/solicitacoes" link={t("inicio.verTodas")}>
+      {recentes.length === 0 ? (
+        <p className="px-[18px] py-6 text-sm text-muted-foreground">{t("inicio.semSolic")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-surface-2 text-left text-xs text-muted-foreground">
+                <th className="px-[18px] py-2 font-medium">{t("solicitacoes.col.num")}</th>
+                <th className="px-3 py-2 font-medium">{t("solicitacoes.col.base")}</th>
+                <th className="px-3 py-2 font-medium">{t("solicitacoes.col.status")}</th>
+                <th className="hidden px-[18px] py-2 text-right font-medium sm:table-cell">{t("solicitacoes.col.criada")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentes.map((r) => (
+                <tr key={r.id} className="border-t transition-colors hover:bg-muted/50">
+                  <td className="px-[18px] py-3">
+                    <Link href={`/solicitacoes/${r.id}`} className="font-mono text-[13px] font-semibold whitespace-nowrap hover:underline">
+                      {formatNumber(r.number)}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="font-medium">{r.base.code}</span>
+                    <span className="block text-xs text-muted-foreground">{r.base.name}</span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <StatusBadge status={r.status} />
+                  </td>
+                  <td className="hidden px-[18px] py-3 text-right whitespace-nowrap text-muted-foreground sm:table-cell">{fmtDateTime(r.createdAt, t.locale)}</td>
+                </tr>
               ))}
-            </div>
-          </section>
-        );
-      })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+/** Só solicitações (sem acesso a estoque): cartões e a lista recente. */
+function ResumoSolicitacoes({ t, sol }: { t: Translator; sol: Sol }) {
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <SolicitacoesKpis t={t} sol={sol} />
+      </div>
+      <SolicitacoesRecentes t={t} recentes={sol.recentes} />
     </>
   );
 }

@@ -24,7 +24,7 @@ export async function saveUserAction(id: string | null, _: FormState, form: Form
           message: `Usuário criado. Senha temporária: ${r.tempPassword} (anote e passe para a pessoa; ela troca no primeiro acesso).`,
         };
     },
-    { uniqueMessage: "Já existe um usuário com esse login ou e-mail." },
+    { uniqueMessage: "Já existe um usuário com esse login, e-mail ou matrícula." },
   );
   if (result.error) return result;
   revalidatePath("/admin/usuarios");

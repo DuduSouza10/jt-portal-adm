@@ -18,4 +18,18 @@ describe("tipos de acesso padrão", () => {
     for (const p of DEFAULT_PROFILES.filter((x) => x.key !== "dev"))
       expect(isSubsetOf(p.permissions, admin.permissions), p.key).toBe(true);
   });
+
+  it("E9: Base e Franquia só pedem insumos e acompanham os próprios pedidos", () => {
+    const solicitante = ["produtos.ver", "produtos.precos", "solicitacoes.criar", "solicitacoes.ver"];
+    for (const key of ["base", "franquia"]) {
+      const p = DEFAULT_PROFILES.find((x) => x.key === key)!;
+      expect(p.scope, key).toBe("BASE");
+      expect(p.permissions.filter((x) => !solicitante.includes(x)), key).toEqual([]);
+    }
+  });
+
+  it("E9: Expedição só acessa a expedição", () => {
+    const p = DEFAULT_PROFILES.find((x) => x.key === "expedicao")!;
+    expect(p.permissions).toEqual(["expedicao.enviar"]);
+  });
 });
