@@ -11,6 +11,7 @@ describe("formulário de produto", () => {
       name: "Luva de látex M",
       unit: "cx",
       active: false,
+      lacre: false,
       limitBase: null,
       limitFranquia: null,
       limitBlockDays: 60,
@@ -18,8 +19,8 @@ describe("formulário de produto", () => {
   });
 
   it("campos de limite ausentes também valem (sem limite, 60 dias)", () => {
-    const r = produtoSchema.safeParse({ ...base, active: "on" });
-    expect(r.success && r.data).toMatchObject({ active: true, limitBase: null, limitFranquia: null, limitBlockDays: 60 });
+    const r = produtoSchema.safeParse({ ...base, active: "on", lacre: "on" });
+    expect(r.success && r.data).toMatchObject({ active: true, lacre: true, limitBase: null, limitFranquia: null, limitBlockDays: 60 });
   });
 
   it("lê limites e período como inteiros; zero é um limite válido", () => {
