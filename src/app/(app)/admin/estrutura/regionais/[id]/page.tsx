@@ -7,12 +7,17 @@ import { Input } from "@/components/ui/input";
 import { ActionForm } from "@/components/action-form";
 import { CheckField, Field } from "@/components/form-field";
 import { PageHeader } from "@/components/page-header";
+import { getT } from "@/i18n/server";
 import { saveRegionalAction } from "../../actions";
 
-export const metadata: Metadata = { title: "Regional" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("estrutura.regional") };
+}
 
 export default async function RegionalEditPage(props: PageProps<"/admin/estrutura/regionais/[id]">) {
   await requirePermission("estrutura.editar");
+  const t = await getT();
   const { id } = await props.params;
   const isNew = id === "novo";
   const regional = isNew ? null : await db.regional.findUnique({ where: { id } });
@@ -21,21 +26,21 @@ export default async function RegionalEditPage(props: PageProps<"/admin/estrutur
   return (
     <div className="mx-auto max-w-xl space-y-4">
       <PageHeader
-        title={isNew ? "Nova regional" : `${regional!.code} · ${regional!.name}`}
-        back={{ href: "/admin/estrutura", label: "Regionais e bases" }}
+        title={isNew ? t("estrutura.novaRegional") : `${regional!.code} · ${regional!.name}`}
+        back={{ href: "/admin/estrutura", label: t("estrutura.titulo") }}
       />
       <Card>
         <CardContent>
           <ActionForm action={saveRegionalAction.bind(null, regional?.id ?? null)}>
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Sigla" htmlFor="code" hint="Ex.: MG, SPN">
+              <Field label={t("estrutura.sigla")} htmlFor="code" hint={t("estrutura.siglaDicaRegional")}>
                 <Input id="code" name="code" defaultValue={regional?.code} required className="uppercase" />
               </Field>
-              <Field label="Nome" htmlFor="name" className="sm:col-span-2">
+              <Field label={t("estrutura.nome")} htmlFor="name" className="sm:col-span-2">
                 <Input id="name" name="name" defaultValue={regional?.name} required />
               </Field>
             </div>
-            <CheckField name="active" label="Regional ativa" defaultChecked={regional?.active ?? true} />
+            <CheckField name="active" label={t("estrutura.regionalAtiva")} defaultChecked={regional?.active ?? true} />
           </ActionForm>
         </CardContent>
       </Card>

@@ -41,18 +41,19 @@ enum BaseType {
 
 /// Base, franquia ou almoxarifado. Sempre pertence a uma regional.
 model Base {
-  id         String   @id @default(cuid())
-  code       String   @unique // sigla, sempre maiúscula
-  name       String
-  type       BaseType @default(BASE)
-  regionalId String
-  cnpj       String?
-  city       String?
-  state      String? // UF
-  address    String?
-  active     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  code         String   @unique // sigla, sempre maiúscula
+  name         String
+  type         BaseType @default(BASE)
+  regionalId   String
+  cnpj         String?
+  city         String?
+  state        String? // UF
+  address      String?
+  feishuChatId String? // oc_... grupo da base no Feishu (avisos dos pedidos dela)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   regional Regional   @relation(fields: [regionalId], references: [id])
   users    UserBase[]
@@ -61,6 +62,12 @@ model Base {
   stockBalances     StockBalance[]
   stockMovements    StockMovement[]
   stockReservations StockReservation[]
+
+  // módulo solicitações
+  solicitacoes          Solicitacao[]     @relation("SolicitacaoBase")
+  solicitacoesAtendidas Solicitacao[]     @relation("SolicitacaoAlmoxarifado")
+  cicloPedido           CicloBase?
+  bloqueiosProduto      BloqueioProduto[]
 
   @@index([regionalId])
   @@index([type, active])
@@ -99,6 +106,8 @@ model User {
   name               String
   login              String    @unique // usuário, sempre minúsculo
   email              String?   @unique
+  registration       String?   @unique // matrícula do funcionário (RH)
+  feishuOpenId       String?   @unique // ou_... para mensagem direta no Feishu (preenchido pelo admin ou pelo login do Lark)
   phone              String?
   passwordHash       String?
   profileId          String
@@ -116,6 +125,13 @@ model User {
 
   // módulo estoque
   stockMovements StockMovement[]
+
+  // notificações
+  notifications Notification[]
+
+  // módulo solicitações
+  solicitacoesCriadas Solicitacao[]       @relation("SolicitacaoCriador")
+  solicitacaoEventos  SolicitacaoEvento[]
 
   @@index([profileId])
   @@index([active, name])
@@ -202,17 +218,24 @@ model AuditLog {
 // ---------------------------------------------------------------------------
 
 model Produto {
-  id        String   @id @default(cuid())
-  code      String   @unique // sempre maiúsculo
-  name      String
-  unit      String   @default("un") // un, cx, kit, pct...
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  code           String   @unique // sempre maiúsculo
+  name           String
+  unit           String   @default("un") // un, cx, kit, pct...
+  active         Boolean  @default(true)
+  /// S3 (regra do portal do Eduardo): quanto uma base/franquia pode pedir deste produto no período. null = sem limite.
+  limitBase      Int?
+  limitFranquia  Int?
+  /// Período do limite (dias). Ao atingir o limite, o produto fica bloqueado para a base por este tempo.
+  limitBlockDays Int      @default(60)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
+  bloqueios         BloqueioProduto[]
   stockBalances     StockBalance[]
   stockMovements    StockMovement[]
   stockReservations StockReservation[]
+  solicitacaoItens  SolicitacaoItem[]
 
   @@index([name])
 }
@@ -231,6 +254,8 @@ model StockBalance {
   quantity  Int      @default(0) // saldo físico
   reserved  Int      @default(0) // reservado por solicitações aprovadas
   minimum   Int      @default(0) // estoque mínimo (alerta)
+  /// Custo médio unitário (R$), ponderado pelas entradas com valor da NF. 0 = ainda sem custo conhecido.
+  avgCost   Decimal  @default(0) @db.Decimal(14, 4)
   updatedAt DateTime @updatedAt
 
   base    Base    @relation(fields: [baseId], references: [id])
@@ -260,6 +285,8 @@ model StockMovement {
   quantity      Int // variação do saldo FÍSICO (+ entra, - sai, 0 em reserva/liberação)
   reservedDelta Int               @default(0) // variação do reservado
   balanceAfter  Int // físico depois do movimento
+  /// Custo unitário (R$) do movimento: valor da NF na entrada; custo médio na saída/baixa. null = sem custo.
+  unitCost      Decimal?          @db.Decimal(14, 4)
   reservedAfter Int // reservado depois do movimento
   document      String? // nº da NF ou documento
   reason        String? // motivo (obrigatório em saída e inventário)
@@ -307,4 +334,231 @@ model StockReservation {
 
   @@unique([refType, refId, baseId, produtoId])
   @@index([baseId, produtoId, status])
+}
+
+// ---------------------------------------------------------------------------
+// MÓDULO: solicitações, separação e expedição (Diogo, decidido em 2026-11-13)
+// Funcionalidades trazidas do sistema antigo de insumos. Regras S4 e X1–X4 em
+// docs/regras-de-negocio.md. O estoque só é alterado pela API do estoque (api.ts).
+// ---------------------------------------------------------------------------
+
+enum SolicitacaoStatus {
+  PENDENTE // aguardando aprovação
+  APROVADA // estoque reservado no almoxarifado escolhido
+  EM_SEPARACAO // almoxarifado começou a separar
+  SEPARADA // pronta, na expedição aguardando envio
+  ENVIADA // saiu na viagem (estoque baixado)
+  RECEBIDA // base confirmou o recebimento
+  RECUSADA
+  CANCELADA
+}
+
+enum Prioridade {
+  NORMAL
+  URGENTE
+}
+
+enum SolicitacaoEventoTipo {
+  CRIADA
+  STATUS
+  COMENTARIO
+}
+
+/// Pedido de insumos de uma base.
+model Solicitacao {
+  id             String            @id @default(cuid())
+  number         Int               @unique @default(autoincrement()) // aparece como SOL-000123
+  baseId         String // quem pede
+  almoxarifadoId String? // quem atende (escolhido na aprovação)
+  createdById    String
+  status         SolicitacaoStatus @default(PENDENTE)
+  priority       Prioridade        @default(NORMAL)
+  notes          String? // observação de quem pediu
+  decisionNote   String? // motivo da recusa/cancelamento ou observação da aprovação
+  partial        Boolean           @default(false) // separado/enviado com menos que o aprovado
+  peopleCount    Int? // S2: pessoas na base no momento do pedido (obrigatório para base)
+
+  // expedição
+  tripId          String? // ID da viagem (a "saca"/carga que leva o pedido)
+  volumes         Int?
+  shippingNotes   String?
+  shipmentPhotoId String? // uma foto pode valer para vários pedidos da mesma viagem
+
+  approvedAt      DateTime?
+  separationAt    DateTime? // começou a separar
+  separatedAt     DateTime?
+  shippedAt       DateTime?
+  receivedAt      DateTime?
+  statusChangedAt DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  base          Base                @relation("SolicitacaoBase", fields: [baseId], references: [id])
+  almoxarifado  Base?               @relation("SolicitacaoAlmoxarifado", fields: [almoxarifadoId], references: [id])
+  createdBy     User                @relation("SolicitacaoCriador", fields: [createdById], references: [id])
+  shipmentPhoto ShipmentPhoto?      @relation(fields: [shipmentPhotoId], references: [id], onDelete: SetNull)
+  itens         SolicitacaoItem[]
+  eventos       SolicitacaoEvento[]
+
+  @@index([baseId, createdAt])
+  @@index([status, almoxarifadoId])
+  @@index([shippedAt])
+  @@index([tripId])
+}
+
+model SolicitacaoItem {
+  id            String   @id @default(cuid())
+  solicitacaoId String
+  produtoId     String
+  requested     Int // pedido pela base
+  approved      Int? // aprovado (pode ser menor)
+  separated     Int? // separado (pode ser menor que o aprovado: pedido parcial)
+  /// Custo unitário (R$) no envio (custo médio do almoxarifado naquele momento). Base do "gasto por base".
+  unitCost      Decimal? @db.Decimal(14, 4)
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  produto     Produto     @relation(fields: [produtoId], references: [id])
+
+  @@unique([solicitacaoId, produtoId])
+  @@index([produtoId])
+}
+
+/// Linha do tempo do pedido (o que a base acompanha). Nunca editado nem apagado.
+model SolicitacaoEvento {
+  id            String                @id @default(cuid())
+  solicitacaoId String
+  type          SolicitacaoEventoTipo
+  fromStatus    SolicitacaoStatus?
+  toStatus      SolicitacaoStatus?
+  note          String?
+  actorId       String?
+  createdAt     DateTime              @default(now())
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  actor       User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([solicitacaoId, createdAt])
+}
+
+/// Foto do carregamento, tirada na expedição. Fica no banco (reduzida no celular, ~200 KB).
+model ShipmentPhoto {
+  id        String   @id @default(cuid())
+  mime      String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  solicitacoes Solicitacao[]
+
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// NÚCLEO — Notificações (sino) e Feishu (Diogo)
+// Trazido do sistema antigo de insumos. Ver docs/arquitetura.md → "Notificações".
+// ---------------------------------------------------------------------------
+
+/// Aviso no sino do portal. Criado na mesma transação do evento.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  body      String    @default("")
+  link      String? // caminho interno, ex.: /solicitacoes/abc
+  refType   String? // ex.: "solicitacao"
+  refId     String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([createdAt])
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Fila de saída do Feishu: gravada na transação do evento e enviada depois (com novas tentativas).
+model FeishuOutbox {
+  id            String       @id @default(cuid())
+  event         String // ex.: solicitacao.criar
+  channel       String // webhook | chat | user
+  target        String? // chat_id / open_id / "expedicao" (webhook da expedição)
+  payload       Json // cartão interativo
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  nextAttemptAt DateTime     @default(now())
+  lastError     String?
+  createdAt     DateTime     @default(now())
+  sentAt        DateTime?
+
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
+}
+
+/// Lembretes e resumos já enviados, para não repetir.
+model ReminderLog {
+  id     String   @id @default(cuid())
+  refId  String // id da solicitação, ou o dia ("2026-11-13") no resumo diário
+  kind   String // pendente | separada | daily
+  sentAt DateTime @default(now())
+
+  @@index([refId, kind])
+}
+
+// ---------------------------------------------------------------------------
+// NÚCLEO — Configurações editáveis pela tela (prazos de SLA, horário comercial)
+// ---------------------------------------------------------------------------
+
+/// Chave → valor (JSON). Ex.: "sla" = { aprovacao: { normal: 8, urgente: 2 }, ... }. Lido por src/lib/settings.ts.
+model Setting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Regras de pedido trazidas do portal do Eduardo (S1 e S3)
+// ---------------------------------------------------------------------------
+
+/// S1: ciclo de 3 meses da base (tipo BASE; franquia não tem). Enquanto ativo, a base não abre pedido novo.
+/// Começa ao pedir e recomeça a contar do ENVIO. Cai se o pedido de origem for recusado ou cancelado.
+model CicloBase {
+  baseId              String    @id
+  blockedUntil        DateTime
+  sourceSolicitacaoId String?
+  reason              String
+  revokedAt           DateTime?
+  updatedById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  base Base @relation(fields: [baseId], references: [id], onDelete: Cascade)
+
+  @@index([blockedUntil])
+}
+
+/// S3: produto bloqueado para uma base até `blockedUntil` (limite do período atingido, ou bloqueio manual).
+model BloqueioProduto {
+  id                  String    @id @default(cuid())
+  baseId              String
+  produtoId           String
+  blockedUntil        DateTime
+  reason              String
+  /// Solicitação que atingiu o limite. Se ela for recusada/cancelada, o bloqueio cai.
+  sourceSolicitacaoId String?
+  revokedAt           DateTime?
+  updatedById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  base    Base    @relation(fields: [baseId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([baseId, produtoId])
+  @@index([blockedUntil])
 }

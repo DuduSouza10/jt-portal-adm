@@ -1,4 +1,4 @@
-# Arquitetura do JT Portal ADM
+# Arquitetura do Supply Dock
 
 Documento vivo. Toda decisão técnica que afeta os dois desenvolvedores entra aqui.
 
@@ -142,6 +142,60 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 
 - **Testes**: regras puras em `rules.test.ts` (`npm test`); ponta a ponta e concorrência em `estoque.integration.test.ts` (`npm run test:integration`), que no CI roda contra um PostgreSQL real. O `prisma dev` local atende uma conexão por vez, então localmente a concorrência fica em fila.
 
+## Idioma e tema
+
+O portal tem dois idiomas (**português** e **chinês simplificado**) e dois temas (**claro** e **escuro**).
+O seletor `PT | 中文` e o botão sol/lua ficam no cabeçalho e na tela de login.
+
+- **Textos de tela** saem de `src/i18n/messages/pt-BR.ts` e `zh-CN.ts`. Nada de texto solto no JSX.
+  - Server Component, `generateMetadata`: `const t = await getT(); t("estoque.titulo")` (`@/i18n/server`).
+  - Client Component: `const t = useT();` (`@/i18n/client`).
+  - Valores: `t("usuarios.total", { n: 3 })` com `{n}` no texto.
+  - O `zh-CN.ts` tem o tipo do `pt-BR.ts`: chave faltando ou sobrando quebra o typecheck.
+    O teste `src/i18n/i18n.test.ts` confere também os `{campos}`.
+- **Mensagens do servidor** (DomainError, validação Zod, `error`/`message` das actions) continuam em
+  português no código. Quem mostra na tela passa por `useServerMessage()` (o `<ActionForm>` já faz),
+  que traduz pelo catálogo `src/i18n/server-messages.ts`. **Mensagem nova precisa entrar nesse catálogo**:
+  o teste varre o código e falha se faltar.
+- **Menu, permissões, perfis padrão, tipos de base e de movimento** continuam definidos em `src/lib` e nos
+  módulos. A tradução é achada pela chave (`src/i18n/labels.ts`); item novo sem tradução aparece em português.
+- **Datas**: `fmtDateTime(data, t.locale)`.
+- **Dados** (nome de produto, regional, textos da auditoria) não são traduzidos: aparecem como foram digitados.
+- **Idioma** fica no cookie `portal_lang`, lido no servidor. **Tema** fica no `localStorage` (`portal_theme`) e
+  um script no `<head>` aplica antes da página aparecer; sem escolha, segue o sistema operacional.
+
+### Cores (J&T)
+
+Tokens em `src/app/globals.css`, para os dois temas: `primary` é o vermelho J&T (#E60012), `header-*` a faixa do
+topo (vermelha no claro, grafite com filete vermelho no escuro), `success` e `warning` para estado.
+Use as classes dos tokens (`bg-primary`, `text-muted-foreground`, `text-success`), nunca cores fixas como
+`text-emerald-700`, que somem no tema escuro.
+
+### Gráficos
+
+Todo gráfico (barra, coluna, ponto, linha) mostra os detalhes num cartão que segue o mouse:
+envolva a marca com `<ChartTooltip title rows note>` (`src/components/chart-tooltip.tsx`).
+Os textos do cartão também vêm do dicionário.
+
+### Tela de login
+
+Painel vermelho J&T com o Brasil em pontos (`src/components/brasil-mapa.tsx`): as rotas se desenham a partir do almoxarifado
+e duas encomendas percorrem as linhas. É a única animação da tela; com "reduzir movimento" fica tudo parado e já desenhado.
+Os pontos vêm de `src/components/brasil-mapa-dados.ts`, **gerado** por `node scripts/gen-mapa-brasil.mjs` (não editar à mão).
+É só ilustração, sem dado real: nada de números ou nomes de bases na tela de login, que é pública.
+
+## Notificações (sino + Feishu)
+
+Trazido do sistema antigo de insumos. Regras S7 e S8 em `regras-de-negocio.md`.
+
+- **Evento → avisos**: `modules/solicitacoes/notify-rules.ts` (puro, com teste) decide os públicos e o texto; `notify.ts` acha os usuários pela **permissão e alcance** (não por cargo fixo), grava o sino (`Notification`) e enfileira o cartão do Feishu (`FeishuOutbox`) **na mesma transação** do evento.
+- **Envio**: depois da action, `flushFeishuSoon()` manda a fila sem atrasar a tela; o que falhar tenta de novo (1 min, 5 min, 15 min, 1 h, 3 h) pelo agendador. Duas execuções não mandam a mesma mensagem (a linha é "reservada" antes).
+- **Destinos** (`lib/feishu/outbox.ts`): equipe = grupo (app) > webhook > mensagem direta; expedição = webhook próprio > equipe; base = mensagem direta (`User.feishuOpenId`) + grupo da base (`Base.feishuChatId`).
+- **Agendador**: `netlify/functions/agendador.mts` chama `POST /api/cron/run` (com `CRON_SECRET`) a cada 15 min em horário comercial: lembretes, resumo diário, fila do Feishu, limpeza de fotos de envio (180 dias) e de notificações lidas (90 dias).
+- **Admin**: `/admin/feishu` (permissão `integracoes.gerenciar`) mostra a configuração, envia teste e reenvia o que falhou.
+- **Sino na tela**: `/notificacoes` lista; o contador do cabeçalho usa `unreadCount(user.id)` de `modules/notificacoes/queries.ts` (o ícone no cabeçalho é do front, Eduardo).
+- **Outro módulo quer avisar?** Siga o mesmo padrão: regras puras → `tx.notification.createMany` + `enqueue(tx, ...)` na transação → `flushFeishuSoon()` na action.
+
 ## Escala (≈ 5.000 usuários)
 
 - Toda lista é **paginada** no banco (50 por página) e filtrada pelo alcance do usuário. Nada de `findMany` sem `take` em tabela que cresce.
@@ -155,8 +209,9 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 |---|---|
 | Núcleo: arquitetura, banco, login, permissões, auditoria, deploy, CI | **Diogo** |
 | Estoque e movimentações | **Diogo** |
-| Produtos (catálogo), solicitações, aprovação, ciclo de 3 meses | **Eduardo** |
-| Separação, expedição, rastreio, Feishu, relatórios operacionais | **Eduardo** |
+| Produtos (catálogo), ciclo de 3 meses e limites (S1–S3) | **Eduardo** |
+| Solicitações, aprovação, separação e expedição (trazidos do sistema antigo) | **Diogo** (decidido em 2026-11-13) |
+| Rastreio, Feishu, relatórios operacionais | **Eduardo** |
 | Visual, dashboard, testes, revisão de PRs | **Os dois** |
 
 ## Decisões registradas
@@ -168,8 +223,29 @@ A tela `/admin/auditoria` mostra tudo. Registros nunca são editados nem apagado
 | 2026-11-12 | Permissões por catálogo + tipos de acesso editáveis | Modelo do portal do Eduardo, já validado na operação |
 | 2026-11-12 | Administração de usuários filtrada pelo alcance (revisão do PR #1) | Permite admins regionais sem abrir brecha para conceder acesso fora da área |
 | 2026-11-12 | Limpeza de sessões e tentativas de login em ~1% dos logins | Tabelas não crescem sem parar; não precisa de job agendado |
+| 2026-11-12 | Importação de usuários lida no navegador e enviada em lotes (500 para conferir, 25 para gravar) | Cada requisição cabe no limite de 10 s do Netlify; 5.000 usuários ≈ 11 min com barra de progresso |
+| 2026-11-12 | Senha temporária com bcrypt custo 8 (a escolhida pela pessoa segue com 11) | Senha aleatória de ~69 bits não depende do custo; importar em massa ficou 5× mais rápido |
+| 2026-11-13 | Avisos iguais ao sistema antigo (sino + Feishu com fila de saída), destinatários por permissão e alcance | Já validado na operação; permissão/alcance substituem os cargos fixos do sistema antigo |
+| 2026-11-13 | Horário comercial e prazos dos lembretes como constantes no código (sem tela de configuração) | Menos coisa para manter agora; dá para virar configuração depois |
 | 2026-11-12 | Construir do zero usando os 3 projetos como referência | Evita herdar o monolito Flask e o escopo financeiro do sistema-estoque |
 | 2026-11-12 | Model `Produto` mínimo criado pelo Diogo; o resto é do Eduardo (Issue #3) | Estoque precisava de produto; Eduardo acrescenta campos em migrations novas |
 | 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |
 | 2026-11-12 | Trava de linha (`FOR UPDATE`) + regra pura, em vez de update condicional | Uma regra só, testável, e correta com muitos usuários simultâneos |
 | 2026-11-12 | Testes de integração com Postgres real no CI | Concorrência só se prova com conexões paralelas de verdade |
+| 2026-11-12 | Idiomas pt-BR e zh-CN com dicionário tipado próprio, sem biblioteca de i18n | Dois idiomas só; o TypeScript acusa tradução faltando e não muda as rotas |
+| 2026-11-12 | Mensagens do servidor traduzidas por catálogo na tela, não nos services | Os módulos seguem lançando DomainError em português; um teste garante que toda mensagem tem tradução |
+| 2026-11-12 | Tema no `localStorage` + script no `<head>`; idioma em cookie | Tema sem piscar e sem ida ao servidor; idioma precisa ser conhecido no servidor para traduzir a página |
+| 2026-11-13 | Login com mapa de pontos gerado por script, em vez de imagem ou biblioteca de mapas | Um único `path` (≈19 KB), segue o tema claro/escuro por `currentColor` e não depende de serviço externo |
+| 2026-11-12 | Perfil "Expedição" só com `expedicao.enviar`; a fila da expedição é liberada por essa permissão, sem `solicitacoes.ver` (E9) | Quem é da expedição não enxerga as solicitações de outras etapas |
+| 2026-11-12 | Ninguém (exceto Dev) edita o próprio tipo de acesso (E8) | Com o Administrador gerenciando perfis (#9), evita que um admin derrube o acesso de todos |
+| 2026-11-13 | Solicitações, separação e expedição trazidas do sistema antigo pelo Diogo, sem mudar o layout do portal (Issue #2) | O sistema antigo já tem isso testado na operação; o Eduardo fica com produtos e relatórios |
+| 2026-11-13 | Envio pela rota `/api/expedicao/enviar` (multipart), não server action | A foto passa do limite de 1 MB das server actions |
+| 2026-11-13 | Almoxarifado que atende é escolhido na aprovação (o da regional da base vem sugerido) | Não existe vínculo fixo base → almoxarifado |
+| 2026-11-13 | Telas de solicitações, separação, expedição e guia traduzidas (`solicitacoes.*`, `camera.*`); o status vem de `solicitacoes.status.*` (via `statusText`) e os badges usam só tokens do tema | Antes tinham texto fixo em português e cores cruas do Tailwind, que não traduziam nem funcionavam no escuro. A guia impressa continua em papel branco com tinta preta, de propósito |
+| 2026-11-13 | Termos em chinês: **申领单** para solicitação e pedido, **产品** para produto/insumo nas tabelas (**物料** só no nome do menu e do botão "Solicitar insumos") | Um nome só para a mesma coisa em todas as telas e mensagens (alinhado com o Diogo no PR #9) |
+| 2026-11-13 | Importação de usuários traduzida (`importacao.usuarios.*`, reaproveitando `importacao.*`); mensagens de erro das linhas passam por `server-messages.ts`, e os campos que mudam ("name, phone") aparecem pelo nome traduzido | Era a única tela de importação ainda em português (pedido do Claude do Diogo na Issue #18) |
+| 2026-11-14 | Cadastro de produtos em `/produtos` (lista + formulário), sem preço no catálogo: o custo médio vem do estoque e só aparece com `produtos.precos` (P1–P5) | O valor do insumo nasce na NF de entrada (K5); guardar um preço no produto criaria duas fontes de custo |
+| 2026-11-14 | No formulário de produto, `active` aceita o campo ausente (`checkbox.optional()`); o helper `checkbox` de `lib/form.ts` recusa caixa desmarcada no zod 4.6.7 | Achado ao testar na tela; a correção do helper é do Diogo (núcleo) e foi avisada na Issue #18 |
+| 2026-11-17 | Nome do sistema passa a ser **Supply Dock** (antes "Portal ADM"); repositório e pacote seguem `jt-portal-adm` | Já é o nome do app no Feishu (aprovado pela China em 17/11); um nome só em todo lugar |
+| 2026-11-18 | Início com cartões de solicitações (aguardando, em separação, enviadas no mês, com série de 7 dias), solicitações recentes, contadores no menu (aprovar/separar/enviar) e avatar no topo | Deixar o portal igual ao protótipo; os números vêm de `resumoSolicitacoes`/`contadores` (`modules/solicitacoes/queries.ts`), dentro do alcance de quem vê |
+| 2026-11-19 | Primeiro usuário Dev criado pelo deploy (`scripts/primeiro-acesso.ts`, só com `FIRST_ADMIN_PASSWORD`), nunca altera usuário existente | Permite entrar em produção sem terminal nem senha no Git; ver `docs/hospedagem.md` |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSubsetOf, linksOutsideScopeError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
+import { isSubsetOf, linksOutsideScopeError, ownProfileEditError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
 
 describe("isSubsetOf", () => {
   it("Dev concede qualquer coisa", () => {
@@ -66,5 +66,21 @@ describe("alcance", () => {
   it("sameLinks ignora a ordem", () => {
     expect(sameLinks({ baseIds: ["a", "b"], regionalIds: [] }, { baseIds: ["b", "a"], regionalIds: [] })).toBe(true);
     expect(sameLinks({ baseIds: ["a"], regionalIds: [] }, { baseIds: ["a", "b"], regionalIds: [] })).toBe(false);
+  });
+});
+
+describe("ownProfileEditError (E8)", () => {
+  const admin = { permissions: ["usuarios.editar", "perfis.gerenciar"], profileId: "p-admin" };
+
+  it("ninguém edita o próprio tipo de acesso", () => {
+    expect(ownProfileEditError(admin, "p-admin")).toMatch(/próprio tipo de acesso/);
+  });
+
+  it("pode editar outros tipos de acesso (as outras travas continuam valendo)", () => {
+    expect(ownProfileEditError(admin, "p-base")).toBeNull();
+  });
+
+  it("o Dev (curinga) pode editar o próprio", () => {
+    expect(ownProfileEditError({ permissions: ["*"], profileId: "p-dev" }, "p-dev")).toBeNull();
   });
 });

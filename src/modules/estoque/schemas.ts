@@ -1,9 +1,15 @@
 import { z } from "zod";
 import { optionalText } from "@/lib/form";
+import { MAX_UNIT_COST } from "./rules";
 
 const item = z.object({
   produtoId: z.string().min(1, "Escolha o produto."),
   quantity: z.coerce.number({ error: "Quantidade inválida." }).int("Quantidade precisa ser inteira."),
+  /** Valor unitário (R$) da NF. Opcional; vazio = sem valor. */
+  unitCost: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number({ error: "Valor unitário inválido." }).min(0, "Valor unitário não pode ser negativo.").max(MAX_UNIT_COST, "Valor unitário muito alto.").optional(),
+  ),
 });
 
 /** Linhas vêm do formulário como JSON num campo hidden "itens". */

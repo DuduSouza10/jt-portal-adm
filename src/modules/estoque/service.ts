@@ -6,7 +6,7 @@ import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
 import { canAccessBase } from "@/lib/permissions/check";
 import { loadProdutos, move, newBatchId, produtoLabel, STOCK_TX } from "./engine";
-import { normalizeItems } from "./rules";
+import { mergeUnitCosts, normalizeItems } from "./rules";
 import type { EntradaInput, InventarioInput, MinimoInput, SaidaInput, TransferenciaInput } from "./schemas";
 
 type Tx = Prisma.TransactionClient;
@@ -22,6 +22,7 @@ async function loadAlmoxarifado(tx: Tx, actor: CurrentUser, baseId: string) {
 
 export async function lancarEntrada(actor: CurrentUser, input: EntradaInput) {
   const itens = normalizeItems(input.itens);
+  const costs = mergeUnitCosts(input.itens);
   return db.$transaction(async (tx) => {
     const base = await loadAlmoxarifado(tx, actor, input.baseId);
     const produtos = await loadProdutos(tx, itens.map((i) => i.produtoId), { requireActive: true });
@@ -32,6 +33,7 @@ export async function lancarEntrada(actor: CurrentUser, input: EntradaInput) {
         produtoId: it.produtoId,
         label: produtoLabel(produtos.get(it.produtoId)!),
         op: { type: "ENTRADA", quantity: it.quantity },
+        unitCost: costs.get(it.produtoId) ?? null,
         batchId,
         actorId: actor.id,
         document: input.document,
@@ -96,6 +98,10 @@ export async function transferir(actor: CurrentUser, input: TransferenciaInput) 
     const produtos = await loadProdutos(tx, itens.map((i) => i.produtoId));
     const batchId = newBatchId();
     const common = { batchId, actorId: actor.id, document: input.document, reason: input.reason };
+    // A transferência recebida entra pelo custo médio da origem (K5).
+    const originCost = new Map(
+      (await tx.stockBalance.findMany({ where: { baseId: origem.id, produtoId: { in: itens.map((i) => i.produtoId) } } })).map((b) => [b.produtoId, Number(b.avgCost)]),
+    );
     // Ordem fixa de travamento: primeiro a base de menor id, para duas transferências opostas não travarem.
     const [first, second] =
       origem.id < destino.id
@@ -109,6 +115,7 @@ export async function transferir(actor: CurrentUser, input: TransferenciaInput) 
           produtoId: it.produtoId,
           label: produtoLabel(produtos.get(it.produtoId)!),
           op: { type: side.type, quantity: it.quantity },
+          unitCost: side.type === "TRANSFERENCIA_ENTRADA" ? originCost.get(it.produtoId) || null : undefined,
           refType: "transferencia",
           refId: side.type === "TRANSFERENCIA_SAIDA" ? destino.id : origem.id,
         });
@@ -133,6 +140,7 @@ export type InventoryWarning = { produto: string; contado: number; reservado: nu
 /** Inventário (K3): define o físico para a quantidade contada. Devolve os produtos com disponível negativo. */
 export async function ajustarInventario(actor: CurrentUser, input: InventarioInput) {
   const itens = normalizeItems(input.itens, { allowZero: true });
+  const costs = mergeUnitCosts(input.itens);
   return db.$transaction(async (tx) => {
     const base = await loadAlmoxarifado(tx, actor, input.baseId);
     const produtos = await loadProdutos(tx, itens.map((i) => i.produtoId));
@@ -146,6 +154,7 @@ export async function ajustarInventario(actor: CurrentUser, input: InventarioInp
         produtoId: it.produtoId,
         label: produtoLabel(p),
         op: { type: "INVENTARIO", counted: it.quantity },
+        unitCost: costs.get(it.produtoId) ?? null,
         batchId,
         actorId: actor.id,
         reason: input.reason,

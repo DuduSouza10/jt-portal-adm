@@ -8,12 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
-import { SCOPE_LABEL } from "./scope";
+import { getT } from "@/i18n/server";
+import { profileText } from "@/i18n/labels";
 
-export const metadata: Metadata = { title: "Tipos de acesso" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("perfis.titulo") };
+}
 
 export default async function ProfilesPage() {
   await requirePermission("perfis.gerenciar");
+  const t = await getT();
   const profiles = await db.accessProfile.findMany({
     orderBy: [{ system: "desc" }, { name: "asc" }],
     include: { _count: { select: { users: true } } },
@@ -22,35 +27,38 @@ export default async function ProfilesPage() {
   return (
     <>
       <PageHeader
-        title="Tipos de acesso"
-        description="Cada usuário tem um tipo de acesso, que define o que ele pode fazer e quais bases enxerga."
+        title={t("perfis.titulo")}
+        description={t("perfis.descricao")}
         actions={
           <Button asChild>
             <Link href="/admin/perfis/novo">
-              <Plus /> Novo tipo de acesso
+              <Plus /> {t("perfis.novo")}
             </Link>
           </Button>
         }
       />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {profiles.map((p) => (
-          <Link key={p.id} href={`/admin/perfis/${p.id}`} className="group">
-            <Card className="h-full transition group-hover:border-primary">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {p.name}
-                  {p.system && <Badge variant="secondary">padrão</Badge>}
-                </CardTitle>
-                <CardDescription>{p.description}</CardDescription>
-                <p className="text-xs text-muted-foreground">
-                  {SCOPE_LABEL[p.scope]} ·{" "}
-                  {p.permissions.includes(ALL) ? "todas as permissões" : `${p.permissions.length} permissão(ões)`} ·{" "}
-                  {p._count.users} usuário(s)
-                </p>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
+        {profiles.map((p) => {
+          const text = profileText(t, p);
+          return (
+            <Link key={p.id} href={`/admin/perfis/${p.id}`} className="group">
+              <Card className="h-full transition group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {text.name}
+                    {p.system && <Badge variant="secondary">{t("comum.padrao")}</Badge>}
+                  </CardTitle>
+                  <CardDescription>{text.description}</CardDescription>
+                  <p className="pt-1 text-xs text-muted-foreground">
+                    {t(`alcance.${p.scope}`)} ·{" "}
+                    {p.permissions.includes(ALL) ? t("perfis.todasPermissoes") : t("perfis.nPermissoes", { n: p.permissions.length })} ·{" "}
+                    {t("perfis.nUsuarios", { n: p._count.users })}
+                  </p>
+                </CardHeader>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
     </>
   );

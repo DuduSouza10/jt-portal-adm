@@ -3,7 +3,8 @@ import type { Permission } from "./catalog";
 /**
  * Tipos de acesso padrão (criados/atualizados pelo seed).
  * Mudar as permissões padrão: edite aqui → `npm run db:seed`.
- * O teste default-profiles.test.ts garante que o Administrador consegue conceder todos os outros (exceto Dev).
+ * O teste default-profiles.test.ts garante que o Administrador consegue conceder todos os outros (exceto Dev)
+ * e que os perfis operacionais (Base, Franquia, Expedição) ficam só na sua parte (regra E9).
  */
 export type DefaultProfile = {
   key: string;
@@ -27,10 +28,10 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     description: "Administração geral: usuários, estrutura, estoque e operação.",
     scope: "GLOBAL",
     permissions: [
-      "usuarios.ver", "usuarios.editar", "estrutura.ver", "estrutura.editar", "auditoria.ver",
+      "usuarios.ver", "usuarios.editar", "perfis.gerenciar", "estrutura.ver", "estrutura.editar", "auditoria.ver", "integracoes.gerenciar", "configuracoes.editar",
       "estoque.ver", "estoque.movimentar", "estoque.inventario",
       "produtos.ver", "produtos.editar", "produtos.precos",
-      "solicitacoes.criar", "solicitacoes.ver", "solicitacoes.aprovar", "solicitacoes.excluir",
+      "solicitacoes.criar", "solicitacoes.ver", "solicitacoes.aprovar", "solicitacoes.excluir", "solicitacoes.liberar",
       "expedicao.separar", "expedicao.enviar", "relatorios.ver",
     ],
   },
@@ -39,7 +40,8 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     name: "Gestor regional",
     description: "Acompanha e aprova as solicitações das bases da sua regional.",
     scope: "REGIONAL",
-    permissions: ["estrutura.ver", "produtos.ver", "solicitacoes.ver", "solicitacoes.aprovar", "estoque.ver", "relatorios.ver"],
+    // produtos.precos: vê os valores (R$) nos relatórios (decisão do Diogo, 2026-11-13; igual ao protótipo).
+    permissions: ["estrutura.ver", "produtos.ver", "produtos.precos", "solicitacoes.ver", "solicitacoes.aprovar", "estoque.ver", "relatorios.ver"],
   },
   {
     key: "almoxarifado",
@@ -49,9 +51,18 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     permissions: ["produtos.ver", "solicitacoes.ver", "expedicao.separar", "expedicao.enviar", "estoque.ver", "estoque.movimentar", "estoque.inventario"],
   },
   {
+    // Só a expedição: vê o que já foi separado e está aguardando envio, e confirma o envio (E9).
+    // Sem solicitacoes.ver de propósito: a fila da expedição é liberada por expedicao.enviar.
+    key: "expedicao",
+    name: "Expedição",
+    description: "Vê os pedidos separados aguardando envio e confirma o envio. Não acessa outras áreas.",
+    scope: "REGIONAL",
+    permissions: ["expedicao.enviar"],
+  },
+  {
     key: "base",
     name: "Base",
-    description: "Solicita insumos para a própria base (sujeita ao ciclo de 3 meses).",
+    description: "Só pede insumos para a própria base e acompanha o andamento (separado, na expedição, enviado).",
     scope: "BASE",
     permissions: ["produtos.ver", "solicitacoes.criar", "solicitacoes.ver"],
   },

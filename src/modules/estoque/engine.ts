@@ -2,7 +2,7 @@ import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { dbSchema } from "@/lib/db-schema";
 import { DomainError } from "@/lib/errors";
-import { applyMovement, type MovementResult, type Operation } from "./rules";
+import { applyCost, applyMovement, type MovementResult, type Operation } from "./rules";
 
 /**
  * Motor do estoque: a ÚNICA função que altera StockBalance (fora do seed).
@@ -28,6 +28,8 @@ export type MoveInput = {
   reason?: string | null;
   refType?: string | null;
   refId?: string | null;
+  /** Valor unitário (R$): da NF na entrada; custo da origem na transferência recebida. Ver applyCost (K5). */
+  unitCost?: number | null;
 };
 
 // Nome da tabela qualificado pelo schema (DATABASE_SCHEMA). O schema é validado em dbSchema().
@@ -40,11 +42,12 @@ export async function move(tx: Tx, m: MoveInput): Promise<MovementResult> {
     INSERT INTO ${table} ("baseId", "produtoId", "updatedAt")
     VALUES (${m.baseId}, ${m.produtoId}, now())
     ON CONFLICT ("baseId", "produtoId") DO NOTHING`;
-  const rows = await tx.$queryRaw<{ quantity: number; reserved: number }[]>`
-    SELECT "quantity", "reserved" FROM ${table}
+  const rows = await tx.$queryRaw<{ quantity: number; reserved: number; avgCost: unknown }[]>`
+    SELECT "quantity", "reserved", "avgCost" FROM ${table}
     WHERE "baseId" = ${m.baseId} AND "produtoId" = ${m.produtoId}
     FOR UPDATE`;
-  const current = rows[0];
+  const current = { quantity: rows[0].quantity, reserved: rows[0].reserved };
+  const avgBefore = Number(rows[0].avgCost ?? 0);
 
   let result: MovementResult;
   try {
@@ -54,9 +57,10 @@ export async function move(tx: Tx, m: MoveInput): Promise<MovementResult> {
     throw e;
   }
 
+  const cost = applyCost({ quantity: current.quantity, avgCost: avgBefore }, m.op, result.delta, m.unitCost);
   await tx.stockBalance.update({
     where: { baseId_produtoId: { baseId: m.baseId, produtoId: m.produtoId } },
-    data: { quantity: result.quantity, reserved: result.reserved },
+    data: { quantity: result.quantity, reserved: result.reserved, avgCost: cost.avgCost },
   });
   await tx.stockMovement.create({
     data: {
@@ -66,6 +70,7 @@ export async function move(tx: Tx, m: MoveInput): Promise<MovementResult> {
       quantity: result.delta,
       reservedDelta: result.reservedDelta,
       balanceAfter: result.quantity,
+      unitCost: cost.unitCost,
       reservedAfter: result.reserved,
       document: m.document ?? null,
       reason: m.reason ?? null,

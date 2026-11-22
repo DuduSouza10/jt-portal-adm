@@ -12,11 +12,16 @@ import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam, param } from "@/components/pagination";
 import { EstoqueNav } from "./nav";
 import { MinimoForm } from "./minimo-form";
+import { getT } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Estoque" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("estoque.titulo") };
+}
 
 export default async function SaldosPage(props: PageProps<"/estoque">) {
   const user = await requirePermission("estoque.ver");
+  const t = await getT();
   const sp = await props.searchParams;
   const almox = await listAlmoxarifados(user);
   const base = param(sp, "base");
@@ -29,45 +34,45 @@ export default async function SaldosPage(props: PageProps<"/estoque">) {
 
   return (
     <>
-      <PageHeader title="Estoque" description="Saldo físico, reservado para solicitações aprovadas e disponível." />
+      <PageHeader title={t("estoque.titulo")} description={t("estoque.descricao")} />
       <EstoqueNav user={user} current="/estoque" />
       {almox.length === 0 ? (
-        <EmptyState>Nenhum almoxarifado no seu alcance. Peça ao administrador para vincular você a uma regional ou base.</EmptyState>
+        <EmptyState>{t("estoque.semAlmox")}</EmptyState>
       ) : (
         <>
           <form className="flex flex-wrap items-center gap-2">
             <select name="base" defaultValue={base} className={`${selectClass} max-w-64`}>
-              <option value="">Todos os almoxarifados ({almox.length})</option>
+              <option value="">{t("estoque.todosAlmox", { n: almox.length })}</option>
               {almox.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.code} · {a.name}
                 </option>
               ))}
             </select>
-            <Input name="q" defaultValue={q} placeholder="Produto (código ou nome)" className="max-w-xs" />
+            <Input name="q" defaultValue={q} placeholder={t("estoque.produtoBusca")} className="max-w-xs" />
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="min" value="1" defaultChecked={min} className="size-4" />
-              Só abaixo do mínimo
+              {t("estoque.soAbaixo")}
             </label>
             <Button type="submit" variant="outline">
-              Filtrar
+              {t("comum.filtrar")}
             </Button>
           </form>
           {rows.length === 0 ? (
             <EmptyState>
-              {q || min ? "Nada encontrado com esses filtros." : "Nenhum saldo ainda. Lance uma entrada para começar."}
+              {q || min ? t("estoque.nadaFiltros") : t("estoque.vazio")}
             </EmptyState>
           ) : (
             <Card className="py-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Almox.</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-right">Físico</TableHead>
-                    <TableHead className="text-right">Reservado</TableHead>
-                    <TableHead className="text-right">Disponível</TableHead>
-                    <TableHead className="text-right">Mínimo</TableHead>
+                    <TableHead>{t("estoque.colAlmox")}</TableHead>
+                    <TableHead>{t("estoque.colProduto")}</TableHead>
+                    <TableHead className="text-right">{t("estoque.colFisico")}</TableHead>
+                    <TableHead className="text-right">{t("estoque.colReservado")}</TableHead>
+                    <TableHead className="text-right">{t("estoque.colDisponivel")}</TableHead>
+                    <TableHead className="text-right">{t("estoque.colMinimo")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -84,11 +89,11 @@ export default async function SaldosPage(props: PageProps<"/estoque">) {
                         <TableCell className="text-right tabular-nums text-muted-foreground">{r.reserved || "—"}</TableCell>
                         <TableCell className="text-right tabular-nums">
                           {disp < 0 ? (
-                            <Badge variant="destructive" title="Inventário achou menos do que o reservado: revise as solicitações aprovadas.">
+                            <Badge variant="destructive" title={t("estoque.dispNegativo")}>
                               {disp}
                             </Badge>
                           ) : r.minimum > 0 && disp < r.minimum ? (
-                            <Badge variant="outline" className="border-amber-500 text-amber-700" title="Abaixo do mínimo">
+                            <Badge variant="outline" className="border-warning/60 bg-warning/10 text-warning" title={t("estoque.abaixoMinimo")}>
                               {disp}
                             </Badge>
                           ) : (

@@ -17,6 +17,7 @@ export const baseSchema = z.object({
   city: optionalText,
   state: optionalText.transform((v) => v?.toUpperCase() ?? null),
   address: optionalText,
+  feishuChatId: optionalText.pipe(z.string().regex(/^oc_[A-Za-z0-9_-]{6,80}$/, "chat_id do grupo do Feishu começa com oc_.").nullable().optional()),
   active: checkbox,
 });
 export type BaseInput = z.infer<typeof baseSchema>;

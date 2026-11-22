@@ -15,20 +15,24 @@ export type NavItem = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  // ---- Operação (Eduardo): descomente/ajuste quando a página existir
-  // { href: "/solicitacoes/nova", label: "Solicitar insumos", description: "Montar e enviar um pedido", permissions: ["solicitacoes.criar"], section: "operacao" },
-  // { href: "/solicitacoes", label: "Solicitações", description: "Acompanhar pedidos", permissions: ["solicitacoes.ver"], section: "operacao" },
-  // { href: "/expedicao", label: "Expedição", description: "Separar e enviar", permissions: ["expedicao.separar", "expedicao.enviar"], section: "operacao" },
-  // { href: "/produtos", label: "Produtos", description: "Catálogo de insumos", permissions: ["produtos.ver"], section: "gestao" },
+  // ---- Operação: solicitações, separação e expedição
+  { href: "/solicitacoes/nova", label: "Solicitar insumos", description: "Montar e enviar um pedido", permissions: ["solicitacoes.criar"], section: "operacao" },
+  { href: "/solicitacoes", label: "Solicitações", description: "Acompanhar pedidos e aprovar", permissions: ["solicitacoes.ver"], section: "operacao" },
+  { href: "/separacao", label: "Separação", description: "Separar os pedidos aprovados", permissions: ["expedicao.separar"], section: "operacao" },
+  { href: "/expedicao", label: "Expedição", description: "Carregar e confirmar o envio", permissions: ["expedicao.enviar"], section: "operacao" },
+  { href: "/produtos", label: "Produtos", description: "Catálogo de insumos e limites por período", permissions: ["produtos.ver"], section: "gestao" },
 
   // ---- Estoque (Diogo)
   { href: "/estoque", label: "Estoque", description: "Saldos, entradas, saídas e inventário", permissions: ["estoque.ver"], section: "gestao" },
+  { href: "/relatorios", label: "Relatórios", description: "SLA das solicitações, valores e gasto por base", permissions: ["relatorios.ver"], section: "gestao" },
 
   // ---- Administração (núcleo)
   { href: "/admin/usuarios", label: "Usuários", description: "Contas, bases e redefinição de senha", permissions: ["usuarios.ver"], section: "admin" },
   { href: "/admin/perfis", label: "Tipos de acesso", description: "Permissões e alcance de cada perfil", permissions: ["perfis.gerenciar"], section: "admin" },
   { href: "/admin/estrutura", label: "Regionais e bases", description: "Estrutura organizacional", permissions: ["estrutura.ver"], section: "admin" },
   { href: "/admin/auditoria", label: "Auditoria", description: "Quem alterou o quê e quando", permissions: ["auditoria.ver"], section: "admin" },
+  { href: "/admin/feishu", label: "Feishu", description: "Avisos no Feishu: teste e mensagens enviadas", permissions: ["integracoes.gerenciar"], section: "admin" },
+  { href: "/admin/configuracoes", label: "Configurações", description: "Prazos de SLA e horário comercial", permissions: ["configuracoes.editar"], section: "admin" },
 ];
 
 export const SECTION_LABEL: Record<NavItem["section"], string> = {
