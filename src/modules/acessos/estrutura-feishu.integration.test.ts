@@ -52,6 +52,14 @@ describe("importação da estrutura do Feishu", () => {
     expect(await db.regional.count({ where: { feishuDepartmentId: { startsWith: `od-${tag}` } } })).toBe(0);
   });
 
+  it("só as escolhidas: desmarcar todas de uma regional não cria a regional", async () => {
+    const so = estruturaDoOrganograma(org).filter((d) => d.base.feishuId === id("sjp"));
+    const r = await importarEstruturaFeishu(actor, so, false);
+    expect(r.linhas.map((l) => l.base.name)).toEqual([`SJP ${t}`]);
+    expect(r.regionaisCriadas).toBe(1);
+    expect(r.linhas[0].regional.name).toBe(`São Paulo Norte ${t}`);
+  });
+
   it("importa: cria o que falta e liga a base cadastrada à mão com o mesmo nome", async () => {
     // Uma base BAU já cadastrada à mão (sem Feishu), numa regional qualquer.
     const reg = await db.regional.create({ data: { code: `${tag.toUpperCase()}`.slice(0, 20), name: "Manual", feishuDepartmentId: id("manual") } });
