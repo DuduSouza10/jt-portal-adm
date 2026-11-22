@@ -8,11 +8,12 @@ import { usersScopeWhere } from "@/modules/acessos/queries";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ActionForm } from "@/components/action-form";
-import { CheckField, Field, selectClass } from "@/components/form-field";
+import { CheckField, Field } from "@/components/form-field";
 import { PageHeader } from "@/components/page-header";
 import { getT } from "@/i18n/server";
 import { profileText } from "@/i18n/labels";
 import { resetPasswordAction, saveUserAction } from "../actions";
+import { AcessoFields } from "./acesso-fields";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -82,56 +83,13 @@ export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id
                   <Input id="feishuOpenId" name="feishuOpenId" defaultValue={user?.feishuOpenId ?? ""} autoCapitalize="none" />
                 </Field>
               </div>
-              <Field label={t("usuarios.tipo")} htmlFor="profileId">
-                <select id="profileId" name="profileId" defaultValue={user?.profileId ?? ""} required className={selectClass}>
-                  <option value="" disabled>
-                    {t("comum.escolha")}
-                  </option>
-                  {grantable.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {profileText(t, p).name} ({t(`alcanceUsuario.${p.scope}`)})
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field
-                label={t("usuarios.regionaisBases")}
-                hint={t("usuarios.regionaisBasesDica")}
-              >
-                <div className="max-h-72 space-y-3 overflow-y-auto rounded-lg border bg-muted/30 p-3">
-                  {regionals.length === 0 && (
-                    <p className="text-sm text-muted-foreground">{t("usuarios.nenhumaRegional")}</p>
-                  )}
-                  {regionals.map((r) => (
-                    <div key={r.id} className="space-y-1">
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        <input
-                          type="checkbox"
-                          name="regionalIds"
-                          value={r.id}
-                          defaultChecked={userRegionals.has(r.id)}
-                          className="size-4"
-                        />
-                        {r.code} · {r.name}
-                      </label>
-                      <div className="grid grid-cols-2 gap-1 pl-6 sm:grid-cols-3">
-                        {r.bases.map((b) => (
-                          <label key={b.id} className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              name="baseIds"
-                              value={b.id}
-                              defaultChecked={userBases.has(b.id)}
-                              className="size-4"
-                            />
-                            {b.code} <span className="truncate text-muted-foreground">{b.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Field>
+              <AcessoFields
+                profiles={grantable.map((p) => ({ id: p.id, label: `${profileText(t, p).name} (${t(`alcanceUsuario.${p.scope}`)})`, scope: p.scope }))}
+                regionals={regionals.map((r) => ({ id: r.id, code: r.code, name: r.name, bases: r.bases.map((b) => ({ id: b.id, code: b.code, name: b.name, type: b.type })) }))}
+                profileId={user?.profileId ?? ""}
+                baseIds={[...userBases]}
+                regionalIds={[...userRegionals]}
+              />
               <CheckField
                 name="active"
                 label={t("usuarios.ativo")}

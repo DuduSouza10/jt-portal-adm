@@ -161,6 +161,21 @@
   input[type="checkbox"], input[type="radio"] {
     accent-color: var(--primary);
   }
+  /* Listas de <select>: o navegador desenha com as cores do tema (sem isto, no escuro a lista fica cinza clara e quase ilegível). */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+  select option:disabled {
+    color: var(--muted-foreground);
+  }
   ::selection {
     background: color-mix(in oklch, var(--primary) 22%, transparent);
   }
