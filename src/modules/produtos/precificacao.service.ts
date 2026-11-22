@@ -96,3 +96,28 @@ export function ultimasAlteracoes(take = 30, produtoId?: string) {
     },
   });
 }
+
+/**
+ * Atualiza os preços de uma planilha (código → preço), um produto por vez (cada um com seu histórico e
+ * auditoria). Código que não existe e preço inválido viram erro na linha, sem parar o resto.
+ */
+export async function atualizarPrecosPlanilha(actor: CurrentUser, linhas: { line: number; codigo: string; preco: number | null }[], origem: string) {
+  const produtos = await db.produto.findMany({ where: { code: { in: [...new Set(linhas.map((l) => l.codigo))] } }, select: { id: true, code: true } });
+  const porCodigo = new Map(produtos.map((p) => [p.code, p.id]));
+  const r = { atualizados: 0, iguais: 0, erros: [] as { line: number; codigo: string; message: string }[] };
+  for (const l of linhas) {
+    const id = porCodigo.get(l.codigo);
+    if (!id) {
+      r.erros.push({ line: l.line, codigo: l.codigo, message: "Produto não encontrado." });
+      continue;
+    }
+    try {
+      const x = await alterarPreco(actor, id, l.preco, origem);
+      if (x.mudou) r.atualizados++;
+      else r.iguais++;
+    } catch (e) {
+      r.erros.push({ line: l.line, codigo: l.codigo, message: e instanceof DomainError ? e.message : "Erro inesperado." });
+    }
+  }
+  return r;
+}

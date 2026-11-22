@@ -14,6 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { PrecoForm } from "./preco-form";
+import { PlanilhaPrecosForm } from "./planilha-form";
+
+// Atualizar por planilha grava um produto por vez: dá tempo para centenas de linhas.
+export const maxDuration = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -66,6 +70,16 @@ export default async function PrecificacaoPage(props: PageProps<"/precificacao">
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardContent className="space-y-2">
+          <div>
+            <h2 className="text-[15px] font-semibold">{t("precificacao.planilhaTitulo")}</h2>
+            <p className="text-xs text-muted-foreground">{t("precificacao.planilhaAjuda")}</p>
+          </div>
+          <PlanilhaPrecosForm />
+        </CardContent>
+      </Card>
 
       <form className="flex flex-wrap items-center gap-2">
         <Input name="q" defaultValue={q} placeholder={t("precificacao.buscar")} className="w-72" aria-label={t("comum.buscar")} />

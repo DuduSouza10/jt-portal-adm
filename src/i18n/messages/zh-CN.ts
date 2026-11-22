@@ -814,6 +814,11 @@ export const zhCN: Messages = {
     sem3d: "此电脑不支持 3D，以 2D 显示。",
   },
   precificacao: {
+    planilhaTitulo: "通过表格批量更新价格",
+    planilhaAjuda: "CSV 文件，包含编码和价格列（也支持库存表格的 Código 与 ValorMedio 列）。表格中的每个产品都会更新为新价格并记录历史；无价格或为 0 的行将被忽略。",
+    planilhaArquivo: "价格表（CSV）",
+    planilhaBotao: "更新价格",
+    planilhaEnviando: "更新中…",
     titulo: "定价",
     descricao: "每个产品的价格（每单位雷亚尔）。保存后新价格立即用于库存价值和之后的发货；已发货的记录保持当时的价格。",
     kpiProdutos: "启用的产品",

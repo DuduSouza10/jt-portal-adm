@@ -811,6 +811,11 @@ export const ptBR = {
     sem3d: "Este computador não mostra 3D; exibindo em 2D.",
   },
   precificacao: {
+    planilhaTitulo: "Atualizar preços por planilha",
+    planilhaAjuda: "CSV com as colunas código e preço (aceita também a planilha de estoque, com Código e ValorMedio). Cada produto da planilha recebe o preço novo, com histórico; linhas sem preço ou com 0 são ignoradas.",
+    planilhaArquivo: "Planilha de preços (CSV)",
+    planilhaBotao: "Atualizar preços",
+    planilhaEnviando: "Atualizando…",
     titulo: "Precificação",
     descricao: "Preço de cada produto (R$ por unidade). Ao salvar, o preço novo vale na hora para o valor do estoque e para os próximos envios; envios antigos ficam com o preço da época.",
     kpiProdutos: "Produtos ativos",
