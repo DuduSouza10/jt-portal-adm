@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { baseScopeWhere, type Actor } from "@/lib/permissions/check";
 import { almoxarifadosWhere } from "@/modules/estoque/queries";
 import type { SlaOrder, SpendLine } from "./sla";
+import type { AbertoLinha } from "./graficos";
 
 /** Leituras dos relatórios. Sempre dentro do alcance de quem vê (bases da regional, etc.) e dos filtros da tela. */
 
@@ -65,6 +66,38 @@ export async function spendLines(actor: Actor, start: Date, end: Date, f: Filtro
   return items.map((i) => {
     const { regional, ...base } = i.solicitacao.base;
     return { base, regional, produto: i.produto, quantity: i.separated!, unitCost: i.unitCost == null ? null : Number(i.unitCost), shippedAt: i.solicitacao.shippedAt! };
+  });
+}
+
+/**
+ * Itens dos pedidos em andamento (aprovado, em separação ou separado; ainda não enviados), dentro do
+ * alcance e dos filtros, valorizados ao preço atual do almoxarifado de cada pedido.
+ */
+export async function openOrderLines(actor: Actor, f: Filtro = {}): Promise<AbertoLinha[]> {
+  const items = await db.solicitacaoItem.findMany({
+    where: { solicitacao: { ...where(actor, f), status: { in: ["APROVADA", "EM_SEPARACAO", "SEPARADA"] } } },
+    select: {
+      produtoId: true,
+      approved: true,
+      separated: true,
+      unitCost: true,
+      solicitacao: { select: { almoxarifadoId: true, base: { select: { id: true, code: true, name: true, regional: { select: { id: true, code: true, name: true } } } } } },
+    },
+    take: 20000,
+  });
+  const pares = [...new Set(items.map((i) => `${i.solicitacao.almoxarifadoId}|${i.produtoId}`))].map((k) => k.split("|"));
+  const saldos = pares.length
+    ? await db.stockBalance.findMany({
+        where: { OR: pares.filter(([a]) => a && a !== "null").map(([baseId, produtoId]) => ({ baseId, produtoId })) },
+        select: { baseId: true, produtoId: true, avgCost: true },
+      })
+    : [];
+  const preco = new Map(saldos.map((s) => [`${s.baseId}|${s.produtoId}`, Number(s.avgCost)]));
+  return items.map((i) => {
+    const { regional, ...base } = i.solicitacao.base;
+    const atual = preco.get(`${i.solicitacao.almoxarifadoId}|${i.produtoId}`) ?? 0;
+    const custo = i.unitCost != null ? Number(i.unitCost) : atual > 0 ? atual : null;
+    return { base, regional, quantity: i.separated ?? i.approved ?? 0, unitCost: custo };
   });
 }
 

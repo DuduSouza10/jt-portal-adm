@@ -25,11 +25,11 @@ import {
   type StageKey,
   type StageSummary,
 } from "@/modules/relatorios/sla";
-import { countInPeriod, filtroOptions, openOrders, ordersInPeriod, shippedStats, spendLines, stockValue, type Filtro, type ReportOrder } from "@/modules/relatorios/queries";
+import { countInPeriod, filtroOptions, openOrderLines, openOrders, ordersInPeriod, shippedStats, spendLines, stockValue, type Filtro, type ReportOrder } from "@/modules/relatorios/queries";
 import { selectClass } from "@/components/form-field";
 import { ChartTooltip } from "@/components/chart-tooltip";
 import { Grafico3D } from "@/components/charts/grafico-3d";
-import { dayCalendarGrid, spendMonthGrid } from "@/modules/relatorios/graficos";
+import { dayCalendarGrid, spendMonthGrid, valorPorBase, type ValorBase } from "@/modules/relatorios/graficos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -95,7 +95,7 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
   const anterior = monthRange(mesAntes, now);
   // Separação e expedição olham o que foi separado/enviado no mês; o resto, o que foi pedido no mês.
   const campo = visao === "separacao" ? "separatedAt" : visao === "expedicao" ? "shippedAt" : "createdAt";
-  const [orders, abertas, linhas6, estoque, contAntes, enviadas, enviadasAntes] = await Promise.all([
+  const [orders, abertas, linhas6, estoque, contAntes, enviadas, enviadasAntes, emAndamento] = await Promise.all([
     ordersInPeriod(user, start, end, filtro, campo),
     openOrders(user, filtro),
     ver.consumo ? spendLines(user, inicio6, end, filtro) : Promise.resolve([]),
@@ -103,6 +103,7 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
     countInPeriod(user, anterior.start, anterior.end, filtro, campo),
     shippedStats(user, start, end, filtro),
     shippedStats(user, anterior.start, anterior.end, filtro),
+    ver.consumo ? openOrderLines(user, filtro) : Promise.resolve([]),
   ]);
   const linhas = linhas6.filter((l) => monthKeyOf(l.shippedAt) === key);
   const geral = summarize(orders, now, bh, targets);
@@ -111,6 +112,8 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
   const atrasadasTodas = lateNow(abertas, now, bh, targets);
   const atrasadas = ver.separacao ? atrasadasTodas.filter((a) => a.stage === "separacao") : ver.expedicao ? atrasadasTodas.filter((a) => a.stage === "expedicao") : atrasadasTodas;
   const gasto = ver.consumo ? spendBy(linhas) : null;
+  // Valor por base: consumido no mês (enviado) + em andamento agora (só faz sentido olhando o mês atual).
+  const valorBase = ver.consumo ? valorPorBase(linhas, mesAtual ? emAndamento : []) : null;
   const porMes = ver.consumo ? spendByMonth(linhas6, meses) : [];
   const gastoAntes = porMes[4]?.value ?? 0;
   const topProdutos = gasto ? [...gasto.byProduto].sort((x, y) => y.quantity - x.quantity).slice(0, 10) : [];
@@ -353,6 +356,15 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
         />
       )}
 
+      {valorBase && (
+        <Panel
+          title={t("relatorios.valorPorBase")}
+          note={t(mesAtual ? "relatorios.valorPorBaseNota" : "relatorios.valorPorBaseNotaPassado", { consumido: money.format(valorBase.consumido), aberto: money.format(valorBase.aberto) })}
+        >
+          <ValorPorBaseChart t={t} money={money} linhas={valorBase.linhas} mostrarAberto={mesAtual} />
+        </Panel>
+      )}
+
       {/* ---------------- Separação / Expedição: números da etapa */}
       {(ver.separacao || ver.expedicao) && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -384,7 +396,7 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
 
       {/* ---------------- Consumo: por base, estoque e produtos */}
       {(gasto || estoque) && (
-        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-2">
           {gasto && (
             <Panel title={t("relatorios.gastoPorRegional")} note={t("relatorios.noMes")}>
               <Bars
@@ -393,17 +405,6 @@ export default async function RelatoriosPage(props: PageProps<"/relatorios">) {
                 fmt={fmt}
                 labels={{ valor: t("relatorios.valor"), participacao: t("relatorios.participacao") }}
                 items={gasto.byRegional.map((r) => ({ key: r.id, label: `${r.code} · ${r.name}`, value: r.value, text: money.format(r.value) }))}
-              />
-            </Panel>
-          )}
-          {gasto && (
-            <Panel title={t("relatorios.gastoPorBase")} note={t("relatorios.gastoPorBaseNota")}>
-              <Bars
-                empty={t("relatorios.semEnvios")}
-                total={gasto.total}
-                fmt={fmt}
-                labels={{ valor: t("relatorios.valor"), participacao: t("relatorios.participacao") }}
-                items={gasto.byBase.slice(0, 15).map((b) => ({ key: b.id, label: `${b.code} · ${b.name}`, value: b.value, text: money.format(b.value), extra: b.semCusto ? t("relatorios.itensSemCusto", { n: b.semCusto }) : undefined }))}
               />
             </Panel>
           )}
@@ -695,5 +696,67 @@ function GroupTable({
         </TableBody>
       </Table>
     </section>
+  );
+}
+
+/**
+ * Valor por base (R$): barra horizontal por base, na cor da regional. Parte cheia = consumido no mês
+ * (enviado); parte listrada = em andamento (aprovado, em separação ou separado). As 15 maiores aparecem;
+ * as demais ficam em "ver todas".
+ */
+function ValorPorBaseChart({ t, money, linhas, mostrarAberto }: { t: Translator; money: Intl.NumberFormat; linhas: ValorBase[]; mostrarAberto: boolean }) {
+  if (!linhas.length) return <p className="px-[18px] pt-2 pb-6 text-sm text-muted-foreground">{t("relatorios.valorPorBaseVazio")}</p>;
+  const max = Math.max(1, ...linhas.map((l) => l.total));
+  const cor = (i: number) => `var(--serie-${(i % 8) + 1})`;
+  const listra = (c: string) => `repeating-linear-gradient(135deg, color-mix(in oklch, ${c} 55%, transparent) 0 4px, color-mix(in oklch, ${c} 25%, transparent) 4px 8px)`;
+  const Linha = ({ l }: { l: ValorBase }) => (
+    <ChartTooltip
+      className="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto] items-center gap-3 py-1"
+      title={`${l.base.code} · ${l.base.name} (${l.regional.code})`}
+      rows={[
+        { label: t("relatorios.consumido"), value: money.format(l.consumido), color: cor(l.serie) },
+        ...(mostrarAberto ? [{ label: t("relatorios.emAndamento"), value: money.format(l.aberto) }] : []),
+        { label: t("relatorios.total"), value: money.format(l.total) },
+        ...(l.semCusto ? [{ label: t("relatorios.itensSemPreco"), value: String(l.semCusto) }] : []),
+      ]}
+    >
+      <span className="truncate text-sm">
+        <span className="font-mono font-semibold">{l.base.code}</span> <span className="text-muted-foreground">{l.regional.code}</span>
+      </span>
+      <div className="flex h-3.5 overflow-hidden rounded-full bg-muted">
+        <div style={{ width: `${(l.consumido / max) * 100}%`, background: cor(l.serie) }} />
+        {mostrarAberto && <div style={{ width: `${(l.aberto / max) * 100}%`, background: listra(cor(l.serie)) }} />}
+      </div>
+      <span className="text-right text-sm font-semibold tabular-nums">{money.format(l.total)}</span>
+    </ChartTooltip>
+  );
+  const topo = linhas.slice(0, 15);
+  const resto = linhas.slice(15);
+  return (
+    <div className="px-[18px] pt-1 pb-4">
+      {mostrarAberto && (
+        <div className="mb-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-[3px] bg-[var(--serie-1)]" /> {t("relatorios.consumido")}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-[3px]" style={{ background: listra("var(--serie-1)") }} /> {t("relatorios.emAndamento")}
+          </span>
+        </div>
+      )}
+      {topo.map((l) => (
+        <Linha key={l.base.id} l={l} />
+      ))}
+      {resto.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer text-xs font-medium text-primary">{t("relatorios.verTodas", { n: linhas.length })}</summary>
+          <div className="mt-1">
+            {resto.map((l) => (
+              <Linha key={l.base.id} l={l} />
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
   );
 }

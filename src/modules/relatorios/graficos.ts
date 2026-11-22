@@ -72,3 +72,47 @@ export function dayCalendarGrid(items: { date: Date; regional: Serie }[], monthK
   }
   return { series, cells, weeks: Math.floor((first + last - 1) / 7) + 1, todayIndex };
 }
+
+/** Pedido ainda não enviado (aprovado, em separação ou separado), valorizado pelo preço atual. */
+export type AbertoLinha = { base: Serie; regional: Serie; quantity: number; unitCost: number | null };
+export type ValorBase = {
+  base: Serie;
+  regional: Serie;
+  /** índice da regional em `series` (cor). */
+  serie: number;
+  consumido: number;
+  aberto: number;
+  total: number;
+  /** itens sem preço (não somam). */
+  semCusto: number;
+};
+
+/**
+ * Valor por base (R$): o que já foi consumido (enviado no período, ao preço do envio) e o que está em
+ * andamento (aprovado/em separação/separado, ao preço atual). Ordenado do maior para o menor total.
+ */
+export function valorPorBase(consumo: SpendLine[], abertos: AbertoLinha[]): { series: Serie[]; linhas: ValorBase[]; consumido: number; aberto: number } {
+  const series = seriesOf([...consumo.map((l) => l.regional), ...abertos.map((l) => l.regional)]);
+  const si = new Map(series.map((s, i) => [s.id, i]));
+  const by = new Map<string, ValorBase>();
+  const linha = (base: Serie, regional: Serie) => {
+    let r = by.get(base.id);
+    if (!r) by.set(base.id, (r = { base: { id: base.id, code: base.code, name: base.name }, regional, serie: si.get(regional.id)!, consumido: 0, aberto: 0, total: 0, semCusto: 0 }));
+    return r;
+  };
+  for (const l of consumo) {
+    const r = linha(l.base, l.regional);
+    if (l.unitCost == null) r.semCusto++;
+    else r.consumido += l.quantity * l.unitCost;
+  }
+  for (const l of abertos) {
+    const r = linha(l.base, l.regional);
+    if (l.unitCost == null) r.semCusto++;
+    else r.aberto += l.quantity * l.unitCost;
+  }
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  const linhas = [...by.values()]
+    .map((r) => ({ ...r, consumido: r2(r.consumido), aberto: r2(r.aberto), total: r2(r.consumido + r.aberto) }))
+    .sort((a, b) => b.total - a.total || a.base.code.localeCompare(b.base.code));
+  return { series, linhas, consumido: r2(linhas.reduce((t, l) => t + l.consumido, 0)), aberto: r2(linhas.reduce((t, l) => t + l.aberto, 0)) };
+}

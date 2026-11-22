@@ -120,11 +120,12 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  profile   AccessProfile  @relation(fields: [profileId], references: [id])
-  bases     UserBase[]
-  regionals UserRegional[]
-  sessions  Session[]
-  auditLogs AuditLog[]
+  profile         AccessProfile    @relation(fields: [profileId], references: [id])
+  bases           UserBase[]
+  regionals       UserRegional[]
+  sessions        Session[]
+  auditLogs       AuditLog[]
+  precosAlterados PrecoHistorico[]
 
   // módulo estoque
   stockMovements StockMovement[]
@@ -239,8 +240,28 @@ model Produto {
   stockMovements    StockMovement[]
   stockReservations StockReservation[]
   solicitacaoItens  SolicitacaoItem[]
+  precos            PrecoHistorico[]
 
   @@index([name])
+}
+
+/// Precificação: cada alteração manual do preço de um produto (R$ por unidade). O preço vale para o
+/// custo médio do produto em todos os almoxarifados; envios antigos guardam o preço da época.
+model PrecoHistorico {
+  id            String   @id @default(cuid())
+  produtoId     String
+  /// Preço antes da alteração (null = sem preço até então).
+  valorAnterior Decimal? @db.Decimal(14, 4)
+  valorNovo     Decimal  @db.Decimal(14, 4)
+  motivo        String?
+  actorId       String
+  createdAt     DateTime @default(now())
+
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  actor   User    @relation(fields: [actorId], references: [id])
+
+  @@index([produtoId, createdAt])
+  @@index([createdAt])
 }
 
 // ---------------------------------------------------------------------------

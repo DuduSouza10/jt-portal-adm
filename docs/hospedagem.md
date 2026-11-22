@@ -41,7 +41,7 @@ o reenvio do Feishu e as limpezas. Na Vercel:
 
 ## Primeiro usuário pelo deploy (sem terminal)
 
-`scripts/primeiro-acesso.ts` roda no início do `npm run build`. Sem `FIRST_ADMIN_PASSWORD` ele não faz nada.
+`scripts/primeiro-acesso.ts` roda no início do `npm run build`. **No deploy de produção da Vercel (`VERCEL_ENV=production`) ele sempre aplica as migrations e atualiza os tipos de acesso padrão**, com ou sem `FIRST_ADMIN_PASSWORD` (pode apagar a senha sem medo de uma versão nova subir sem as tabelas dela). Fora da produção, sem `FIRST_ADMIN_PASSWORD` ele não faz nada.
 Com ela definida, ele aplica as migrations, cria os tipos de acesso padrão (seed em modo produção, sem dados de exemplo)
 e cria o usuário Dev `FIRST_ADMIN_LOGIN` / `FIRST_ADMIN_NAME`, **só se esse login ainda não existir**.
 

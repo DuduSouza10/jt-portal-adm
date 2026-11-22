@@ -76,7 +76,8 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { key: "produtos.ver", label: "Ver catálogo" },
       { key: "produtos.editar", label: "Criar e editar produtos" },
-      { key: "produtos.precos", label: "Ver e editar preços" },
+      { key: "produtos.precos", label: "Ver valores (R$)" },
+      { key: "produtos.precificar", label: "Alterar o preço dos produtos (precificação)" },
     ],
   },
   {
