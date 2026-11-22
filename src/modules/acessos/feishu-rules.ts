@@ -118,3 +118,41 @@ export function loginSugerido(p: { name: string; email?: string | null; openId: 
     .slice(0, 36);
   return raw.length >= 3 ? raw : `feishu.${p.openId.slice(-8).toLowerCase()}`;
 }
+
+/**
+ * Onde descer ao ler o organograma inteiro (importação da estrutura): Subsidiárias, "Gestão Regional"
+ * e, logo abaixo dela, os DCs (para achar os CDs de MG). O resto (setores das unidades, administrativo)
+ * não interessa para montar regionais e bases.
+ */
+export function desceNoOrganograma(d: Dept, pai?: Dept) {
+  const n = norm(d.name);
+  return SUBSIDIARIA.test(n) || n === "gestao regional" || (!!pai && isGestaoRegional(pai) && /^dc\s/.test(n));
+}
+
+/**
+ * Todas as regionais e bases do organograma (E11), com as mesmas regras do login.
+ * Um DC que tem CDs não vira base (cada CD é a base); DC sem CD vira base.
+ * Ordenado por regional e base.
+ */
+export function estruturaDoOrganograma(depts: (Dept & { parentId?: string })[]): Deteccao[] {
+  const map = new Map(depts.map((d) => [d.id, d]));
+  const cadeia = (d: Dept & { parentId?: string }) => {
+    const c: Dept[] = [d];
+    let p = d.parentId;
+    for (let i = 0; p && map.has(p) && i < 12; i++) {
+      const pd = map.get(p)!;
+      c.push(pd);
+      p = pd.parentId;
+    }
+    return c;
+  };
+  const temCd = (id: string) => depts.some((x) => x.parentId === id && /^cd\s/.test(norm(x.name)));
+  const out = new Map<string, Deteccao>();
+  for (const d of depts) {
+    const det = detectar(cadeia(d));
+    if (!det || det.base.feishuId !== d.id) continue;
+    if (/^dc\s/.test(norm(d.name)) && temCd(d.id)) continue;
+    out.set(d.id, det);
+  }
+  return [...out.values()].sort((a, b) => a.regional.code.localeCompare(b.regional.code) || a.base.code.localeCompare(b.base.code));
+}

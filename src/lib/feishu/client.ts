@@ -140,3 +140,79 @@ export async function getUserDepartmentChains(openId: string, maxDepth = 8): Pro
   }
   return chains;
 }
+
+type RawDept = { open_department_id: string; name: string; parent_department_id?: string };
+const toDept = (d: RawDept, parentId?: string): FeishuDept => ({
+  id: d.open_department_id,
+  name: d.name,
+  parentId: parentId ?? (d.parent_department_id && d.parent_department_id !== "0" ? d.parent_department_id : undefined),
+});
+
+/** Filhos diretos de um departamento ("0" = raiz), com paginação. */
+async function listChildren(parentId: string, token: string): Promise<FeishuDept[]> {
+  const out: FeishuDept[] = [];
+  let pageToken = "";
+  for (let i = 0; i < 100; i++) {
+    const q = new URLSearchParams({ department_id_type: "open_department_id", fetch_child: "false", page_size: "50" });
+    if (pageToken) q.set("page_token", pageToken);
+    const r = await call<{ data: { items?: RawDept[]; has_more?: boolean; page_token?: string } }>(
+      `/open-apis/contact/v3/departments/${encodeURIComponent(parentId)}/children?${q}`,
+      { token },
+    );
+    for (const d of r.data.items ?? []) out.push(toDept(d, parentId === "0" ? undefined : parentId));
+    if (!r.data.has_more || !r.data.page_token) break;
+    pageToken = r.data.page_token;
+  }
+  return out;
+}
+
+/** Departamentos que o app enxerga no topo: a raiz da empresa ou, sem acesso a ela, os do alcance do app. */
+async function topDepartments(token: string): Promise<FeishuDept[]> {
+  try {
+    return await listChildren("0", token);
+  } catch {
+    const ids: string[] = [];
+    let pageToken = "";
+    for (let i = 0; i < 20; i++) {
+      const q = new URLSearchParams({ department_id_type: "open_department_id", page_size: "100" });
+      if (pageToken) q.set("page_token", pageToken);
+      const r = await call<{ data: { department_ids?: string[]; has_more?: boolean; page_token?: string } }>(`/open-apis/contact/v3/scopes?${q}`, { token });
+      ids.push(...(r.data.department_ids ?? []));
+      if (!r.data.has_more || !r.data.page_token) break;
+      pageToken = r.data.page_token;
+    }
+    const out: FeishuDept[] = [];
+    for (const id of ids) out.push(await getDepartment(id, token));
+    return out;
+  }
+}
+
+/**
+ * Organograma para montar regionais e bases (E11). Não varre a empresa inteira: desce só por onde
+ * `desce(departamento, pai)` mandar (Subsidiárias, Gestão Regional e DCs). Depois completa os "pais"
+ * que faltarem, para cada cadeia chegar até a Subsidiária.
+ */
+export async function getOrgChart(desce: (d: FeishuDept, pai: FeishuDept | undefined) => boolean, maxDepts = 3000): Promise<FeishuDept[]> {
+  const token = await getTenantAccessToken();
+  const map = new Map<string, FeishuDept>();
+  const fila = await topDepartments(token);
+  while (fila.length && map.size < maxDepts) {
+    const d = fila.shift()!;
+    if (map.has(d.id)) continue;
+    map.set(d.id, d);
+    if (desce(d, d.parentId ? map.get(d.parentId) : undefined)) fila.push(...(await listChildren(d.id, token)));
+  }
+  for (const d of [...map.values()]) {
+    let p = d.parentId;
+    for (let i = 0; p && !map.has(p) && i < 8; i++) {
+      try {
+        const pd = await getDepartment(p, token);
+        map.set(pd.id, pd);
+        p = pd.parentId;
+      } catch {
+        break;
+      }
+    }
+  }
+  return [...map.values()];
+}
