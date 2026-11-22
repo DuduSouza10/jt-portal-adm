@@ -12,7 +12,7 @@ import { NavIcon } from "@/components/nav-icons";
 import { LanguageSwitch } from "@/components/preferences";
 import { logoutAction } from "@/app/login/actions";
 
-type NavItem = { href: string; label: string };
+type NavItem = { href: string; label: string; badge?: number };
 export type NavGroup = { label: string; items: NavItem[] };
 
 /** Item ativo: a rota exata ou uma sub-rota; o mais específico ganha. "/" só acende na própria home. */
@@ -48,6 +48,11 @@ function NavList({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () =
               >
                 <NavIcon href={i.href} className="size-[18px]" />
                 {i.label}
+                {!!i.badge && (
+                  <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-muted px-1.5 text-[11px] leading-none font-semibold text-muted-foreground tabular-nums">
+                    {i.badge > 99 ? "99+" : i.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -127,15 +132,34 @@ export function MobileNav({
   );
 }
 
-/** Cartão do usuário no pé da barra lateral: trocar senha e sair. */
-export function UserCard({ name, subtitle }: { name: string; subtitle: string }) {
-  const t = useT();
-  const initials = name
+/** Iniciais de um nome (até duas letras). */
+export function initialsOf(name: string) {
+  return name
     .split(/\s+/)
     .filter((w) => /^\p{L}/u.test(w))
     .slice(0, 2)
     .map((p) => p[0]!.toUpperCase())
     .join("");
+}
+
+/** Avatar do topo: leva à troca de senha/conta. */
+export function TopAvatar({ name, label }: { name: string; label: string }) {
+  return (
+    <Link
+      href="/conta/senha"
+      aria-label={label}
+      title={label}
+      className="hidden size-9 items-center justify-center rounded-full bg-accent text-[13px] font-semibold text-accent-foreground transition hover:ring-2 hover:ring-ring/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:inline-flex"
+    >
+      {initialsOf(name)}
+    </Link>
+  );
+}
+
+/** Cartão do usuário no pé da barra lateral: trocar senha e sair. */
+export function UserCard({ name, subtitle }: { name: string; subtitle: string }) {
+  const t = useT();
+  const initials = initialsOf(name);
   return (
     <div className="flex items-center gap-2.5 rounded-xl border bg-surface-2 p-2.5">
       <span className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-accent text-[13px] font-semibold text-accent-foreground">

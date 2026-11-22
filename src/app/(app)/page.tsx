@@ -1,13 +1,16 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { TZDate } from "@date-fns/tz";
 import { startOfDay } from "date-fns";
-import { ArrowDownToLine, ArrowRight, ArrowUpRight, PackageCheck, Repeat2, TriangleAlert, Warehouse } from "lucide-react";
+import { ArrowDownToLine, ArrowRight, ArrowUpRight, ClipboardList, PackageCheck, Plus, Repeat2, Send, TriangleAlert, Warehouse } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
 import { fmtDateTime, TZ } from "@/lib/format";
 import { can } from "@/lib/permissions/check";
 import { navFor, SECTION_LABEL, type NavItem } from "@/lib/navigation";
 import { listAlmoxarifados, listSaldos } from "@/modules/estoque/queries";
+import { resumoSolicitacoes, solicitacoesRecentes } from "@/modules/solicitacoes/queries";
+import { formatNumber } from "@/modules/solicitacoes/rules";
 import { getT } from "@/i18n/server";
 import { navText } from "@/i18n/labels";
 import type { Translator } from "@/i18n/translate";
@@ -16,8 +19,11 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/page-header";
 import { NavIcon } from "@/components/nav-icons";
 import { ChartTooltip } from "@/components/chart-tooltip";
+import { Sparkline } from "@/components/sparkline";
+import { StatusBadge } from "./solicitacoes/badges";
 
 type User = Awaited<ReturnType<typeof requireUser>>;
+type Sol = { resumo: Awaited<ReturnType<typeof resumoSolicitacoes>>; recentes: Awaited<ReturnType<typeof solicitacoesRecentes>> };
 
 export default async function HomePage() {
   const [user, t] = await Promise.all([requireUser(), getT()]);
@@ -28,6 +34,9 @@ export default async function HomePage() {
   const nome = user.name.split(" ")[0];
   const greeting = t(hour < 12 ? "inicio.bomDia" : hour < 18 ? "inicio.boaTarde" : "inicio.boaNoite", { nome });
   const today = new Intl.DateTimeFormat(t.locale, { weekday: "long", day: "numeric", month: "long", timeZone: TZ }).format(now);
+  const sol: Sol | null = can(user, "solicitacoes.ver")
+    ? { resumo: await resumoSolicitacoes(user), recentes: await solicitacoesRecentes(user) }
+    : null;
 
   return (
     <>
@@ -36,16 +45,25 @@ export default async function HomePage() {
           <h1 className="text-[22px] font-semibold tracking-tight sm:text-[26px]">{greeting}</h1>
           <p className="text-muted-foreground first-letter:uppercase">{t("inicio.resumo", { data: today })}</p>
         </div>
-        {can(user, "estoque.movimentar") && (
-          <Button asChild>
-            <Link href="/estoque/lancar?tipo=entrada">
-              <ArrowDownToLine /> {t("inicio.lancarEntrada")}
-            </Link>
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {can(user, "estoque.movimentar") && (
+            <Button asChild variant={can(user, "solicitacoes.criar") ? "outline" : "default"}>
+              <Link href="/estoque/lancar?tipo=entrada">
+                <ArrowDownToLine /> {t("inicio.lancarEntrada")}
+              </Link>
+            </Button>
+          )}
+          {can(user, "solicitacoes.criar") && (
+            <Button asChild>
+              <Link href="/solicitacoes/nova">
+                <Plus /> {t("inicio.novaSolicitacao")}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
-      {can(user, "estoque.ver") && <EstoqueResumo user={user} t={t} />}
+      {(sol || can(user, "estoque.ver")) && <Resumo user={user} t={t} sol={sol} />}
 
       {items.length === 0 && <EmptyState>{t("inicio.semAcesso")}</EmptyState>}
 
@@ -91,9 +109,9 @@ export default async function HomePage() {
 }
 
 /** Números, estoque crítico e últimas movimentações, no alcance do usuário. */
-async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
-  const almox = await listAlmoxarifados(user);
-  if (!almox.length) return null;
+async function Resumo({ user, t, sol }: { user: User; t: Translator; sol: Sol | null }) {
+  const almox = can(user, "estoque.ver") ? await listAlmoxarifados(user) : [];
+  if (!almox.length) return sol ? <ResumoSolicitacoes t={t} sol={sol} /> : null;
   const baseIds = almox.map((a) => a.id);
   const [comSaldo, abaixo, hoje, criticos, movs] = await Promise.all([
     db.stockBalance.count({ where: { baseId: { in: baseIds }, quantity: { gt: 0 } } }),
@@ -132,8 +150,14 @@ async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
   return (
     <>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi icon={Warehouse} label={t("inicio.kpiAlmox")} value={n(almox.length)} href="/estoque" />
-        <Kpi icon={PackageCheck} label={t("inicio.kpiProdutos")} value={n(comSaldo)} href="/estoque" />
+        {sol ? (
+          <SolicitacoesKpis t={t} sol={sol} />
+        ) : (
+          <>
+            <Kpi icon={Warehouse} label={t("inicio.kpiAlmox")} value={n(almox.length)} href="/estoque" />
+            <Kpi icon={PackageCheck} label={t("inicio.kpiProdutos")} value={n(comSaldo)} href="/estoque" />
+          </>
+        )}
         <Kpi
           icon={TriangleAlert}
           label={t("inicio.kpiAbaixo")}
@@ -142,10 +166,11 @@ async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
           note={abaixo.total ? t("inicio.kpiAbaixoVer") : t("inicio.kpiAbaixoOk")}
           href={abaixo.total ? "/estoque?min=1" : "/estoque"}
         />
-        <Kpi icon={Repeat2} label={t("inicio.kpiHoje")} value={n(hoje)} href="/estoque/movimentacoes" />
+        {!sol && <Kpi icon={Repeat2} label={t("inicio.kpiHoje")} value={n(hoje)} href="/estoque/movimentacoes" />}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className={cn("grid gap-4", sol ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]")}>
+        {sol && <SolicitacoesRecentes t={t} recentes={sol.recentes} />}
         <Panel title={t("inicio.estoqueCritico")} href="/estoque?min=1" link={t("inicio.verEstoque")}>
           {top.length === 0 ? (
             <p className="px-[18px] py-6 text-sm text-muted-foreground">{t("inicio.semCritico")}</p>
@@ -191,7 +216,7 @@ async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
           )}
         </Panel>
 
-        <Panel title={t("inicio.ultimasMov")} href="/estoque/movimentacoes" link={t("inicio.verTodas")}>
+        <Panel className={sol ? "lg:col-span-2" : undefined} title={t("inicio.ultimasMov")} href="/estoque/movimentacoes" link={t("inicio.verTodas")}>
           {movs.length === 0 ? (
             <p className="px-[18px] py-6 text-sm text-muted-foreground">{t("inicio.semMov")}</p>
           ) : (
@@ -231,9 +256,9 @@ async function EstoqueResumo({ user, t }: { user: User; t: Translator }) {
   );
 }
 
-function Panel({ title, href, link, children }: { title: string; href: string; link: string; children: React.ReactNode }) {
+function Panel({ title, href, link, children, className }: { title: string; href: string; link: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className="overflow-hidden rounded-[14px] border bg-card shadow-xs">
+    <section className={cn("overflow-hidden rounded-[14px] border bg-card shadow-xs", className)}>
       <div className="flex items-center justify-between gap-3 px-[18px] pt-4 pb-2">
         <h2 className="text-[15px] font-semibold">{title}</h2>
         <Link href={href} className="inline-flex items-center gap-1 text-[13px] font-medium text-accent-foreground hover:underline">
@@ -252,13 +277,17 @@ function Kpi({
   tone,
   note,
   href,
+  spark,
+  sparkClass,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   tone?: "warning";
-  note?: string;
+  note?: ReactNode;
   href: string;
+  spark?: number[];
+  sparkClass?: string;
 }) {
   return (
     <Link
@@ -271,8 +300,97 @@ function Kpi({
           <Icon className="size-4" />
         </span>
       </div>
-      <p className={cn("text-[28px] leading-tight font-semibold tracking-tight tabular-nums", tone === "warning" && "text-warning")}>{value}</p>
-      {note && <p className={cn("text-xs", tone === "warning" ? "font-medium text-warning" : "text-muted-foreground")}>{note}</p>}
+      <div className="flex items-end justify-between gap-2">
+        <p className={cn("text-[28px] leading-tight font-semibold tracking-tight tabular-nums", tone === "warning" && "text-warning")}>{value}</p>
+        {spark && <Sparkline data={spark} className={sparkClass} label={label} />}
+      </div>
+      {note && <div className={cn("text-xs", tone === "warning" ? "font-medium text-warning" : "text-muted-foreground")}>{note}</div>}
     </Link>
+  );
+}
+
+/** Três primeiros cartões do início: o que está esperando e o que já saiu. */
+function SolicitacoesKpis({ t, sol }: { t: Translator; sol: Sol }) {
+  const { pendentes, separacao, enviadas } = sol.resumo;
+  const n = (v: number) => v.toLocaleString(t.locale);
+  return (
+    <>
+      <Kpi icon={ClipboardList} label={t("inicio.kpiAguardando")} value={n(pendentes.total)} href="/solicitacoes?status=PENDENTE" spark={pendentes.serie} sparkClass="text-warning" note={t("inicio.hojeN", { n: pendentes.hoje })} />
+      <Kpi icon={PackageCheck} label={t("inicio.kpiSeparacao")} value={n(separacao.total)} href="/separacao" spark={separacao.serie} sparkClass="text-chart-2" note={t("inicio.hojeN", { n: separacao.hoje })} />
+      <Kpi
+        icon={Send}
+        label={t("inicio.kpiEnviadas")}
+        value={n(enviadas.total)}
+        href="/solicitacoes?status=ENVIADA"
+        spark={enviadas.serie}
+        sparkClass="text-success"
+        note={
+          enviadas.variacao === null ? (
+            t("inicio.hojeN", { n: enviadas.hoje })
+          ) : (
+            <span>
+              <span className={cn("font-semibold", enviadas.variacao >= 0 ? "text-success" : "text-accent-foreground")}>
+                {enviadas.variacao >= 0 ? "▲" : "▼"} {n(Math.abs(enviadas.variacao))}%
+              </span>{" "}
+              {t("inicio.vsMes")}
+            </span>
+          )
+        }
+      />
+    </>
+  );
+}
+
+function SolicitacoesRecentes({ t, recentes }: { t: Translator; recentes: Sol["recentes"] }) {
+  return (
+    <Panel title={t("inicio.solicRecentes")} href="/solicitacoes" link={t("inicio.verTodas")}>
+      {recentes.length === 0 ? (
+        <p className="px-[18px] py-6 text-sm text-muted-foreground">{t("inicio.semSolic")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-surface-2 text-left text-xs text-muted-foreground">
+                <th className="px-[18px] py-2 font-medium">{t("solicitacoes.col.num")}</th>
+                <th className="px-3 py-2 font-medium">{t("solicitacoes.col.base")}</th>
+                <th className="px-3 py-2 font-medium">{t("solicitacoes.col.status")}</th>
+                <th className="hidden px-[18px] py-2 text-right font-medium sm:table-cell">{t("solicitacoes.col.criada")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentes.map((r) => (
+                <tr key={r.id} className="border-t transition-colors hover:bg-muted/50">
+                  <td className="px-[18px] py-3">
+                    <Link href={`/solicitacoes/${r.id}`} className="font-mono text-[13px] font-semibold whitespace-nowrap hover:underline">
+                      {formatNumber(r.number)}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="font-medium">{r.base.code}</span>
+                    <span className="block text-xs text-muted-foreground">{r.base.name}</span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <StatusBadge status={r.status} />
+                  </td>
+                  <td className="hidden px-[18px] py-3 text-right whitespace-nowrap text-muted-foreground sm:table-cell">{fmtDateTime(r.createdAt, t.locale)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+/** Só solicitações (sem acesso a estoque): cartões e a lista recente. */
+function ResumoSolicitacoes({ t, sol }: { t: Translator; sol: Sol }) {
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <SolicitacoesKpis t={t} sol={sol} />
+      </div>
+      <SolicitacoesRecentes t={t} recentes={sol.recentes} />
+    </>
   );
 }

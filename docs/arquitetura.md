@@ -1,4 +1,4 @@
-# Arquitetura do JT Portal ADM
+# Arquitetura do Supply Dock
 
 Documento vivo. Toda decisão técnica que afeta os dois desenvolvedores entra aqui.
 
@@ -244,4 +244,9 @@ Trazido do sistema antigo de insumos. Regras S7 e S8 em `regras-de-negocio.md`.
 | 2026-11-13 | Telas de solicitações, separação, expedição e guia traduzidas (`solicitacoes.*`, `camera.*`); o status vem de `solicitacoes.status.*` (via `statusText`) e os badges usam só tokens do tema | Antes tinham texto fixo em português e cores cruas do Tailwind, que não traduziam nem funcionavam no escuro. A guia impressa continua em papel branco com tinta preta, de propósito |
 | 2026-11-13 | Termos em chinês: **申领单** para solicitação e pedido, **产品** para produto/insumo nas tabelas (**物料** só no nome do menu e do botão "Solicitar insumos") | Um nome só para a mesma coisa em todas as telas e mensagens (alinhado com o Diogo no PR #9) |
 | 2026-11-13 | Importação de usuários traduzida (`importacao.usuarios.*`, reaproveitando `importacao.*`); mensagens de erro das linhas passam por `server-messages.ts`, e os campos que mudam ("name, phone") aparecem pelo nome traduzido | Era a única tela de importação ainda em português (pedido do Claude do Diogo na Issue #18) |
+| 2026-11-14 | Cadastro de produtos em `/produtos` (lista + formulário), sem preço no catálogo: o custo médio vem do estoque e só aparece com `produtos.precos` (P1–P5) | O valor do insumo nasce na NF de entrada (K5); guardar um preço no produto criaria duas fontes de custo |
+| 2026-11-14 | No formulário de produto, `active` aceita o campo ausente (`checkbox.optional()`); o helper `checkbox` de `lib/form.ts` recusa caixa desmarcada no zod 4.6.7 | Achado ao testar na tela; a correção do helper é do Diogo (núcleo) e foi avisada na Issue #18 |
 | 2026-11-17 | Login pelo Feishu (OAuth v2) com base e regional detectadas pelo organograma e criadas na hora se faltarem (E11); `Base/Regional.feishuDepartmentId` liga o departamento à base | O nome muda no Feishu, o id não; a base nova fica marcada (`autoCreated`) para o admin revisar |
+| 2026-11-17 | Nome do sistema passa a ser **Supply Dock** (antes "Portal ADM"); repositório e pacote seguem `jt-portal-adm` | Já é o nome do app no Feishu (aprovado pela China em 17/11); um nome só em todo lugar |
+| 2026-11-18 | Início com cartões de solicitações (aguardando, em separação, enviadas no mês, com série de 7 dias), solicitações recentes, contadores no menu (aprovar/separar/enviar) e avatar no topo | Deixar o portal igual ao protótipo; os números vêm de `resumoSolicitacoes`/`contadores` (`modules/solicitacoes/queries.ts`), dentro do alcance de quem vê |
+| 2026-11-19 | Primeiro usuário Dev criado pelo deploy (`scripts/primeiro-acesso.ts`, só com `FIRST_ADMIN_PASSWORD`), nunca altera usuário existente | Permite entrar em produção sem terminal nem senha no Git; ver `docs/hospedagem.md` |

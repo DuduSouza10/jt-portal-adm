@@ -161,3 +161,63 @@ export async function contadores(actor: Actor) {
   ]);
   return { pendentes, separar, enviar };
 }
+
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+/** Chave "aaaa-mm-dd" do dia no fuso do portal, para agrupar por dia. */
+function diaKey(d: Date) {
+  const z = new TZDate(d, TZ);
+  return `${z.getFullYear()}-${z.getMonth() + 1}-${z.getDate()}`;
+}
+
+/** Contagem por dia dos últimos 7 dias (o último é hoje), para os mini-gráficos do início. */
+function ultimos7(datas: (Date | null)[], hoje: Date) {
+  const por = new Map<string, number>();
+  for (const d of datas) if (d) por.set(diaKey(d), (por.get(diaKey(d)) ?? 0) + 1);
+  return Array.from({ length: 7 }, (_, i) => por.get(diaKey(new Date(hoje.getTime() - (6 - i) * DIA_MS))) ?? 0);
+}
+
+/** Números do início: aguardando aprovação, em separação e enviadas no mês, com série dos últimos 7 dias. */
+export async function resumoSolicitacoes(actor: Actor) {
+  const scope = baseScopeWhere(actor);
+  const base = scope ? { base: scope } : {};
+  const agora = TZDate.tz(TZ);
+  const inicioHoje = startOfDay(agora);
+  const inicioMes = new TZDate(agora.getFullYear(), agora.getMonth(), 1, TZ);
+  const inicioMesAnt = new TZDate(agora.getFullYear(), agora.getMonth() - 1, 1, TZ);
+  const desde = new Date(inicioHoje.getTime() - 6 * DIA_MS);
+  const [pendentes, separacao, enviadasMes, enviadasMesAnt, criadas, separadas, enviadas] = await Promise.all([
+    db.solicitacao.count({ where: { ...base, status: "PENDENTE" } }),
+    db.solicitacao.count({ where: { ...base, status: { in: ["APROVADA", "EM_SEPARACAO"] } } }),
+    db.solicitacao.count({ where: { ...base, shippedAt: { gte: inicioMes } } }),
+    db.solicitacao.count({ where: { ...base, shippedAt: { gte: inicioMesAnt, lt: inicioMes } } }),
+    db.solicitacao.findMany({ where: { ...base, createdAt: { gte: desde } }, select: { createdAt: true } }),
+    db.solicitacao.findMany({ where: { ...base, separationAt: { gte: desde } }, select: { separationAt: true } }),
+    db.solicitacao.findMany({ where: { ...base, shippedAt: { gte: desde } }, select: { shippedAt: true } }),
+  ]);
+  const serieCriadas = ultimos7(criadas.map((s) => s.createdAt), agora);
+  const serieSep = ultimos7(separadas.map((s) => s.separationAt), agora);
+  const serieEnv = ultimos7(enviadas.map((s) => s.shippedAt), agora);
+  return {
+    pendentes: { total: pendentes, hoje: serieCriadas[6]!, serie: serieCriadas },
+    separacao: { total: separacao, hoje: serieSep[6]!, serie: serieSep },
+    enviadas: {
+      total: enviadasMes,
+      hoje: serieEnv[6]!,
+      serie: serieEnv,
+      // Variação sobre o mês anterior; sem base de comparação (mês anterior vazio) fica null.
+      variacao: enviadasMesAnt > 0 ? Math.round(((enviadasMes - enviadasMesAnt) / enviadasMesAnt) * 1000) / 10 : null,
+    },
+  };
+}
+
+/** As últimas solicitações dentro do alcance, para o painel do início. */
+export function solicitacoesRecentes(actor: Actor, take = 6) {
+  const scope = baseScopeWhere(actor);
+  return db.solicitacao.findMany({
+    where: scope ? { base: scope } : {},
+    orderBy: { createdAt: "desc" },
+    take,
+    select: { id: true, number: true, status: true, createdAt: true, base: { select: { code: true, name: true } } },
+  });
+}

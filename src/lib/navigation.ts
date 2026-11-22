@@ -20,7 +20,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/solicitacoes", label: "Solicitações", description: "Acompanhar pedidos e aprovar", permissions: ["solicitacoes.ver"], section: "operacao" },
   { href: "/separacao", label: "Separação", description: "Separar os pedidos aprovados", permissions: ["expedicao.separar"], section: "operacao" },
   { href: "/expedicao", label: "Expedição", description: "Carregar e confirmar o envio", permissions: ["expedicao.enviar"], section: "operacao" },
-  // { href: "/produtos", label: "Produtos", description: "Catálogo de insumos", permissions: ["produtos.ver"], section: "gestao" },
+  { href: "/produtos", label: "Produtos", description: "Catálogo de insumos e limites por período", permissions: ["produtos.ver"], section: "gestao" },
 
   // ---- Estoque (Diogo)
   { href: "/estoque", label: "Estoque", description: "Saldos, entradas, saídas e inventário", permissions: ["estoque.ver"], section: "gestao" },
