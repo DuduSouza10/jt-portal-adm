@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import type { FeishuDept, FeishuProfile } from "@/lib/feishu/client";
 import { resolveFeishuLogin } from "./feishu-login";
+import { aprovarAcesso } from "./service";
 
 // Sufixo de 2 letras minúsculas: deixa os nomes únicos por execução sem mudar a sigla ("Minas Gerais xy" → "MG").
 const t = Math.random().toString(36).replace(/[^a-z]/g, "").slice(0, 2).padEnd(2, "q");
@@ -125,4 +126,36 @@ describe("B. vínculo seguro", () => {
     expect(a.kind === "ok" && b.kind === "ok" && a.userId === b.userId).toBe(true);
     expect(await db.user.count({ where: { feishuOpenId: p.openId } })).toBe(1);
   });
+
+describe("aprovação (todo novo entra aguardando)", () => {
+  it("novo de uma unidade entra aguardando, já na base; o admin aprova e ele vira Base, com aviso no sino", async () => {
+    const r = await login(perfil("apr"), [chainMG("APR")]);
+    if (r.kind !== "ok") throw new Error(r.kind);
+    expect(r).toMatchObject({ created: true, pending: true });
+    const antes = await db.user.findUniqueOrThrow({ where: { id: r.userId }, include: { profile: true, bases: { include: { base: true } } } });
+    expect(antes.profile.key).toBe("aguardando");
+    expect(antes.bases.map((b) => b.base.feishuDepartmentId)).toEqual([`od-${tag}-b-APR`]);
+
+    const profile = await db.accessProfile.findUniqueOrThrow({ where: { key: `${tag}-adm` } });
+    const adm = await db.user.create({ data: { name: "Aprovador", login: `${tag}aprovador`, profileId: profile.id } });
+    const actor = { id: adm.id, name: "Aprovador", login: adm.login, email: null, mustChangePassword: false, profile: { id: profile.id, key: profile.key, name: "Admin teste" }, permissions: ["*"], scope: "GLOBAL", bases: [], baseIds: [], regionalIds: [] } as never;
+    const x = await aprovarAcesso(actor, r.userId);
+    expect(x.perfil).toBe("Base");
+    const depois = await db.user.findUniqueOrThrow({ where: { id: r.userId }, include: { profile: true, bases: true } });
+    expect(depois.profile.key).toBe("base");
+    expect(depois.bases).toHaveLength(1);
+    expect(await db.notification.count({ where: { userId: r.userId, title: "Seu acesso foi liberado" } })).toBe(1);
+    await expect(aprovarAcesso(actor, r.userId)).rejects.toThrow("não está aguardando");
+    await db.auditLog.deleteMany({ where: { actorId: adm.id } });
+  });
+
+  it("sem base (fora de unidade) não aprova direto: o admin escolhe no cadastro", async () => {
+    const r = await login(perfil("gi"), [[dept("gi", "Gestão Integrada"), MN]]);
+    if (r.kind !== "ok") throw new Error(r.kind);
+    const profile = await db.accessProfile.findUniqueOrThrow({ where: { key: `${tag}-adm` } });
+    const adm = await db.user.findFirstOrThrow({ where: { login: `${tag}aprovador` } });
+    const actor = { id: adm.id, name: "Aprovador", login: adm.login, email: null, mustChangePassword: false, profile: { id: profile.id, key: profile.key, name: "Admin teste" }, permissions: ["*"], scope: "GLOBAL", bases: [], baseIds: [], regionalIds: [] } as never;
+    await expect(aprovarAcesso(actor, r.userId)).rejects.toThrow("Sem base vinculada");
+  });
+});
 });

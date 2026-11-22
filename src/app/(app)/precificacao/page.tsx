@@ -105,19 +105,19 @@ export default async function PrecificacaoPage(props: PageProps<"/precificacao">
             <TableHeader>
               <TableRow>
                 <TableHead className="pl-[18px]">{t("precificacao.produto")}</TableHead>
-                <TableHead>{t("precificacao.unidade")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("precificacao.unidade")}</TableHead>
                 <TableHead className="text-right">{t("precificacao.precoAtual")}</TableHead>
-                <TableHead>{t("precificacao.ultima")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("precificacao.ultima")}</TableHead>
                 <TableHead className="pr-[18px] text-right">{t("precificacao.novoPreco")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {linhas.map((l) => (
                 <TableRow key={l.id}>
-                  <TableCell className="pl-[18px]">
+                  <TableCell className="pl-[18px] whitespace-normal">
                     <span className="font-medium">{l.name}</span> <span className="font-mono text-xs text-muted-foreground">{l.code}</span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{l.unit}</TableCell>
+                  <TableCell className="hidden text-muted-foreground md:table-cell">{l.unit}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {l.preco.valor == null ? (
                       <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">{t("precificacao.semPrecoTag")}</span>
@@ -132,10 +132,10 @@ export default async function PrecificacaoPage(props: PageProps<"/precificacao">
                       </>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="hidden text-xs whitespace-normal text-muted-foreground lg:table-cell">
                     {l.ultima ? `${fmtDateTime(l.ultima.quando, t.locale)} · ${l.ultima.quem}` : "—"}
                   </TableCell>
-                  <TableCell className="pr-[18px]">
+                  <TableCell className="w-px pr-[18px]">
                     <PrecoForm produtoId={l.id} valor={l.preco.valor} nome={l.name} />
                   </TableCell>
                 </TableRow>

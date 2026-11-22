@@ -17,6 +17,7 @@ import { usersScopeWhere } from "@/modules/acessos/queries";
 import type { Prisma } from "@/generated/prisma/client";
 import { getT } from "@/i18n/server";
 import { profileText } from "@/i18n/labels";
+import { AprovarButton } from "./aprovar-button";
 
 const PAGE_SIZE = 50;
 
@@ -46,7 +47,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
     }),
     ...(perfil && { profileId: perfil }),
   };
-  const [users, total, profiles] = await Promise.all([
+  const [users, total, profiles, aguardando] = await Promise.all([
     db.user.findMany({
       where,
       include: { profile: true, bases: { include: { base: true } }, regionals: { include: { regional: true } } },
@@ -56,7 +57,10 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
     }),
     db.user.count({ where }),
     db.accessProfile.findMany({ orderBy: { name: "asc" } }),
+    db.user.count({ where: { ...(scope && { AND: [scope] }), active: true, profile: { key: "aguardando" } } }),
   ]);
+  const perfilAguardando = profiles.find((p) => p.key === "aguardando");
+  const podeAprovar = can(me, "usuarios.editar");
 
   return (
     <>
@@ -80,6 +84,17 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
           )
         }
       />
+      {aguardando > 0 && perfilAguardando && perfil !== perfilAguardando.id && (
+        <Link
+          href={`/admin/usuarios?perfil=${perfilAguardando.id}`}
+          className="flex items-center justify-between gap-3 rounded-[14px] border border-warning/40 bg-warning/10 px-4 py-3 text-sm hover:bg-warning/15"
+        >
+          <span>
+            <b>{t("usuarios.aguardandoN", { n: aguardando })}</b> {t("usuarios.aguardandoDica")}
+          </span>
+          <span className="font-medium text-warning">{t("usuarios.verAguardando")} →</span>
+        </Link>
+      )}
       <form className="flex flex-wrap gap-2">
         <Input name="q" defaultValue={q} placeholder={t("usuarios.buscar")} className="max-w-xs" />
         <select name="perfil" defaultValue={perfil} className={`${selectClass} max-w-56`}>
@@ -106,6 +121,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
                 <TableHead>{t("usuarios.colTipo")}</TableHead>
                 <TableHead>{t("usuarios.colBases")}</TableHead>
                 <TableHead>{t("usuarios.colUltimoAcesso")}</TableHead>
+                {podeAprovar && aguardando > 0 && <TableHead />}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,6 +143,9 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
                     {[...u.regionals.map((r) => r.regional.code), ...u.bases.map((b) => b.base.code)].join(", ") || "—"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDateTime(u.lastLoginAt, t.locale)}</TableCell>
+                  {podeAprovar && aguardando > 0 && (
+                    <TableCell className="text-right">{u.active && u.profile.key === "aguardando" && <AprovarButton userId={u.id} />}</TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

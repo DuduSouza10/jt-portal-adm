@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { firstIssue, runAction, type FormState } from "@/lib/action-result";
 import { formToObject } from "@/lib/form";
 import { userSchema } from "@/modules/acessos/schemas";
-import { resetPassword, saveUser } from "@/modules/acessos/service";
+import { aprovarAcesso, resetPassword, saveUser } from "@/modules/acessos/service";
 
 export async function saveUserAction(id: string | null, _: FormState, form: FormData): Promise<FormState> {
   const actor = await requirePermission("usuarios.editar");
@@ -41,4 +41,15 @@ export async function resetPasswordAction(id: string): Promise<FormState> {
       message: `Nova senha temporária de ${r.login}: ${r.tempPassword}. As sessões abertas foram encerradas.`,
     };
   });
+}
+
+/** Aprova quem está "Aguardando liberação" (vira Base/Franquia na base que o Feishu já vinculou). */
+export async function aprovarAcessoAction(id: string): Promise<FormState> {
+  const actor = await requirePermission("usuarios.editar");
+  const r = await runAction("usuario.aprovar", async () => {
+    const x = await aprovarAcesso(actor, id);
+    return { ok: true, message: `Acesso de ${x.login} liberado como ${x.perfil}.` };
+  });
+  revalidatePath("/admin/usuarios");
+  return r;
 }

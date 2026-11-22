@@ -68,6 +68,7 @@ export const ptBR = {
     configuracoes: { label: "Configurações", description: "Prazos de SLA e horário comercial" },
   },
   inicio: {
+    aguardandoLiberacao: "Seu acesso está aguardando liberação. Assim que o administrador aprovar, você já pode pedir insumos para a sua base.",
     bomDia: "Bom dia, {nome}",
     boaTarde: "Boa tarde, {nome}",
     boaNoite: "Boa noite, {nome}",
@@ -166,6 +167,10 @@ export const ptBR = {
     BASE: "vê só as bases marcadas",
   },
   usuarios: {
+    aprovar: "Aprovar",
+    aguardandoN: "{n} pessoa(s) aguardando liberação.",
+    aguardandoDica: "Entraram pelo Feishu e já estão na base delas; aprove para liberar o pedido de insumos.",
+    verAguardando: "Ver e aprovar",
     titulo: "Usuários",
     tituloUm: "Usuário",
     total: "{n} usuário(s)",
