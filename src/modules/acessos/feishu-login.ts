@@ -5,7 +5,8 @@ import { audit } from "@/lib/audit";
 import { isUniqueError } from "@/lib/action-result";
 import type { FeishuDept, FeishuProfile } from "@/lib/feishu/client";
 import { errorInfo, logger } from "@/lib/logger";
-import { comSufixo, detectarTodas, loginSugerido, mesmoNome, siglaCortada, type Deteccao } from "./feishu-rules";
+import { detectarTodas, loginSugerido, type Deteccao } from "./feishu-rules";
+import { baseDe } from "./feishu-estrutura";
 
 type Tx = Prisma.TransactionClient;
 
@@ -31,65 +32,6 @@ export type FeishuLoginResult =
   | { kind: "staff" }; // conta da equipe sem open_id: o admin liga no cadastro
 
 type Deps = { getChains: (openId: string) => Promise<FeishuDept[][]> };
-
-/** Primeira sigla livre: a própria, senão com sufixo ("MG" → "MG-2", "MG-3"…). */
-async function siglaLivre(code: string, ocupada: (c: string) => Promise<unknown>) {
-  for (let n = 1; n < 100; n++) {
-    const c = n === 1 ? code : comSufixo(code, n);
-    if (!(await ocupada(c))) return c;
-  }
-  throw new Error(`Sem sigla livre para ${code}`);
-}
-
-/**
- * Acha a regional pelo departamento do Feishu; senão, uma regional ainda não ligada ao Feishu com o MESMO
- * nome (cadastrada à mão) é ligada; senão cria. A sigla sozinha não basta: Minas Gerais e Mato Grosso
- * dão as duas "MG", e cada uma tem que ficar na sua regional (a segunda vira "MG-2").
- */
-async function regionalDe(tx: Tx, r: Deteccao["regional"]) {
-  const ligada = await tx.regional.findUnique({ where: { feishuDepartmentId: r.feishuId } });
-  if (ligada) return ligada;
-  const soltas = await tx.regional.findMany({ where: { feishuDepartmentId: null } });
-  const mesma = soltas.find((x) => mesmoNome(x.name, r.name));
-  if (mesma) return tx.regional.update({ where: { id: mesma.id }, data: { feishuDepartmentId: r.feishuId } });
-  const code = await siglaLivre(r.code, (c) => tx.regional.findUnique({ where: { code: c }, select: { id: true } }));
-  const created = await tx.regional.create({ data: { code, name: r.name, feishuDepartmentId: r.feishuId } });
-  await audit({ actorId: null, action: "regional.criar", entity: "Regional", entityId: created.id, summary: `Regional ${r.code} criada pelo login do Feishu` }, tx);
-  return created;
-}
-
-/**
- * Acha a base pelo departamento do Feishu; senão liga uma base ainda sem Feishu com o mesmo nome ou com a
- * mesma sigla (só quando a sigla não foi cortada em 20 caracteres); senão cria (E11). Base já ligada a
- * OUTRO departamento nunca é reaproveitada: a nova ganha sigla com sufixo.
- */
-async function baseDe(tx: Tx, d: Deteccao) {
-  const ligada = await tx.base.findUnique({ where: { feishuDepartmentId: d.base.feishuId } });
-  if (ligada) return ligada;
-  const soltas = await tx.base.findMany({
-    where: { feishuDepartmentId: null, OR: [{ code: d.base.code }, { name: { equals: d.base.name, mode: "insensitive" } }] },
-  });
-  const mesma =
-    soltas.find((b) => mesmoNome(b.name, d.base.name)) ?? (siglaCortada(d.base.name) ? undefined : soltas.find((b) => b.code === d.base.code));
-  if (mesma) return tx.base.update({ where: { id: mesma.id }, data: { feishuDepartmentId: d.base.feishuId } });
-  const regional = await regionalDe(tx, d.regional);
-  const code = await siglaLivre(d.base.code, (c) => tx.base.findUnique({ where: { code: c }, select: { id: true } }));
-  const created = await tx.base.create({
-    data: {
-      code,
-      name: d.base.name,
-      type: d.base.type,
-      regionalId: regional.id,
-      feishuDepartmentId: d.base.feishuId,
-      autoCreated: true,
-    },
-  });
-  await audit(
-    { actorId: null, action: "base.criar", entity: "Base", entityId: created.id, summary: `Base ${created.code} (${regional.code}) criada pelo login do Feishu` },
-    tx,
-  );
-  return created;
-}
 
 async function loginLivre(tx: Tx, p: FeishuProfile) {
   const raw = loginSugerido(p);
@@ -160,7 +102,7 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
     if (existing && !porOpenId && existing.profile.scope !== "BASE") return { kind: "staff" as const };
 
     const bases = [];
-    for (const d of deteccoes) bases.push(await baseDe(tx, d));
+    for (const d of deteccoes) bases.push((await baseDe(tx, d, { actorId: null, origem: "pelo login do Feishu", autoCreated: true })).registro);
 
     if (existing) {
       const matriculaLivre =

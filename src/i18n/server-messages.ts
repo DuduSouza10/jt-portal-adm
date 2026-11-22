@@ -128,6 +128,8 @@ const ZH: [string, string][] = [
   ["Foto grande demais (máximo 3 MB).", "照片过大（最大 3 MB）。"],
   ["{x} acabou de ser alterada por outra pessoa. Recarregue a página.", "{x} 刚被其他人修改，请刷新页面。"],
   ["A base {x} está inativa.", "网点 {x} 已停用。"],
+  ["Estrutura importada: {r} regional(is) e {b} base(s) criadas, {l} ligada(s).", "组织结构已导入：新建 {r} 个区域和 {b} 个网点，关联 {l} 个。"],
+  ["Não foi possível ler o organograma do Feishu: {x}", "无法读取飞书组织架构：{x}"],
   ["{x} não está mais disponível para pedido.", "{x} 已不可申领。"],
   ["{x} é de outro almoxarifado.", "{x} 属于其他仓库。"],
   ["Código não reconhecido. Bipe o QR da guia ou digite o nº do pedido (SOL-000123).", "无法识别该编码。请扫描单据上的二维码，或输入申领单号（SOL-000123）。"],

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Upload } from "lucide-react";
+import { Network, Plus, Upload } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
+import { isFeishuLoginEnabled } from "@/lib/feishu/config";
 import { getT } from "@/i18n/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,13 @@ export default async function StructurePage() {
         actions={
           editable && (
             <>
+              {isFeishuLoginEnabled() && (
+                <Button asChild variant="outline">
+                  <Link href="/admin/estrutura/feishu">
+                    <Network /> {t("estrutura.feishu.botao")}
+                  </Link>
+                </Button>
+              )}
               <Button asChild variant="outline">
                 <Link href="/admin/estrutura/importar">
                   <Upload /> {t("usuarios.importar")}

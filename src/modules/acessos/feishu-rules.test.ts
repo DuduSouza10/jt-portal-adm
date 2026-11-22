@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { codigoBase, codigoRegional, comSufixo, detectar, detectarTodas, loginSugerido, mesmoNome, siglaCortada, tipoBase, type Dept } from "./feishu-rules";
+import { codigoBase, codigoRegional, comSufixo, detectar, detectarTodas, loginSugerido, mesmoNome, siglaCortada, tipoBase, type Dept, desceNoOrganograma, estruturaDoOrganograma } from "./feishu-rules";
 
 // Cadeias como o Feishu devolve: do setor da pessoa até a raiz. Nomes do organograma real.
 const d = (name: string, id = name) => ({ id: `od-${id}`, name });
@@ -88,5 +88,43 @@ describe("desempate de sigla", () => {
   it("siglaCortada só quando o nome passa de 20 caracteres de sigla", () => {
     expect(siglaCortada("CD MNH 001")).toBe(false);
     expect(siglaCortada("Centro de Distribuição Contagem 001")).toBe(true);
+  });
+});
+
+describe("estruturaDoOrganograma (importação de todas as bases)", () => {
+  const dep = (id: string, name: string, parentId?: string) => ({ id, name, parentId });
+  const org = [
+    dep("mn", "Subsidiária MN"),
+    dep("gi", "Gestão Integrada", "mn"),
+    dep("rh", "RH", "gi"),
+    dep("spn", "Subsidiária São Paulo Norte", "mn"),
+    dep("gr1", "Gestão Regional", "spn"),
+    dep("sjp", "SJP SP", "gr1"),
+    dep("exp", "Expedição", "sjp"),
+    dep("forl", "F ORLN SP", "gr1"),
+    dep("mg", "Subsidiária Minas Gerais", "mn"),
+    dep("gr2", "Gestão Regional", "mg"),
+    dep("dc1", "DC MNH 001", "gr2"),
+    dep("cd1", "CD MNH 001", "dc1"),
+    dep("cd2", "CD CTG 001", "dc1"),
+    dep("dc2", "DC BHZ 002", "gr2"),
+  ];
+
+  it("SPN: cada unidade; MG: cada CD; DC sem CD vira base; administrativo e subsetores ficam de fora", () => {
+    const r = estruturaDoOrganograma(org);
+    expect(r.map((d) => `${d.regional.code}/${d.base.code}/${d.base.type}`)).toEqual([
+      "MG/CD-CTG-001/BASE",
+      "MG/CD-MNH-001/BASE",
+      "MG/DC-BHZ-002/BASE",
+      "SPN/F-ORLN-SP/FRANQUIA",
+      "SPN/SJP-SP/BASE",
+    ]);
+  });
+
+  it("desceNoOrganograma: só Subsidiária, Gestão Regional e DC logo abaixo dela", () => {
+    const by = new Map(org.map((d) => [d.id, d]));
+    const desce = (id: string) => desceNoOrganograma(by.get(id)!, by.get(by.get(id)!.parentId ?? ""));
+    expect(["mn", "spn", "gr1", "dc1"].map(desce)).toEqual([true, true, true, true]);
+    expect(["gi", "sjp", "cd1", "exp"].map(desce)).toEqual([false, false, false, false]);
   });
 });
