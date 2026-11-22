@@ -5,12 +5,25 @@ import { isFeishuLoginEnabled } from "@/lib/feishu/config";
 import { errorInfo, logger } from "@/lib/logger";
 import { getT } from "@/i18n/server";
 import { cn } from "@/lib/utils";
-import { desceNoOrganograma, estruturaDoOrganograma } from "@/modules/acessos/feishu-rules";
-import { importarEstruturaFeishu, type ResultadoEstrutura } from "@/modules/acessos/estrutura-feishu.service";
+import {
+  desceNoOrganograma,
+  estruturaDoOrganograma,
+} from "@/modules/acessos/feishu-rules";
+import {
+  importarEstruturaFeishu,
+  type ResultadoEstrutura,
+} from "@/modules/acessos/estrutura-feishu.service";
 import { ActionForm } from "@/components/action-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { importarEstruturaFeishuAction } from "./actions";
 
@@ -27,7 +40,11 @@ export default async function EstruturaFeishuPage() {
   const me = await requirePermission("estrutura.editar");
   const t = await getT();
   const header = (
-    <PageHeader title={t("estrutura.feishu.titulo")} description={t("estrutura.feishu.descricao")} back={{ href: "/admin/estrutura", label: t("nav.estrutura.label") }} />
+    <PageHeader
+      title={t("estrutura.feishu.titulo")}
+      description={t("estrutura.feishu.descricao")}
+      back={{ href: "/admin/estrutura", label: t("nav.estrutura.label") }}
+    />
   );
   if (!isFeishuLoginEnabled())
     return (
@@ -40,13 +57,83 @@ export default async function EstruturaFeishuPage() {
   let previa: ResultadoEstrutura | null = null;
   let erro = false;
   try {
-    previa = await importarEstruturaFeishu(me, estruturaDoOrganograma(await getOrgChart(desceNoOrganograma)), false);
+    previa = await importarEstruturaFeishu(
+      me,
+      estruturaDoOrganograma(await getOrgChart(desceNoOrganograma)),
+      false,
+    );
   } catch (e) {
     logger.error("estrutura.feishu.previa", errorInfo(e));
     erro = true;
   }
   const pendentes = previa ? previa.basesCriadas + previa.basesLigadas : 0;
-  const tom = { existe: "text-muted-foreground", ligada: "text-warning", criada: "text-success" } as const;
+  const tom = {
+    existe: "text-muted-foreground",
+    ligada: "text-warning",
+    criada: "text-success",
+  } as const;
+
+  const tabela = previa && (
+    <Card className="overflow-hidden py-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10 pl-[18px]" />
+            <TableHead>{t("estrutura.regional")}</TableHead>
+            <TableHead>{t("estrutura.base")}</TableHead>
+            <TableHead>{t("estrutura.feishu.nome")}</TableHead>
+            <TableHead>{t("estrutura.feishu.tipo")}</TableHead>
+            <TableHead className="pr-[18px]">
+              {t("estrutura.feishu.situacao")}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {previa.linhas.map((l) => (
+            <TableRow key={l.base.feishuId}>
+              <TableCell className="pl-[18px]">
+                {l.base.acao !== "existe" && (
+                  <input
+                    type="checkbox"
+                    name="incluir"
+                    value={l.base.feishuId}
+                    defaultChecked
+                    aria-label={l.base.name}
+                    className="size-4 accent-primary"
+                  />
+                )}
+              </TableCell>
+              <TableCell>
+                <span className="font-mono font-semibold">
+                  {l.regional.code}
+                </span>{" "}
+                <span className="text-muted-foreground">{l.regional.name}</span>
+                {l.regional.acao === "criada" && (
+                  <span className="ml-1.5 text-xs text-success">
+                    ({t("estrutura.feishu.acao.criada")})
+                  </span>
+                )}
+              </TableCell>
+              <TableCell className="font-mono">{l.base.code}</TableCell>
+              <TableCell>{l.base.name}</TableCell>
+              <TableCell>
+                {t(
+                  l.base.type === "FRANQUIA"
+                    ? "estrutura.feishu.franquia"
+                    : "estrutura.feishu.propria",
+                )}
+              </TableCell>
+              <TableCell
+                className={cn("pr-[18px] font-medium", tom[l.base.acao])}
+              >
+                {t(`estrutura.feishu.acao.${l.base.acao}`)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -80,7 +167,9 @@ export default async function EstruturaFeishuPage() {
             ).map(([k, n]) => (
               <Card key={k}>
                 <CardContent className="space-y-1">
-                  <p className="text-xs text-muted-foreground">{t(`estrutura.feishu.${k}`)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t(`estrutura.feishu.${k}`)}
+                  </p>
                   <p className="text-2xl font-semibold tabular-nums">{n}</p>
                 </CardContent>
               </Card>
@@ -89,40 +178,23 @@ export default async function EstruturaFeishuPage() {
 
           {previa.linhas.length === 0 ? (
             <EmptyState>{t("estrutura.feishu.nenhuma")}</EmptyState>
+          ) : pendentes > 0 ? (
+            <ActionForm
+              action={importarEstruturaFeishuAction}
+              submitLabel={t("estrutura.feishu.importar")}
+            >
+              <p className="text-sm text-muted-foreground">
+                {t("estrutura.feishu.escolher")}
+              </p>
+              {tabela}
+            </ActionForm>
           ) : (
-            <Card className="overflow-hidden py-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="pl-[18px]">{t("estrutura.regional")}</TableHead>
-                    <TableHead>{t("estrutura.base")}</TableHead>
-                    <TableHead>{t("estrutura.feishu.nome")}</TableHead>
-                    <TableHead>{t("estrutura.feishu.tipo")}</TableHead>
-                    <TableHead className="pr-[18px]">{t("estrutura.feishu.situacao")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previa.linhas.map((l) => (
-                    <TableRow key={l.base.code}>
-                      <TableCell className="pl-[18px]">
-                        <span className="font-mono font-semibold">{l.regional.code}</span> <span className="text-muted-foreground">{l.regional.name}</span>
-                        {l.regional.acao === "criada" && <span className="ml-1.5 text-xs text-success">({t("estrutura.feishu.acao.criada")})</span>}
-                      </TableCell>
-                      <TableCell className="font-mono">{l.base.code}</TableCell>
-                      <TableCell>{l.base.name}</TableCell>
-                      <TableCell>{t(l.base.type === "FRANQUIA" ? "estrutura.feishu.franquia" : "estrutura.feishu.propria")}</TableCell>
-                      <TableCell className={cn("pr-[18px] font-medium", tom[l.base.acao])}>{t(`estrutura.feishu.acao.${l.base.acao}`)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
-
-          {pendentes > 0 ? (
-            <ActionForm action={importarEstruturaFeishuAction} submitLabel={t("estrutura.feishu.importar", { n: pendentes })} />
-          ) : (
-            previa.linhas.length > 0 && <p className="text-sm text-muted-foreground">{t("estrutura.feishu.tudoEmDia")}</p>
+            <div className="space-y-4">
+              {tabela}
+              <p className="text-sm text-muted-foreground">
+                {t("estrutura.feishu.tudoEmDia")}
+              </p>
+            </div>
           )}
         </>
       )}

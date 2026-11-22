@@ -14,7 +14,7 @@ import type { Deteccao } from "./feishu-rules";
 
 export type LinhaEstrutura = {
   regional: { code: string; name: string; acao: Acao | null };
-  base: { code: string; name: string; type: "BASE" | "FRANQUIA"; acao: Acao };
+  base: { feishuId: string; code: string; name: string; type: "BASE" | "FRANQUIA"; acao: Acao };
 };
 export type ResultadoEstrutura = {
   linhas: LinhaEstrutura[];
@@ -41,7 +41,7 @@ export async function importarEstruturaFeishu(actor: CurrentUser, deteccoes: Det
           const reg = await tx.regional.findUniqueOrThrow({ where: { id: r.registro.regionalId } });
           linhas.push({
             regional: { code: reg.code, name: reg.name, acao: r.regional?.acao ?? null },
-            base: { code: r.registro.code, name: r.registro.name, type: r.registro.type === "FRANQUIA" ? "FRANQUIA" : "BASE", acao: r.acao },
+            base: { feishuId: d.base.feishuId, code: r.registro.code, name: r.registro.name, type: r.registro.type === "FRANQUIA" ? "FRANQUIA" : "BASE", acao: r.acao },
           });
         }
         const resultado: ResultadoEstrutura = {
