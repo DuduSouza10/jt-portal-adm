@@ -60,6 +60,15 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     permissions: ["expedicao.enviar"],
   },
   {
+    // Quem entra pelo Feishu fora de uma unidade (ex.: Gestão Integrada) cai aqui, sem acesso a nada,
+    // até um administrador escolher o tipo de acesso certo (E11).
+    key: "aguardando",
+    name: "Aguardando liberação",
+    description: "Entrou pelo Feishu e ainda não tem acesso. O administrador escolhe o tipo de acesso.",
+    scope: "BASE",
+    permissions: [],
+  },
+  {
     key: "base",
     name: "Base",
     description: "Só pede insumos para a própria base e acompanha o andamento (separado, na expedição, enviado).",

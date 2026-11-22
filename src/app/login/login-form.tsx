@@ -14,11 +14,15 @@ import { loginAction, type LoginState } from "./actions";
 const campo = "h-12 rounded-xl bg-card pl-11 text-[15px] shadow-xs md:text-[15px]";
 const icone = "pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-muted-foreground";
 
-export function LoginForm() {
+const ERROS_FEISHU = ["desligado", "cancelado", "expirado", "falhou", "conflito", "equipe", "desativado"] as const;
+
+export function LoginForm({ feishu = false }: { feishu?: boolean }) {
   const t = useT();
   const tm = useServerMessage();
   const params = useSearchParams();
   const next = params.get("next") ?? "";
+  const erroUrl = params.get("erro")?.replace(/^feishu_/, "");
+  const erroFeishu = ERROS_FEISHU.find((e) => e === erroUrl);
   const { state, pending, formProps } = useKeepForm<LoginState>(loginAction, {});
   // Erro de login: o usuário fica no campo (useKeepForm), mas a senha digitada some. Senha errada não deve ficar na tela.
   const [usuario, setUsuario] = useState("");
@@ -84,6 +88,12 @@ export function LoginForm() {
           </p>
         )}
       </div>
+      {!state.error && erroFeishu && (
+        <Alert variant="destructive">
+          <CircleAlert />
+          <AlertDescription>{t(`login.erroFeishu_${erroFeishu}`)}</AlertDescription>
+        </Alert>
+      )}
       {state.error && (
         <Alert variant="destructive">
           <CircleAlert />
@@ -98,6 +108,18 @@ export function LoginForm() {
         {pending ? t("login.entrando") : t("login.entrar")}
         {!pending && <ArrowRight className="transition-transform group-hover:translate-x-0.5" />}
       </Button>
+      {feishu && (
+        <>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            {t("login.ou")}
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <Button asChild variant="outline" className="h-12 w-full rounded-xl text-base font-semibold">
+            <a href={`/api/auth/feishu${next ? `?next=${encodeURIComponent(next)}` : ""}`}>{t("login.feishu")}</a>
+          </Button>
+        </>
+      )}
     </form>
   );
 }
