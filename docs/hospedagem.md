@@ -31,7 +31,8 @@ o reenvio do Feishu e as limpezas. Na Vercel:
 
 ## Checklist quando a hospedagem for aprovada (Vercel + Supabase)
 
-1. Banco: seguir `docs/producao.md` (migrations no schema `portal`, RLS nas tabelas novas, usuários).
+1. Banco: seguir `docs/producao.md` (migrations no schema `portal`, usuários). O RLS das tabelas é ligado pelas próprias migrations
+   (`20261121120000_rls_todas_tabelas` liga em todas; tabela nova liga na sua migration, conferido por `src/lib/migrations.test.ts`).
 2. Variáveis no painel: `DATABASE_URL` (pooler de transação do Supabase, porta 6543), `DATABASE_SCHEMA=portal`, `APP_URL`,
    `CRON_SECRET` e as do Feishu (`.env.example`).
 3. Região das funções: **São Paulo (`gru1`)**, perto do Supabase (`sa-east-1`).
