@@ -118,7 +118,7 @@ export function LoginForm({ feishu = false }: { feishu?: boolean }) {
           </div>
           <Button asChild variant="outline" className="h-12 w-full rounded-xl text-base font-semibold">
             <a href={`/api/auth/feishu${next ? `?next=${encodeURIComponent(next)}` : ""}`}>
-              <Image src="/feishu.png" alt="" width={24} height={24} className="size-6" />
+              <Image src="/feishu.png" alt="" width={192} height={153} className="h-5 w-auto" />
               {t("login.feishu")}
             </a>
           </Button>
