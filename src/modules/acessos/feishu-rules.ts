@@ -48,14 +48,29 @@ export function codigoRegional(name: string) {
 
 /** Sigla da base a partir do nome no Feishu: "SJP SP" → "SJP-SP", "CD MNH 001" → "CD-MNH-001". */
 export function codigoBase(name: string) {
+  return siglaCompleta(name).slice(0, 20);
+}
+
+function siglaCompleta(name: string) {
   return name
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toUpperCase()
     .trim()
     .replace(/[^A-Z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 20);
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Mesmo nome, ignorando acento, maiúsculas e espaços: "Minas  Gerais" = "minas gerais". */
+export const mesmoNome = (a: string, b: string) => norm(a) === norm(b);
+
+/** A sigla da base foi cortada em 20 caracteres? Aí a sigla sozinha não identifica a base. */
+export const siglaCortada = (name: string) => siglaCompleta(name).length > 20;
+
+/** Sigla com sufixo para desempatar, sem passar de 20 caracteres: ("MG", 2) → "MG-2". */
+export function comSufixo(code: string, n: number) {
+  const suf = `-${n}`;
+  return code.slice(0, 20 - suf.length).replace(/-+$/, "") + suf;
 }
 
 /** "F ORLN SP" é franquia (decisão do Diogo, 2026-11-17); o resto é base própria. */

@@ -14,7 +14,7 @@ import { loginAction, type LoginState } from "./actions";
 const campo = "h-12 rounded-xl bg-card pl-11 text-[15px] shadow-xs md:text-[15px]";
 const icone = "pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-muted-foreground";
 
-const ERROS_FEISHU = ["desligado", "cancelado", "expirado", "falhou", "conflito", "desativado"] as const;
+const ERROS_FEISHU = ["desligado", "cancelado", "expirado", "falhou", "conflito", "equipe", "desativado"] as const;
 
 export function LoginForm({ feishu = false }: { feishu?: boolean }) {
   const t = useT();

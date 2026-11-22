@@ -135,6 +135,7 @@ export const ptBR = {
     erroFeishu_falhou: "Não foi possível entrar pelo Feishu. Tente de novo ou use usuário e senha.",
     erroFeishu_conflito: "Este usuário já está ligado a outra conta do Feishu. Fale com o administrador.",
     erroFeishu_desativado: "Seu acesso está desativado. Fale com o administrador.",
+    erroFeishu_equipe: "Sua conta é da equipe: peça ao administrador para ligar o seu Feishu no seu cadastro (Usuários). Enquanto isso, entre com usuário e senha.",
   },
   senha: {
     titulo: "Trocar senha",

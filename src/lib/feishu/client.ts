@@ -78,7 +78,12 @@ export async function exchangeCode(code: string, redirectUri: string) {
   return r.access_token;
 }
 
-export type FeishuProfile = { openId: string; name: string; email?: string; employeeNo?: string };
+/**
+ * `email` é o que aparece (corporativo, ou o pessoal se não houver), usado só para sugerir o login.
+ * `enterpriseEmail` é o corporativo, administrado pela empresa: é o ÚNICO e-mail que serve para ligar
+ * o Feishu a uma conta que já existe (o pessoal a própria pessoa pode trocar).
+ */
+export type FeishuProfile = { openId: string; name: string; email?: string; enterpriseEmail?: string; employeeNo?: string };
 
 export async function getUserInfo(userAccessToken: string): Promise<FeishuProfile> {
   const r = await call<{ data: { open_id: string; name: string; email?: string; enterprise_email?: string; employee_no?: string } }>(
@@ -90,6 +95,7 @@ export async function getUserInfo(userAccessToken: string): Promise<FeishuProfil
     openId: d.open_id,
     name: d.name,
     email: (d.enterprise_email || d.email || "").toLowerCase() || undefined,
+    enterpriseEmail: (d.enterprise_email || "").toLowerCase() || undefined,
     employeeNo: d.employee_no || undefined,
   };
 }

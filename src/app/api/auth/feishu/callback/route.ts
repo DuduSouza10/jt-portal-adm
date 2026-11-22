@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
 
   if (result.kind === "inactive") redirect("/login?erro=desativado");
   if (result.kind === "conflict") redirect("/login?erro=feishu_conflito");
+  if (result.kind === "staff") redirect("/login?erro=feishu_equipe");
 
   await createSession(result.userId);
   logger.info("login.feishu.ok", { userId: result.userId, created: result.created, pending: result.pending });

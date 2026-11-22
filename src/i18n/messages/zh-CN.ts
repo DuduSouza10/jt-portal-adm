@@ -138,6 +138,7 @@ export const zhCN: Messages = {
     erroFeishu_falhou: "无法通过飞书登录，请重试或使用用户名和密码。",
     erroFeishu_conflito: "该用户已绑定其他飞书账号，请联系管理员。",
     erroFeishu_desativado: "你的账号已停用，请联系管理员。",
+    erroFeishu_equipe: "您的账号属于团队成员：请管理员在您的用户资料中绑定飞书。在此之前请使用用户名和密码登录。",
   },
   senha: {
     titulo: "修改密码",

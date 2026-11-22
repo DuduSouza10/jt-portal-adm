@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { codigoBase, codigoRegional, detectar, detectarTodas, loginSugerido, tipoBase, type Dept } from "./feishu-rules";
+import { codigoBase, codigoRegional, comSufixo, detectar, detectarTodas, loginSugerido, mesmoNome, siglaCortada, tipoBase, type Dept } from "./feishu-rules";
 
 // Cadeias como o Feishu devolve: do setor da pessoa até a raiz. Nomes do organograma real.
 const d = (name: string, id = name) => ({ id: `od-${id}`, name });
@@ -69,5 +69,24 @@ describe("siglas e login", () => {
     expect(loginSugerido({ name: "João da Silva", openId: "ou_1" })).toBe("joao.da.silva");
     expect(loginSugerido({ name: "X", email: "Maria.Souza@jtexpress.com.br", openId: "ou_1" })).toBe("maria.souza");
     expect(loginSugerido({ name: "李", openId: "ou_abcdef123456" })).toBe("feishu.ef123456");
+  });
+});
+
+describe("desempate de sigla", () => {
+  it("mesmoNome ignora acento, caixa e espaços", () => {
+    expect(mesmoNome("São  Paulo Norte", "sao paulo norte")).toBe(true);
+    expect(mesmoNome("Minas Gerais", "Mato Grosso")).toBe(false);
+  });
+
+  it("comSufixo desempata sem passar de 20 caracteres", () => {
+    expect(comSufixo("MG", 2)).toBe("MG-2");
+    expect(comSufixo("ABCDEFGHIJ-KLMNOPQRS", 12)).toBe("ABCDEFGHIJ-KLMNOP-12");
+    expect(comSufixo("ABCDEFGHIJ-KLMNOPQRS", 12)).toHaveLength(20);
+    expect(comSufixo("ABCDEFGHIJKLMNOPQ-RS", 3)).toBe("ABCDEFGHIJKLMNOPQ-3");
+  });
+
+  it("siglaCortada só quando o nome passa de 20 caracteres de sigla", () => {
+    expect(siglaCortada("CD MNH 001")).toBe(false);
+    expect(siglaCortada("Centro de Distribuição Contagem 001")).toBe(true);
   });
 });
