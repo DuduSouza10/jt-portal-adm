@@ -2,6 +2,7 @@
 
 import { useKeepForm } from "@/components/use-keep-form";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, CircleAlert, Eye, EyeOff, Lock, TriangleAlert, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -116,7 +117,10 @@ export function LoginForm({ feishu = false }: { feishu?: boolean }) {
             <span className="h-px flex-1 bg-border" />
           </div>
           <Button asChild variant="outline" className="h-12 w-full rounded-xl text-base font-semibold">
-            <a href={`/api/auth/feishu${next ? `?next=${encodeURIComponent(next)}` : ""}`}>{t("login.feishu")}</a>
+            <a href={`/api/auth/feishu${next ? `?next=${encodeURIComponent(next)}` : ""}`}>
+              <Image src="/feishu.png" alt="" width={192} height={153} className="h-5 w-auto" />
+              {t("login.feishu")}
+            </a>
           </Button>
         </>
       )}
