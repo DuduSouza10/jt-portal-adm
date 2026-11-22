@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/session";
 import { openOrderLines } from "@/modules/relatorios/queries";
-import { alterarPreco, listaPrecificacao } from "./precificacao.service";
+import { alterarPreco, atualizarPrecosPlanilha, listaPrecificacao } from "./precificacao.service";
 
 const tag = `pc${Date.now().toString(36)}`.toUpperCase();
 let actor: CurrentUser;
@@ -79,5 +79,25 @@ describe("precificação", () => {
     const l = (await listaPrecificacao(tag)).find((x) => x.id === produtoId)!;
     expect(l.preco).toMatchObject({ valor: 2.75, varia: false });
     expect(l.ultima?.quem).toBe("Admin");
+  });
+
+  it("planilha: atualiza quem existe, aponta código desconhecido e não para o resto", async () => {
+    const r = await atualizarPrecosPlanilha(
+      actor,
+      [
+        { line: 2, codigo: `${tag}-NAO-EXISTE`, preco: 5 },
+        { line: 3, codigo: `${tag}-P`, preco: 3.1 },
+        { line: 4, codigo: `${tag}-P`, preco: null },
+      ],
+      "Planilha teste.csv",
+    );
+    expect(r.atualizados).toBe(1);
+    expect(r.erros.map((e) => [e.line, e.message])).toEqual([
+      [2, "Produto não encontrado."],
+      [4, "Informe o preço em reais (ex.: 12,50)."],
+    ]);
+    const s = await db.stockBalance.findMany({ where: { produtoId } });
+    expect(s.every((x) => Number(x.avgCost) === 3.1)).toBe(true);
+    expect((await db.precoHistorico.findFirst({ where: { produtoId }, orderBy: { createdAt: "desc" } }))?.motivo).toBe("Planilha teste.csv");
   });
 });

@@ -17,7 +17,7 @@ Formato sugerido: regra numerada, exemplo concreto, e onde está no código.
 - **E8.** Ninguém edita o tipo de acesso que ele mesmo usa (só o Dev). Assim um Administrador não tira, sem querer, permissões de todos os administradores de uma vez. → `modules/acessos/rules.ts` (`ownProfileEditError`)
 - **E9.** Acesso hierárquico (decisão do Diogo, 2026-11-12):
   - **Acesso completo** (perfil Dev): só quem o Diogo e o Eduardo liberarem.
-  - **Base / Franquia**: só pedem insumos para a própria base e acompanham o andamento do pedido (aprovado, separado, na expedição, enviado). Não veem estoque, administração nem relatórios.
+  - **Base / Franquia**: só pedem insumos para a própria base e acompanham o andamento do pedido (aprovado, separado, na expedição, enviado). Não veem estoque, administração, relatórios nem a aba **Produtos** (o catálogo tem itens que só a matriz tem; decisão do Diogo, 2026-11-22): escolhem os itens na própria tela de pedido.
   - **Expedição**: só a expedição. Vê os pedidos já separados que aguardam envio e confirma o envio. Não vê as outras áreas.
   - O tipo de acesso de quem vem das bases é escolhido pelo Diogo/Eduardo quando a pessoa entra no sistema.
   - → `src/lib/permissions/default-profiles.ts` (teste em `default-profiles.test.ts`)

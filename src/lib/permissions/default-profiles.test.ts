@@ -20,11 +20,13 @@ describe("tipos de acesso padrão", () => {
   });
 
   it("E9: Base e Franquia só pedem insumos e acompanham os próprios pedidos", () => {
-    const solicitante = ["produtos.ver", "produtos.precos", "solicitacoes.criar", "solicitacoes.ver"];
+    const solicitante = ["produtos.precos", "solicitacoes.criar", "solicitacoes.ver"];
     for (const key of ["base", "franquia"]) {
       const p = DEFAULT_PROFILES.find((x) => x.key === key)!;
       expect(p.scope, key).toBe("BASE");
       expect(p.permissions.filter((x) => !solicitante.includes(x)), key).toEqual([]);
+      // Sem a aba Produtos: o catálogo tem itens que só a matriz tem (decisão do Diogo, 2026-11-22).
+      expect(p.permissions, key).not.toContain("produtos.ver");
     }
   });
 

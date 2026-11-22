@@ -73,13 +73,14 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     name: "Base",
     description: "Só pede insumos para a própria base e acompanha o andamento (separado, na expedição, enviado).",
     scope: "BASE",
-    permissions: ["produtos.ver", "solicitacoes.criar", "solicitacoes.ver"],
+    // Sem a aba Produtos (decisão do Diogo, 2026-11-22): o catálogo tem itens que só a matriz tem.
+    permissions: ["solicitacoes.criar", "solicitacoes.ver"],
   },
   {
     key: "franquia",
     name: "Franquia",
     description: "Solicita insumos e vê os valores.",
     scope: "BASE",
-    permissions: ["produtos.ver", "produtos.precos", "solicitacoes.criar", "solicitacoes.ver"],
+    permissions: ["produtos.precos", "solicitacoes.criar", "solicitacoes.ver"],
   },
 ];
