@@ -20,12 +20,15 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { dbSchema } from "../src/lib/db-schema";
 
 const rawPassword = process.env.FIRST_ADMIN_PASSWORD;
-if (!rawPassword) {
+// Deploy de produção na Vercel: as migrations e os tipos de acesso padrão rodam SEMPRE, mesmo depois de
+// apagar FIRST_ADMIN_PASSWORD (senão uma versão nova subiria sem as tabelas dela).
+const producaoVercel = process.env.VERCEL_ENV === "production";
+if (!rawPassword && !producaoVercel) {
   console.log("[primeiro-acesso] FIRST_ADMIN_PASSWORD não definida: nada a fazer.");
   process.exit(0);
 }
 
-const password: string = rawPassword;
+const password: string = rawPassword ?? "";
 const login = (process.env.FIRST_ADMIN_LOGIN ?? "").trim().toLowerCase();
 const name = (process.env.FIRST_ADMIN_NAME ?? "").trim();
 const fail = (msg: string): never => {
@@ -33,9 +36,9 @@ const fail = (msg: string): never => {
   process.exit(1);
 };
 
-if (!login || !name) fail("defina FIRST_ADMIN_LOGIN e FIRST_ADMIN_NAME junto com FIRST_ADMIN_PASSWORD.");
-if (!/^[a-z0-9._-]{3,40}$/.test(login)) fail("FIRST_ADMIN_LOGIN deve ter de 3 a 40 caracteres: letras, números, ponto, hífen ou sublinhado.");
-if (password.length < 10) fail("FIRST_ADMIN_PASSWORD precisa ter pelo menos 10 caracteres.");
+if (rawPassword && (!login || !name)) fail("defina FIRST_ADMIN_LOGIN e FIRST_ADMIN_NAME junto com FIRST_ADMIN_PASSWORD.");
+if (rawPassword && !/^[a-z0-9._-]{3,40}$/.test(login)) fail("FIRST_ADMIN_LOGIN deve ter de 3 a 40 caracteres: letras, números, ponto, hífen ou sublinhado.");
+if (rawPassword && password.length < 10) fail("FIRST_ADMIN_PASSWORD precisa ter pelo menos 10 caracteres.");
 const url = process.env.DATABASE_URL;
 if (!url || !/^postgres(ql)?:\/\//.test(url)) fail("DATABASE_URL ausente ou não é uma URL postgres:// (URLs prisma+postgres:// não servem).");
 
@@ -53,6 +56,10 @@ async function main() {
   run(["migrate", "deploy"]);
   console.log("[primeiro-acesso] criando tipos de acesso padrão…");
   run(["db", "seed"]);
+  if (!rawPassword) {
+    console.log("[primeiro-acesso] produção sem FIRST_ADMIN_PASSWORD: migrations e tipos de acesso em dia; nenhum usuário criado.");
+    return;
+  }
 
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }, { schema: dbSchema() }) });
   try {

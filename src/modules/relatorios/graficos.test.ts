@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayCalendarGrid, seriesOf, spendMonthGrid } from "./graficos";
+import { dayCalendarGrid, seriesOf, spendMonthGrid, valorPorBase } from "./graficos";
 
 const MG = { id: "mg", code: "MG", name: "Minas Gerais" };
 const SPN = { id: "spn", code: "SPN", name: "São Paulo Norte" };
@@ -58,5 +58,30 @@ describe("dayCalendarGrid", () => {
     expect(g.weeks).toBe(6);
     expect(g.todayIndex).toBeNull();
     expect(g.series).toEqual([]);
+  });
+});
+
+describe("valorPorBase", () => {
+  const SJP = { id: "sjp", code: "SJP", name: "SJP SP" };
+  const BAU = { id: "bau", code: "BAU", name: "BAU SP" };
+  const CTG = { id: "ctg", code: "CTG", name: "CD CTG" };
+  const env = (base: typeof SJP, regional: typeof MG, quantity: number, unitCost: number | null) => ({ base, regional, produto: ref, quantity, unitCost, shippedAt: at("2026-11-05") });
+  it("soma consumido (enviado) e em andamento por base, ordena pelo total e conta itens sem preço", () => {
+    const r = valorPorBase(
+      [env(SJP, SPN, 10, 2), env(SJP, SPN, 1, null), env(CTG, MG, 3, 5)],
+      [
+        { base: BAU, regional: SPN, quantity: 4, unitCost: 10 },
+        { base: SJP, regional: SPN, quantity: 2, unitCost: 1.5 },
+        { base: CTG, regional: MG, quantity: 1, unitCost: null },
+      ],
+    );
+    expect(r.linhas.map((l) => [l.base.code, l.consumido, l.aberto, l.total, l.semCusto])).toEqual([
+      ["BAU", 0, 40, 40, 0],
+      ["SJP", 20, 3, 23, 1],
+      ["CTG", 15, 0, 15, 1],
+    ]);
+    expect([r.consumido, r.aberto]).toEqual([35, 43]);
+    expect(r.series.map((s) => s.code)).toEqual(["MG", "SPN"]);
+    expect(r.linhas[0].serie).toBe(1);
   });
 });
