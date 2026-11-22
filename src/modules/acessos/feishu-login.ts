@@ -18,7 +18,7 @@ type Tx = Prisma.TransactionClient;
  *    Achado pelo open_id: qualquer conta. Achado pela matrícula ou pelo e-mail CORPORATIVO: só conta de base
  *    (alcance BASE). Conta da equipe (admin, gestor, almoxarifado…) só entra pelo Feishu depois que o admin
  *    preenche o open_id no cadastro dela: assim ninguém entra na conta de um admin trocando o e-mail no Feishu.
- * 2. Não tem usuário e está numa unidade → cria com o tipo "Base" ou "Franquia", já na base dela.
+ * 2. Não tem usuário e está numa unidade → cria como "Aguardando liberação", já na base dela; o admin aprova.
  *    Se a base (ou a regional) ainda não existe no portal, é criada na hora, marcada "criada pelo Feishu".
  * 3. Não tem usuário e não está numa unidade (ex.: Gestão Integrada) → cria com "Aguardando liberação",
  *    sem acesso a nada, e avisa os administradores no sino.
@@ -52,7 +52,7 @@ async function avisarAdmins(tx: Tx, userId: string, nome: string, onde: string) 
     data: admins.map((a) => ({
       userId: a.id,
       title: `Novo acesso pelo Feishu: ${nome}`,
-      body: `Aguardando liberação. Departamento: ${onde}`.slice(0, 300),
+      body: `Aguardando liberação. ${onde}`.slice(0, 300),
       link: `/admin/usuarios/${userId}`,
       refType: "usuario",
       refId: userId,
@@ -137,8 +137,9 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
       return { kind: "ok" as const, userId: existing.id, created: false, pending: existing.profile.key === "aguardando" };
     }
 
-    // Novo: tipo de acesso pela unidade (Franquia se alguma base for franquia), ou "aguardando".
-    const key = !bases.length ? "aguardando" : bases.some((b) => b.type === "FRANQUIA") ? "franquia" : "base";
+    // Novo: SEMPRE "Aguardando liberação" (decisão do Diogo, 2026-11-22), já com a base do organograma
+    // vinculada. O admin aprova em Usuários (vira Base/Franquia) ou escolhe outro tipo de acesso.
+    const key = "aguardando";
     const perfil = await tx.accessProfile.findUnique({ where: { key } });
     if (!perfil) throw new Error(`Tipo de acesso "${key}" não existe: rode o seed (npm run db:seed).`);
     const emailLivre = profile.email && !(await tx.user.findFirst({ where: { OR: [{ email: profile.email }, { login: profile.email }] }, select: { id: true } }));
@@ -164,7 +165,7 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
       },
       tx,
     );
-    if (!bases.length) await avisarAdmins(tx, user.id, profile.name, onde);
-    return { kind: "ok" as const, userId: user.id, created: true, pending: !bases.length };
+    await avisarAdmins(tx, user.id, profile.name, bases.length ? bases.map((b) => b.code).join(", ") : onde);
+    return { kind: "ok" as const, userId: user.id, created: true, pending: true };
   });
 }

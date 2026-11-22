@@ -65,7 +65,7 @@ export default async function HomePage() {
 
       {(sol || can(user, "estoque.ver")) && <Resumo user={user} t={t} sol={sol} />}
 
-      {items.length === 0 && <EmptyState>{t("inicio.semAcesso")}</EmptyState>}
+      {items.length === 0 && <EmptyState>{t(user.profile.key === "aguardando" ? "inicio.aguardandoLiberacao" : "inicio.semAcesso")}</EmptyState>}
 
       {items.length > 0 && (
         <section className="space-y-3">

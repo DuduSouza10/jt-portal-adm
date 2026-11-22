@@ -188,3 +188,46 @@ export async function saveProfile(actor: CurrentUser, id: string | null, input: 
     return p.id;
   });
 }
+
+/**
+ * Aprovar quem entrou pelo Feishu e está "Aguardando liberação" (E11): vira Base (ou Franquia, se alguma
+ * base dele for franquia) nas bases que o organograma já vinculou. Passa pelas mesmas checagens do
+ * cadastro (saveUser) e avisa a pessoa no sino. Sem base vinculada, o admin escolhe no cadastro.
+ */
+export async function aprovarAcesso(actor: CurrentUser, id: string) {
+  const u = await db.user.findUnique({
+    where: { id },
+    include: { profile: true, bases: { include: { base: { select: { code: true, type: true } } } } },
+  });
+  if (!u) throw new DomainError("Usuário não encontrado.");
+  if (u.profile.key !== "aguardando") throw new DomainError("Este usuário não está aguardando liberação.");
+  const bases = u.bases.filter((b) => b.base.type !== "ALMOXARIFADO");
+  if (!bases.length) throw new DomainError("Sem base vinculada: abra o cadastro e escolha o tipo de acesso e a base.");
+  const key = bases.some((b) => b.base.type === "FRANQUIA") ? "franquia" : "base";
+  const perfil = await db.accessProfile.findUnique({ where: { key } });
+  if (!perfil) throw new DomainError("Tipo de acesso não encontrado.");
+  await saveUser(actor, id, {
+    name: u.name,
+    login: u.login,
+    email: u.email,
+    phone: u.phone,
+    registration: u.registration,
+    feishuOpenId: u.feishuOpenId,
+    profileId: perfil.id,
+    active: true,
+    baseIds: bases.map((b) => b.baseId),
+    regionalIds: [],
+  });
+  await db.notification.create({
+    data: {
+      userId: id,
+      title: "Seu acesso foi liberado",
+      body: `Você já pode pedir insumos para ${bases.map((b) => b.base.code).join(", ")}.`,
+      link: "/solicitacoes/nova",
+      refType: "usuario",
+      refId: id,
+    },
+  });
+  await audit({ actorId: actor.id, action: "usuario.aprovar", entity: "User", entityId: id, summary: `Aprovou o acesso de ${u.login} como ${perfil.name}` });
+  return { perfil: perfil.name, login: u.login };
+}

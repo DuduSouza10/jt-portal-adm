@@ -71,6 +71,7 @@ export const zhCN: Messages = {
     configuracoes: { label: "系统设置", description: "SLA 时限与工作时间" },
   },
   inicio: {
+    aguardandoLiberacao: "您的访问正在等待开通。管理员批准后，您即可为所在网点申领物料。",
     bomDia: "早上好，{nome}",
     boaTarde: "下午好，{nome}",
     boaNoite: "晚上好，{nome}",
@@ -169,6 +170,10 @@ export const zhCN: Messages = {
     BASE: "仅可查看所选网点",
   },
   usuarios: {
+    aprovar: "批准",
+    aguardandoN: "有 {n} 人等待开通。",
+    aguardandoDica: "他们已通过飞书登录并已关联到所在网点；批准后即可申领物料。",
+    verAguardando: "查看并批准",
     titulo: "用户",
     tituloUm: "用户",
     total: "共 {n} 个用户",
