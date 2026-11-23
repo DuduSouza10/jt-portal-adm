@@ -40,6 +40,14 @@ export default async function RegionalEditPage(props: PageProps<"/admin/estrutur
                 <Input id="name" name="name" defaultValue={regional?.name} required />
               </Field>
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("estrutura.grupoEquipe")} htmlFor="feishuStaffChatId" hint={t("estrutura.grupoEquipeDica")}>
+                <Input id="feishuStaffChatId" name="feishuStaffChatId" defaultValue={regional?.feishuStaffChatId ?? ""} autoCapitalize="none" />
+              </Field>
+              <Field label={t("estrutura.grupoExpedicao")} htmlFor="feishuShippingChatId" hint={t("estrutura.grupoExpedicaoDica")}>
+                <Input id="feishuShippingChatId" name="feishuShippingChatId" defaultValue={regional?.feishuShippingChatId ?? ""} autoCapitalize="none" />
+              </Field>
+            </div>
             <CheckField name="active" label={t("estrutura.regionalAtiva")} defaultChecked={regional?.active ?? true} />
           </ActionForm>
         </CardContent>

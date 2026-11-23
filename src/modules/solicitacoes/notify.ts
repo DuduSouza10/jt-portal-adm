@@ -29,13 +29,16 @@ async function usuariosCom(tx: Tx, permission: Permission, base: { id: string; r
   return rows.map((r) => r.id);
 }
 
+type GruposRegional = { feishuStaffChatId: string | null; feishuShippingChatId: string | null };
+const GRUPOS = { feishuStaffChatId: true, feishuShippingChatId: true } as const;
+
 type Solic = {
   id: string;
   number: number;
   priority: "NORMAL" | "URGENTE";
   createdById: string;
-  base: { id: string; code: string; name: string; regionalId: string; feishuChatId: string | null };
-  almoxarifado: { id: string; regionalId: string } | null;
+  base: { id: string; code: string; name: string; regionalId: string; feishuChatId: string | null; regional: GruposRegional };
+  almoxarifado: { id: string; regionalId: string; regional: GruposRegional } | null;
 };
 
 async function publico(tx: Tx, p: Publico, s: Solic): Promise<string[]> {
@@ -58,6 +61,16 @@ async function publico(tx: Tx, p: Publico, s: Solic): Promise<string[]> {
 }
 
 /**
+ * Grupos do Feishu da regional que recebe o aviso: aguardando aprovação vai à regional da base (o almoxarifado ainda
+ * não foi escolhido); separação e expedição vão à regional do almoxarifado. Sem regional: grupo geral.
+ */
+function grupoDaRegional(p: Publico, s: Solic): GruposRegional | null {
+  if (p === "aprovadores") return s.base.regional;
+  if (p === "separacao" || p === "expedicao") return s.almoxarifado?.regional ?? null;
+  return null;
+}
+
+/**
  * Avisa o evento: sino de cada destinatário + cartão no Feishu (fila de saída).
  * Chame DENTRO da transação do evento. Quem fez a ação não é avisado.
  * Depois da transação, a action chama `flushFeishuSoon()` para o Feishu sair na hora.
@@ -70,8 +83,8 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
       number: true,
       priority: true,
       createdById: true,
-      base: { select: { id: true, code: true, name: true, regionalId: true, feishuChatId: true } },
-      almoxarifado: { select: { id: true, regionalId: true } },
+      base: { select: { id: true, code: true, name: true, regionalId: true, feishuChatId: true, regional: { select: GRUPOS } } },
+      almoxarifado: { select: { id: true, regionalId: true, regional: { select: GRUPOS } } },
     },
   });
   const number = formatNumber(s.number);
@@ -98,7 +111,7 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
       });
     }
     // Grupo (webhook/chat) que já recebeu um cartão deste evento não recebe outro igual.
-    const dest = (await destinations(tx, ROTA[a.publico], ids, a.publico === "base" ? s.base.feishuChatId : null)).filter((d) => {
+    const dest = (await destinations(tx, ROTA[a.publico], ids, a.publico === "base" ? s.base.feishuChatId : null, grupoDaRegional(a.publico, s))).filter((d) => {
       const key = `${d.channel}:${d.target}`;
       if (d.channel === "user") return true;
       if (gruposAvisados.has(key)) return false;
