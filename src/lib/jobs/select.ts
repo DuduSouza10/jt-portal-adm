@@ -67,3 +67,17 @@ export function isDailySummaryDue(now: Date, cfg: ReminderConfig, bh: BusinessHo
   const [h, m] = cfg.dailySummaryTime.split(":").map(Number);
   return z.getHours() * 60 + z.getMinutes() >= h * 60 + m;
 }
+
+/**
+ * Separa os itens por regional que tem grupo próprio no Feishu. O resto (regional sem grupo, ou item sem regional)
+ * fica junto na chave `null`, que usa o grupo geral. Sem nenhuma regional com grupo, sai um grupo só (`null`), como antes.
+ */
+export function groupByRegional<T>(items: readonly T[], regionalOf: (item: T) => string | null, hasGroup: (regionalId: string) => boolean) {
+  const out = new Map<string | null, T[]>();
+  for (const item of items) {
+    const r = regionalOf(item);
+    const key = r && hasGroup(r) ? r : null;
+    out.set(key, [...(out.get(key) ?? []), item]);
+  }
+  return out;
+}

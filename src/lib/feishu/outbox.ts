@@ -14,10 +14,23 @@ export type Destination = { channel: Channel; target: string | null };
  *   (FEISHU_WEBHOOK_URL) > mensagem direta a cada destinatário com Feishu ligado.
  * - "expedicao": webhook do grupo da expedição (FEISHU_SHIPPING_WEBHOOK_URL) > mesmo caminho da equipe.
  * - "base": mensagem direta a cada destinatário + grupo da base (Base.feishuChatId). Precisa do app.
+ *
+ * Com a regional do aviso (grupos da regional, via app), o grupo dela vem antes do geral:
+ * - "equipe": grupo da equipe da regional > o caminho geral acima.
+ * - "expedicao": grupo da expedição da regional > webhook geral da expedição > o caminho da equipe (com o da regional).
+ * Regional sem grupo cadastrado cai no geral: nada deixa de ser enviado.
  */
 export type Route = "equipe" | "expedicao" | "base";
+/** Grupos do Feishu de uma regional (Regional.feishuStaffChatId / feishuShippingChatId). */
+export type RegionalChats = { feishuStaffChatId: string | null; feishuShippingChatId: string | null } | null;
 
-export async function destinations(tx: Tx, route: Route, userIds: string[], baseChatId?: string | null): Promise<Destination[]> {
+export async function destinations(
+  tx: Tx,
+  route: Route,
+  userIds: string[],
+  baseChatId?: string | null,
+  regional?: RegionalChats,
+): Promise<Destination[]> {
   const cfg = messagingConfig();
   const dms = async () => {
     if (!cfg.app || !userIds.length) return [];
@@ -32,7 +45,9 @@ export async function destinations(tx: Tx, route: Route, userIds: string[], base
     if (cfg.app && baseChatId) out.push({ channel: "chat", target: baseChatId });
     return out;
   }
+  if (route === "expedicao" && cfg.app && regional?.feishuShippingChatId) return [{ channel: "chat", target: regional.feishuShippingChatId }];
   if (route === "expedicao" && cfg.shippingWebhook) return [{ channel: "webhook", target: SHIPPING_WEBHOOK_TARGET }];
+  if (cfg.app && regional?.feishuStaffChatId) return [{ channel: "chat", target: regional.feishuStaffChatId }];
   if (cfg.app && cfg.staffChatId) return [{ channel: "chat", target: cfg.staffChatId }];
   if (cfg.webhook) return [{ channel: "webhook", target: null }];
   return dms();

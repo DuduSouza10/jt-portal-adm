@@ -2,13 +2,13 @@ import "server-only";
 import { db } from "@/lib/db";
 import { card, escapeMd, type Template } from "@/lib/feishu/cards";
 import { feishuConfig } from "@/lib/feishu/config";
-import { destinations, enqueue, processOutbox, type Route } from "@/lib/feishu/outbox";
+import { destinations, enqueue, processOutbox, type RegionalChats, type Route } from "@/lib/feishu/outbox";
 import { fmtDate } from "@/lib/format";
 import { errorInfo, logger } from "@/lib/logger";
 import type { Permission } from "@/lib/permissions/catalog";
 import { DEFAULT_BUSINESS_HOURS, formatDuration, isWithinBusinessHours } from "@/lib/sla";
 import { ABERTOS, formatNumber, STATUS_LABEL } from "@/modules/solicitacoes/rules";
-import { canRemindAgain, DEFAULT_REMINDERS, isDailySummaryDue, reminderKind, spDayKey, type ReminderKind } from "./select";
+import { canRemindAgain, DEFAULT_REMINDERS, groupByRegional, isDailySummaryDue, reminderKind, spDayKey, type ReminderKind } from "./select";
 
 /**
  * Tarefas do agendador (Netlify Scheduled Function → /api/cron/run, a cada 15 min em horário comercial).
@@ -24,6 +24,15 @@ async function idsCom(permission: Permission) {
   return rows.map((r) => r.id);
 }
 
+/** Grupos do Feishu de cada regional (id → grupos). Regional sem grupo não aparece. */
+async function gruposDasRegionais() {
+  const rows = await db.regional.findMany({
+    where: { OR: [{ feishuStaffChatId: { not: null } }, { feishuShippingChatId: { not: null } }] },
+    select: { id: true, feishuStaffChatId: true, feishuShippingChatId: true },
+  });
+  return new Map<string, RegionalChats>(rows.map((r) => [r.id, { feishuStaffChatId: r.feishuStaffChatId, feishuShippingChatId: r.feishuShippingChatId }]));
+}
+
 const LEMBRETE: Record<ReminderKind, { titulo: (n: number) => string; cor: Template; rota: Route; perm: Permission; link: string; botao: string }> = {
   pendente: { titulo: (n) => `⏰ ${n} solicitação(ões) aguardando aprovação`, cor: "orange", rota: "equipe", perm: "solicitacoes.aprovar", link: "/solicitacoes", botao: "Abrir solicitações" },
   aprovada: { titulo: (n) => `⏰ ${n} solicitação(ões) aprovada(s) e não separada(s)`, cor: "orange", rota: "equipe", perm: "expedicao.separar", link: "/separacao", botao: "Abrir separação" },
@@ -35,7 +44,15 @@ export async function runReminders(now = new Date()) {
   if (!cfg.enabled || !isWithinBusinessHours(now, bh)) return { skipped: true };
   const abertos = await db.solicitacao.findMany({
     where: { status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA"] } },
-    select: { id: true, number: true, status: true, priority: true, statusChangedAt: true, base: { select: { code: true } } },
+    select: {
+      id: true,
+      number: true,
+      status: true,
+      priority: true,
+      statusChangedAt: true,
+      base: { select: { code: true, regionalId: true } },
+      almoxarifado: { select: { regionalId: true } },
+    },
     orderBy: [{ priority: "desc" }, { statusChangedAt: "asc" }],
     take: 500,
   });
@@ -53,21 +70,31 @@ export async function runReminders(now = new Date()) {
   }
 
   const { appUrl } = feishuConfig();
+  const regionais = await gruposDasRegionais();
   const out: Record<string, number> = {};
   for (const kind of Object.keys(grupos) as ReminderKind[]) {
     const itens = grupos[kind];
     out[kind] = itens.length;
     if (!itens.length) continue;
     const l = LEMBRETE[kind];
-    const linhas = itens
-      .slice(0, 15)
-      .map((o) => `${o.priority === "URGENTE" ? "🔥 " : "• "}[${formatNumber(o.number)}](${appUrl}/solicitacoes/${o.id}) · ${escapeMd(o.base.code)} · parado há ${formatDuration(now.getTime() - o.statusChangedAt.getTime())}`);
-    if (itens.length > 15) linhas.push(`… e mais ${itens.length - 15}.`);
-    await db.$transaction(async (tx) => {
-      const dest = await destinations(tx, l.rota, await idsCom(l.perm));
-      await enqueue(tx, `lembrete.${kind}`, dest, card(l.titulo(itens.length), l.cor, [linhas.join("\n")], `${appUrl}${l.link}`, l.botao));
-      await tx.reminderLog.createMany({ data: itens.map((o) => ({ refId: o.id, kind })) });
-    });
+    // Cada regional com grupo recebe só os pedidos dela (aprovação: a regional da base; separação e envio: a do almoxarifado).
+    const grupoDe = (r: string) => (l.rota === "expedicao" ? regionais.get(r)?.feishuShippingChatId : regionais.get(r)?.feishuStaffChatId);
+    const porRegional = groupByRegional(
+      itens,
+      (o) => (kind === "pendente" ? o.base.regionalId : (o.almoxarifado?.regionalId ?? o.base.regionalId)),
+      (r) => !!grupoDe(r),
+    );
+    for (const [regionalId, parte] of porRegional) {
+      const linhas = parte
+        .slice(0, 15)
+        .map((o) => `${o.priority === "URGENTE" ? "🔥 " : "• "}[${formatNumber(o.number)}](${appUrl}/solicitacoes/${o.id}) · ${escapeMd(o.base.code)} · parado há ${formatDuration(now.getTime() - o.statusChangedAt.getTime())}`);
+      if (parte.length > 15) linhas.push(`… e mais ${parte.length - 15}.`);
+      await db.$transaction(async (tx) => {
+        const dest = await destinations(tx, l.rota, await idsCom(l.perm), null, regionalId ? regionais.get(regionalId) : null);
+        await enqueue(tx, `lembrete.${kind}`, dest, card(l.titulo(parte.length), l.cor, [linhas.join("\n")], `${appUrl}${l.link}`, l.botao));
+        await tx.reminderLog.createMany({ data: parte.map((o) => ({ refId: o.id, kind })) });
+      });
+    }
   }
   return out;
 }
@@ -80,25 +107,39 @@ export async function runDailySummary(now = new Date()) {
 
   const abertos = await db.solicitacao.findMany({
     where: { status: { in: ABERTOS } },
-    select: { status: true, priority: true, base: { select: { code: true } } },
+    select: { status: true, priority: true, base: { select: { code: true, regionalId: true } }, almoxarifado: { select: { regionalId: true } } },
   });
   const total = abertos.length;
-  const porStatus = ABERTOS.map((st) => [st, abertos.filter((o) => o.status === st).length] as const).filter(([, n]) => n);
-  const porBase = new Map<string, number>();
-  for (const o of abertos) porBase.set(o.base.code, (porBase.get(o.base.code) ?? 0) + 1);
-  const urgentes = abertos.filter((o) => o.priority === "URGENTE").length;
   const { appUrl } = feishuConfig();
-  const linhas = total
-    ? [
-        `**${total}** solicitação(ões) em aberto${urgentes ? ` · **${urgentes} urgente(s)**` : ""}`,
-        `**Por status**\n${porStatus.map(([st, n]) => `• ${STATUS_LABEL[st]}: **${n}**`).join("\n")}`,
-        `**Por base**\n${[...porBase].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([b, n]) => `• ${escapeMd(b)}: ${n}`).join("\n")}`,
-      ]
-    : ["Nenhuma solicitação em aberto. 🎉"];
+  const regionais = await gruposDasRegionais();
+  // Cada regional com grupo da equipe recebe o resumo dos pedidos dela (aguardando aprovação: a regional da base;
+  // depois: a do almoxarifado). O resto vai ao grupo geral. Sem regional com grupo, sai um resumo só, como antes.
+  const porRegional = groupByRegional(
+    abertos,
+    (o) => (o.status === "PENDENTE" ? o.base.regionalId : (o.almoxarifado?.regionalId ?? o.base.regionalId)),
+    (r) => !!regionais.get(r)?.feishuStaffChatId,
+  );
+  for (const r of regionais.keys()) if (regionais.get(r)?.feishuStaffChatId && !porRegional.has(r)) porRegional.set(r, []);
+  if (!porRegional.size) porRegional.set(null, []);
+  const ids = await idsCom("solicitacoes.aprovar");
 
   await db.$transaction(async (tx) => {
-    const dest = await destinations(tx, "equipe", await idsCom("solicitacoes.aprovar"));
-    await enqueue(tx, "resumo.diario", dest, card(`📋 Resumo das solicitações · ${fmtDate(now)}`, total ? "blue" : "green", linhas, `${appUrl}/solicitacoes`, "Abrir solicitações"));
+    for (const [regionalId, parte] of porRegional) {
+      if (regionalId === null && !parte.length && porRegional.size > 1) continue; // só regionais com grupo e nada no geral
+      const porStatus = ABERTOS.map((st) => [st, parte.filter((o) => o.status === st).length] as const).filter(([, n]) => n);
+      const porBase = new Map<string, number>();
+      for (const o of parte) porBase.set(o.base.code, (porBase.get(o.base.code) ?? 0) + 1);
+      const urgentes = parte.filter((o) => o.priority === "URGENTE").length;
+      const linhas = parte.length
+        ? [
+            `**${parte.length}** solicitação(ões) em aberto${urgentes ? ` · **${urgentes} urgente(s)**` : ""}`,
+            `**Por status**\n${porStatus.map(([st, n]) => `• ${STATUS_LABEL[st]}: **${n}**`).join("\n")}`,
+            `**Por base**\n${[...porBase].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([b, n]) => `• ${escapeMd(b)}: ${n}`).join("\n")}`,
+          ]
+        : ["Nenhuma solicitação em aberto. 🎉"];
+      const dest = await destinations(tx, "equipe", ids, null, regionalId ? regionais.get(regionalId) : null);
+      await enqueue(tx, "resumo.diario", dest, card(`📋 Resumo das solicitações · ${fmtDate(now)}`, parte.length ? "blue" : "green", linhas, `${appUrl}/solicitacoes`, "Abrir solicitações"));
+    }
     // Marca como enviado mesmo sem destino configurado, para não tentar a cada execução.
     await tx.reminderLog.create({ data: { refId: day, kind: "daily" } });
   });

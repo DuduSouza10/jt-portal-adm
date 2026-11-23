@@ -26,6 +26,8 @@ model Regional {
   code               String   @unique // sigla, sempre maiúscula
   name               String
   feishuDepartmentId String?  @unique // "Subsidiária X" no Feishu (login pelo Feishu, E11)
+  feishuStaffChatId    String? // oc_... grupo da EQUIPE desta regional (aprovação, separação, lembretes, resumo)
+  feishuShippingChatId String? // oc_... grupo da EXPEDIÇÃO desta regional (pronto para envio, separados parados)
   active             Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BUSINESS_HOURS } from "@/lib/sla";
-import { canRemindAgain, DEFAULT_REMINDERS, isDailySummaryDue, reminderKind, spDayKey } from "./select";
+import { canRemindAgain, DEFAULT_REMINDERS, groupByRegional, isDailySummaryDue, reminderKind, spDayKey } from "./select";
 
 const sp = (iso: string) => new Date(`${iso}-03:00`);
 const bh = DEFAULT_BUSINESS_HOURS; // seg–sex 08:00–18:00
@@ -42,5 +42,26 @@ describe("repetição e resumo", () => {
 
   it("chave do dia no fuso de São Paulo", () => {
     expect(spDayKey(sp("2026-10-07T23:30:00"))).toBe("2026-10-07");
+  });
+});
+
+describe("groupByRegional", () => {
+  const itens = [
+    { n: 1, r: "spn" },
+    { n: 2, r: "mg" },
+    { n: 3, r: "mg" },
+    { n: 4, r: "rj" },
+    { n: 5, r: null },
+  ];
+  it("separa as regionais com grupo e junta o resto no grupo geral (null)", () => {
+    const g = groupByRegional(itens, (i) => i.r, (r) => r === "spn" || r === "mg");
+    expect(g.get("spn")?.map((i) => i.n)).toEqual([1]);
+    expect(g.get("mg")?.map((i) => i.n)).toEqual([2, 3]);
+    expect(g.get(null)?.map((i) => i.n)).toEqual([4, 5]);
+  });
+  it("sem nenhuma regional com grupo, sai um grupo só (como antes)", () => {
+    const g = groupByRegional(itens, (i) => i.r, () => false);
+    expect([...g.keys()]).toEqual([null]);
+    expect(g.get(null)).toHaveLength(5);
   });
 });
