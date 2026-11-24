@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { getT } from "@/i18n/server";
-import { basesParaPedir, produtosParaPedir } from "@/modules/solicitacoes/queries";
+import { basesParaPedir, disponivelPorRegional, produtosParaPedir } from "@/modules/solicitacoes/queries";
 import { db } from "@/lib/db";
 import { activeCycle, isExempt } from "@/modules/solicitacoes/limites.service";
 import { getPedidoSettings } from "@/lib/settings";
@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NovaSolicitacaoPage() {
   const user = await requirePermission("solicitacoes.criar");
   const t = await getT();
-  const [lista, produtos, cfg] = await Promise.all([basesParaPedir(user), produtosParaPedir(), getPedidoSettings()]);
+  const [lista, produtos, cfg, disponivel] = await Promise.all([basesParaPedir(user), produtosParaPedir(), getPedidoSettings(), disponivelPorRegional()]);
   // S1: mostra antes de montar o pedido se a base está no ciclo (quem aprova não entra no ciclo).
   const isento = isExempt(user);
   const bases = await Promise.all(
@@ -42,7 +42,7 @@ export default async function NovaSolicitacaoPage() {
       ) : (
         <Card className="max-w-4xl">
           <CardContent>
-            <PedidoForm bases={bases} produtos={produtos} />
+            <PedidoForm bases={bases} produtos={produtos} disponivel={disponivel} />
           </CardContent>
         </Card>
       )}

@@ -117,6 +117,12 @@ export const PERMISSION_GROUPS = [
       { key: "franquias.estoque", label: "Registrar uso no estoque da franquia" },
     ],
   },
+  {
+    module: "duvidas",
+    label: "Dúvidas",
+    owner: "núcleo",
+    permissions: [{ key: "duvidas.responder", label: "Receber e responder as dúvidas", description: "Recebe no sino e no Feishu as dúvidas do balão de ajuda." }],
+  },
 ] as const satisfies readonly PermissionGroup[];
 
 type Groups = typeof PERMISSION_GROUPS;

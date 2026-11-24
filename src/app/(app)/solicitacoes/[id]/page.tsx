@@ -188,13 +188,40 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
             </Card>
           )}
 
+          {/* Mensagens: conversa entre a base e quem aprova, separa e envia (antes ficava no meio do histórico). */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("solicitacoes.detalhe.mensagens")}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t("solicitacoes.detalhe.mensagensAjuda")}</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                {s.eventos.filter((e) => e.type === "COMENTARIO").length === 0 && <p className="text-sm text-muted-foreground">{t("solicitacoes.detalhe.semMensagens")}</p>}
+                {s.eventos
+                  .filter((e) => e.type === "COMENTARIO")
+                  .map((e) => {
+                    const minha = e.actorId === user.id;
+                    return (
+                      <div key={e.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${minha ? "ml-auto bg-primary text-primary-foreground" : "bg-muted"}`}>
+                        <p className="text-[11px] font-medium opacity-75">
+                          {e.actor?.name ?? t("comum.sistema")} · {fmtDateTime(e.createdAt, t.locale)}
+                        </p>
+                        <p className="whitespace-pre-wrap">{e.note}</p>
+                      </div>
+                    );
+                  })}
+              </div>
+              <TextoForm id={s.id} action={comentarAction} name="text" label="" placeholder={t("solicitacoes.detalhe.mensagemPh")} submitLabel={t("solicitacoes.detalhe.enviarMensagem")} required />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>{t("solicitacoes.detalhe.historico")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <ol className="space-y-2 text-sm">
-                {s.eventos.map((e) => (
+                {s.eventos.filter((e) => e.type !== "COMENTARIO").map((e) => (
                   <li key={e.id} className="border-l-2 pl-3">
                     <p>
                       <span className="font-medium">
@@ -209,7 +236,6 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                   </li>
                 ))}
               </ol>
-              <TextoForm id={s.id} action={comentarAction} name="text" label={t("solicitacoes.detalhe.comentar")} submitLabel={t("solicitacoes.detalhe.comentar")} required variant="outline" />
             </CardContent>
           </Card>
         </div>

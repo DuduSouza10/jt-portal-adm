@@ -32,7 +32,7 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
       "estoque.ver", "estoque.movimentar", "estoque.inventario",
       "produtos.ver", "produtos.editar", "produtos.precos", "produtos.precificar",
       "solicitacoes.criar", "solicitacoes.ver", "solicitacoes.aprovar", "solicitacoes.excluir", "solicitacoes.liberar",
-      "expedicao.separar", "expedicao.enviar", "relatorios.ver", "franquias.ver", "franquias.estoque",
+      "expedicao.separar", "expedicao.enviar", "relatorios.ver", "franquias.ver", "franquias.estoque", "duvidas.responder",
     ],
   },
   {

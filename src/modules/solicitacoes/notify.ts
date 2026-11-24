@@ -82,6 +82,7 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
       id: true,
       number: true,
       priority: true,
+      status: true,
       createdById: true,
       base: { select: { id: true, code: true, name: true, regionalId: true, feishuChatId: true, regional: { select: GRUPOS } } },
       almoxarifado: { select: { id: true, regionalId: true, regional: { select: GRUPOS } } },
@@ -94,6 +95,7 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
     baseName: s.base.name,
     urgente: s.priority === "URGENTE",
     temAlmoxarifado: !!s.almoxarifado,
+    naExpedicao: s.status === "SEPARADA" || s.status === "ENVIADA",
     atorDaBase: ator.id === s.createdById || (ator.scope === "BASE" && ator.baseIds.includes(s.base.id)),
     atorNome: ator.name,
   });

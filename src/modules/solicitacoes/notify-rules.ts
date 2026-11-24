@@ -28,6 +28,8 @@ export type Contexto = {
   baseName: string;
   urgente: boolean;
   temAlmoxarifado: boolean;
+  /** O pedido já está com a expedição (separado ou enviado): mensagem da base também vai para a expedição. */
+  naExpedicao?: boolean;
   /** Quem fez a ação é "da base" (fez o pedido ou pede por aquela base)? */
   atorDaBase: boolean;
   atorNome: string;
@@ -83,6 +85,7 @@ export function avisos(e: Evento, c: Contexto): Aviso[] {
       if (!c.atorDaBase) return [{ publico: "base", titulo, corpo, cor: "wathet", link: "pedido" }];
       const out: Aviso[] = [{ publico: "aprovadores", titulo, corpo, cor: "wathet", link: "pedido" }];
       if (c.temAlmoxarifado) out.push({ publico: "separacao", titulo, corpo, cor: "wathet", link: "pedido" });
+      if (c.naExpedicao) out.push({ publico: "expedicao", titulo, corpo, cor: "wathet", link: "pedido" });
       return out;
     }
 

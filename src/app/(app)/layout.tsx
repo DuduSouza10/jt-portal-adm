@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AppSidebar, AppSidebarSkeleton, AppTopbar } from "@/components/app-header";
+import { DuvidasBalao } from "@/components/duvidas-balao";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -19,6 +20,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         </header>
         <main className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col gap-6 px-4 py-6 sm:px-7 sm:py-7">{children}</main>
       </div>
+      <Suspense>
+        <DuvidasBalao />
+      </Suspense>
     </div>
   );
 }

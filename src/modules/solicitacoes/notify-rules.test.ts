@@ -48,6 +48,8 @@ describe("quem é avisado", () => {
     expect(publicos(avisos({ tipo: "comentario", texto: "oi" }, ctx({ atorDaBase: false })))).toEqual(["base"]);
     expect(publicos(avisos({ tipo: "comentario", texto: "oi" }, ctx({ atorDaBase: true })))).toEqual(["aprovadores", "separacao"]);
     expect(publicos(avisos({ tipo: "comentario", texto: "oi" }, ctx({ atorDaBase: true, temAlmoxarifado: false })))).toEqual(["aprovadores"]);
+    // Pedido já na expedição: a mensagem da base chega também à expedição.
+    expect(publicos(avisos({ tipo: "comentario", texto: "oi" }, ctx({ atorDaBase: true, naExpedicao: true })))).toEqual(["aprovadores", "separacao", "expedicao"]);
   });
 
   it("texto longo é cortado", () => {

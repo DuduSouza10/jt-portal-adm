@@ -117,6 +117,18 @@ export async function criar(user: CurrentUser, input: CriarInput) {
     if (produtos.length !== ids.length) throw new DomainError("Produto não encontrado.");
     const inativo = produtos.find((p) => !p.active);
     if (inativo) throw new DomainError(`${inativo.code} não está mais disponível para pedido.`);
+    // S11: só pede o que o almoxarifado da regional da base tem disponível agora.
+    const disp = await tx.stockBalance.findMany({
+      where: { produtoId: { in: ids }, base: { type: "ALMOXARIFADO", active: true, regionalId: base.regionalId } },
+      select: { produtoId: true, quantity: true, reserved: true },
+    });
+    for (const it of input.itens) {
+      const tem = disp.filter((d) => d.produtoId === it.produtoId).reduce((s, d) => s + Math.max(0, d.quantity - d.reserved), 0);
+      if (it.quantity > tem) {
+        const p = produtos.find((x) => x.id === it.produtoId)!;
+        throw new DomainError(tem > 0 ? `${p.code}: só há ${tem} disponível no almoxarifado da sua regional.` : `${p.code}: sem estoque no almoxarifado da sua regional.`);
+      }
+    }
     // S1–S3 (regras do portal do Eduardo): ciclo de 3 meses, nº de pessoas e limite por produto.
     await limites.checkBeforeCreate(tx, user, base, input.itens, produtos, input.peopleCount, cfg);
 
