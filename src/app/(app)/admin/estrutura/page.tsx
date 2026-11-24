@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Network, Plus, Upload } from "lucide-react";
+import { Download, Network, Plus, Upload } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
@@ -39,6 +39,11 @@ export default async function StructurePage() {
                   </Link>
                 </Button>
               )}
+              <Button asChild variant="outline">
+                <a href="/api/modelos/bases" download>
+                  <Download /> {t("importacao.baixarModelo")}
+                </a>
+              </Button>
               <Button asChild variant="outline">
                 <Link href="/admin/estrutura/importar">
                   <Upload /> {t("usuarios.importar")}
