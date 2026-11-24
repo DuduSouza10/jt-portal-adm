@@ -92,9 +92,3 @@ export function parseBases(table: string[][]) {
   });
   return { rows, errors, missing, unknown: cols.unknown };
 }
-
-export const BASES_TEMPLATE_CSV =
-  "sigla;nome;tipo;regional;nome_regional;cnpj;cidade;uf;endereco;ativo\n" +
-  "BHZ01;Belo Horizonte 01;base;MG;Minas Gerais;;Belo Horizonte;MG;Rua Exemplo, 100;sim\n" +
-  "CTG01;Contagem 01;franquia;MG;;12.345.678/0001-90;Contagem;MG;;sim\n" +
-  "ALM-MG;Almoxarifado MG;almoxarifado;MG;;;Contagem;MG;;sim\n";
