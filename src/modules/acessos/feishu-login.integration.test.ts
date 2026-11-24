@@ -127,8 +127,16 @@ describe("B. vínculo seguro", () => {
     expect(await db.user.count({ where: { feishuOpenId: p.openId } })).toBe(1);
   });
 
-describe("aprovação (todo novo entra aguardando)", () => {
-  it("novo de uma unidade entra aguardando, já na base; o admin aprova e ele vira Base, com aviso no sino", async () => {
+describe("um por base: o primeiro entra direto, o resto aguarda", () => {
+  it("primeiro da base entra direto como Base, sem aviso aos admins", async () => {
+    const r = await login(perfil("apr0"), [chainMG("APR")]);
+    if (r.kind !== "ok") throw new Error(r.kind);
+    expect(r).toMatchObject({ created: true, pending: false });
+    const u = await db.user.findUniqueOrThrow({ where: { id: r.userId }, include: { profile: true } });
+    expect(u.profile.key).toBe("base");
+  });
+
+  it("segundo da mesma base entra aguardando; o admin aprova e ele vira Base, com aviso no sino", async () => {
     const r = await login(perfil("apr"), [chainMG("APR")]);
     if (r.kind !== "ok") throw new Error(r.kind);
     expect(r).toMatchObject({ created: true, pending: true });
@@ -147,6 +155,28 @@ describe("aprovação (todo novo entra aguardando)", () => {
     expect(await db.notification.count({ where: { userId: r.userId, title: "Seu acesso foi liberado" } })).toBe(1);
     await expect(aprovarAcesso(actor, r.userId)).rejects.toThrow("não está aguardando");
     await db.auditLog.deleteMany({ where: { actorId: adm.id } });
+  });
+
+  it("admin vinculado à base não ocupa a vaga: o primeiro de base entra direto", async () => {
+    await login(perfil("adm0"), [chainMG("ADM")]); // cria a base
+    const b = await db.base.findFirstOrThrow({ where: { feishuDepartmentId: `od-${tag}-b-ADM` } });
+    await db.user.deleteMany({ where: { feishuOpenId: `ou_${tag}adm0` } });
+    await db.user.create({ data: { name: "Admin", login: `${tag}admbase`, profileId: staffProfileId, bases: { create: [{ baseId: b.id }] } } });
+    const r = await login(perfil("adm1"), [chainMG("ADM")]);
+    expect(r).toMatchObject({ kind: "ok", pending: false });
+  });
+
+  it("franquia: o primeiro e o aprovado entram como Base, sem ver preços", async () => {
+    const a = await login(perfil("fr1"), [chainMG("F ORL")]);
+    const b = await login(perfil("fr2"), [chainMG("F ORL")]);
+    if (a.kind !== "ok" || b.kind !== "ok") throw new Error("login");
+    expect((await db.user.findUniqueOrThrow({ where: { id: a.userId }, include: { profile: true } })).profile.key).toBe("base");
+    expect(b.pending).toBe(true);
+    const profile = await db.accessProfile.findUniqueOrThrow({ where: { key: `${tag}-adm` } });
+    const adm = await db.user.findFirstOrThrow({ where: { login: `${tag}aprovador` } });
+    const actor = { id: adm.id, name: "Aprovador", login: adm.login, email: null, mustChangePassword: false, profile: { id: profile.id, key: profile.key, name: "Admin teste" }, permissions: ["*"], scope: "GLOBAL", bases: [], baseIds: [], regionalIds: [] } as never;
+    await aprovarAcesso(actor, b.userId);
+    expect((await db.user.findUniqueOrThrow({ where: { id: b.userId }, include: { profile: true } })).profile.key).toBe("base");
   });
 
   it("sem base (fora de unidade) não aprova direto: o admin escolhe no cadastro", async () => {
