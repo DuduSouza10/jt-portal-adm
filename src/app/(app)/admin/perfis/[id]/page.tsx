@@ -52,7 +52,7 @@ export default async function ProfileEditPage(props: PageProps<"/admin/perfis/[i
             </Field>
             <Field label={t("perfis.alcance")} htmlFor="scope" hint={t("perfis.alcanceDica")}>
               <select id="scope" name="scope" defaultValue={profile?.scope ?? "BASE"} className={selectClass}>
-                {(["GLOBAL", "REGIONAL", "BASE"] as const).map((k) => (
+                {(["GLOBAL", "REGIONAL", "FRANQUIAS", "BASE", "FRANQUIA"] as const).map((k) => (
                   <option key={k} value={k}>
                     {t(`alcance.${k}`)}
                   </option>

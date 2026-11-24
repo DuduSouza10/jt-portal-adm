@@ -5,6 +5,7 @@ import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
 import { generateTempPassword, hashTempPassword } from "@/lib/auth/password";
 import { ALL, sanitizePermissions } from "@/lib/permissions/catalog";
+import type { Scope } from "@/lib/permissions/check";
 import { isSubsetOf, linksOutsideScopeError, ownProfileEditError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
 import type { ProfileInput, UserInput } from "./schemas";
 
@@ -23,7 +24,7 @@ async function baseRegionalMap(baseIds: string[]) {
  * Pode conceder/gerenciar este perfil e estes vínculos? Ninguém concede o que não tem:
  * nem permissões (E4), nem alcance maior que o seu, nem bases/regionais fora do seu alcance (E6).
  */
-async function assertCanManage(actor: CurrentUser, profile: { permissions: readonly string[]; scope: "GLOBAL" | "REGIONAL" | "BASE" }, links: Links) {
+async function assertCanManage(actor: CurrentUser, profile: { permissions: readonly string[]; scope: Scope }, links: Links) {
   if (!isSubsetOf(profile.permissions, actor.permissions))
     throw new DomainError("Você não pode gerenciar usuários com mais permissões do que você.");
   if (!scopeWithin(profile.scope, actor.scope))
@@ -274,4 +275,28 @@ export async function aprovarAcesso(actor: CurrentUser, id: string) {
   });
   await audit({ actorId: actor.id, action: "usuario.aprovar", entity: "User", entityId: id, summary: `Aprovou o acesso de ${u.login} como ${perfil.name}` });
   return { perfil: perfil.name, login: u.login };
+}
+
+// ============================================================ Minhas bases (RM / supervisor)
+
+/**
+ * RM/supervisor escolhe as próprias bases e franquias (E17). Exceção ao E8 ("ninguém muda as próprias
+ * bases"): só com `bases.escolher` e alcance de "só vinculadas" (BASE/FRANQUIA). Almoxarifado não entra.
+ * Troca a lista inteira e fica na auditoria.
+ */
+export async function escolherMinhasBases(actor: CurrentUser, baseIds: string[]) {
+  if (!actor.permissions.includes("bases.escolher") && !actor.permissions.includes(ALL)) throw new DomainError("Sem permissão.");
+  if (actor.scope !== "BASE" && actor.scope !== "FRANQUIA") throw new DomainError("Seu tipo de acesso já vê as bases pelo alcance.");
+  const ids = [...new Set(baseIds)];
+  if (!ids.length) throw new DomainError("Marque ao menos uma base ou franquia.");
+  const bases = await db.base.findMany({ where: { id: { in: ids }, active: true, type: { not: "ALMOXARIFADO" } }, select: { id: true, code: true } });
+  if (bases.length !== ids.length) throw new DomainError("Base não encontrada.");
+  await db.$transaction(async (tx) => {
+    await tx.userBase.deleteMany({ where: { userId: actor.id } });
+    await tx.userBase.createMany({ data: ids.map((baseId) => ({ userId: actor.id, baseId })) });
+    await audit(
+      { actorId: actor.id, action: "usuario.minhas-bases", entity: "User", entityId: actor.id, summary: `Escolheu as próprias bases: ${bases.map((b) => b.code).sort().join(", ")}` },
+      tx,
+    );
+  });
 }

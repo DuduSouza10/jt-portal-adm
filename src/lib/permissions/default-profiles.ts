@@ -1,4 +1,5 @@
 import type { Permission } from "./catalog";
+import type { Scope } from "./check";
 
 /**
  * Tipos de acesso padrão (criados/atualizados pelo seed).
@@ -10,7 +11,7 @@ export type DefaultProfile = {
   key: string;
   name: string;
   description: string;
-  scope: "GLOBAL" | "REGIONAL" | "BASE";
+  scope: Scope;
   permissions: (Permission | "*")[];
 };
 
@@ -28,7 +29,7 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     description: "Administração geral: usuários, estrutura, estoque e operação.",
     scope: "GLOBAL",
     permissions: [
-      "usuarios.ver", "usuarios.editar", "usuarios.excluir", "perfis.gerenciar", "estrutura.ver", "estrutura.editar", "auditoria.ver", "integracoes.gerenciar", "configuracoes.editar",
+      "usuarios.ver", "usuarios.editar", "usuarios.excluir", "perfis.gerenciar", "estrutura.ver", "estrutura.editar", "bases.escolher", "auditoria.ver", "integracoes.gerenciar", "configuracoes.editar",
       "estoque.ver", "estoque.movimentar", "estoque.inventario",
       "produtos.ver", "produtos.editar", "produtos.precos", "produtos.precificar",
       "solicitacoes.criar", "solicitacoes.ver", "solicitacoes.aprovar", "solicitacoes.excluir", "solicitacoes.liberar",
@@ -67,6 +68,15 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     description: "Entrou pelo Feishu e ainda não tem acesso. O administrador escolhe o tipo de acesso.",
     scope: "BASE",
     permissions: [],
+  },
+  {
+    // RM / supervisor (decisão do Diogo, 2026-11-24): ele mesmo escolhe em "Minhas bases" as bases e
+    // franquias que acompanha; vê os relatórios e as solicitações delas e aprova os pedidos.
+    key: "rm-supervisor",
+    name: "RM / Supervisor",
+    description: "Escolhe as próprias bases e franquias, vê os relatórios delas e aprova os pedidos.",
+    scope: "BASE",
+    permissions: ["bases.escolher", "solicitacoes.ver", "solicitacoes.aprovar", "relatorios.ver", "franquias.ver", "produtos.precos"],
   },
   {
     key: "base",

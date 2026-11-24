@@ -22,6 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/franquias", label: "Franquias", description: "Pedidos, lacres, estoque e relatórios das franquias", permissions: ["franquias.ver"], section: "operacao" },
   { href: "/separacao", label: "Separação", description: "Separar os pedidos aprovados", permissions: ["expedicao.separar"], section: "operacao" },
   { href: "/expedicao", label: "Expedição", description: "Carregar e confirmar o envio", permissions: ["expedicao.enviar"], section: "operacao" },
+  { href: "/minhas-bases", label: "Minhas bases", description: "Escolher as bases e franquias que você acompanha", permissions: ["bases.escolher"], section: "gestao" },
   { href: "/produtos", label: "Produtos", description: "Catálogo de insumos e limites por período", permissions: ["produtos.ver"], section: "gestao" },
   { href: "/precificacao", label: "Precificação", description: "Preço dos produtos e histórico de alterações", permissions: ["produtos.precificar"], section: "gestao" },
 
@@ -48,6 +49,8 @@ export const SECTION_LABEL: Record<NavItem["section"], string> = {
 export function navFor(user: { permissions: readonly string[]; scope?: string }) {
   const itens = NAV_ITEMS.filter((i) => canAny(user, i.permissions));
   // Usuário de franquia (alcance de base com a aba Franquias) usa só a aba Franquias: tudo dele está lá.
-  if (user.scope === "BASE" && canAny(user, ["franquias.ver"])) return itens.filter((i) => i.href === "/franquias");
+  // (RM/supervisor tem relatórios: vê o menu normal.)
+  if ((user.scope === "BASE" || user.scope === "FRANQUIA") && canAny(user, ["franquias.ver"]) && !canAny(user, ["relatorios.ver"]))
+    return itens.filter((i) => i.href === "/franquias");
   return itens;
 }

@@ -7,6 +7,7 @@ import type { FeishuDept, FeishuProfile } from "@/lib/feishu/client";
 import { errorInfo, logger } from "@/lib/logger";
 import { detectarTodas, loginSugerido, perfilDoNovo, type Deteccao } from "./feishu-rules";
 import { baseDe } from "./feishu-estrutura";
+import { isOwnScope } from "@/lib/permissions/check";
 
 type Tx = Prisma.TransactionClient;
 
@@ -100,7 +101,7 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
     // Achou pela matrícula ou e-mail, mas o usuário já está ligado a OUTRA conta do Feishu: não sequestra.
     if (existing?.feishuOpenId && existing.feishuOpenId !== profile.openId) return { kind: "conflict" as const };
     // Conta da equipe (admin, gestor…) nunca é ligada sozinha: o admin preenche o open_id no cadastro.
-    if (existing && !porOpenId && existing.profile.scope !== "BASE") return { kind: "staff" as const };
+    if (existing && !porOpenId && !isOwnScope(existing.profile.scope)) return { kind: "staff" as const };
 
     const bases = [];
     for (const d of deteccoes) bases.push((await baseDe(tx, d, { actorId: null, origem: "pelo login do Feishu", autoCreated: true })).registro);
@@ -109,7 +110,7 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
       const matriculaLivre =
         !existing.registration && profile.employeeNo && !(await tx.user.findUnique({ where: { registration: profile.employeeNo }, select: { id: true } }));
       // Conta de base com senha provisória que entra pelo Feishu: a provisória deixa de valer (fica registrado).
-      const cancelaProvisoria = existing.mustChangePassword && existing.profile.scope === "BASE";
+      const cancelaProvisoria = existing.mustChangePassword && isOwnScope(existing.profile.scope);
       await tx.user.update({
         where: { id: existing.id },
         data: {
@@ -131,7 +132,7 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
         );
       }
       // Só quem é de base ganha a base do departamento; a equipe (regional/global) não é mexida.
-      if (existing.profile.scope === "BASE" && bases.length) {
+      if (isOwnScope(existing.profile.scope) && bases.length) {
         await tx.userBase.createMany({ data: bases.map((b) => ({ userId: existing.id, baseId: b.id })), skipDuplicates: true });
       }
       await audit({ actorId: existing.id, action: "usuario.feishu", entity: "User", entityId: existing.id, summary: `${existing.login} entrou pelo Feishu` }, tx);
@@ -144,7 +145,7 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
     const ocupadas = new Set(
       (
         await tx.userBase.findMany({
-          where: { baseId: { in: bases.map((b) => b.id) }, user: { active: true, profile: { scope: "BASE", key: { not: "aguardando" } } } },
+          where: { baseId: { in: bases.map((b) => b.id) }, user: { active: true, profile: { scope: { in: ["BASE", "FRANQUIA"] }, key: { not: "aguardando" } } } },
           select: { baseId: true },
         })
       ).map((u) => u.baseId),

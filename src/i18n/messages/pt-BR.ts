@@ -66,6 +66,7 @@ export const ptBR = {
     estrutura: { label: "Regionais e bases", description: "Estrutura organizacional" },
     auditoria: { label: "Auditoria", description: "Quem alterou o quê e quando" },
     duvidas: { label: "Dúvidas", description: "Perguntas do balão de ajuda" },
+    minhasBases: { label: "Minhas bases", description: "Escolher as bases e franquias que você acompanha" },
     feishu: { label: "Feishu", description: "Avisos no Feishu: teste e mensagens enviadas" },
     relatorios: { label: "Relatórios", description: "SLA das solicitações, valores e gasto por base" },
     configuracoes: { label: "Configurações", description: "Prazos de SLA e horário comercial" },
@@ -87,6 +88,15 @@ export const ptBR = {
       registrado: "Uso registrado.",
       col: { codigo: "Código", produto: "Produto", saldo: "Saldo" },
     },
+  },
+  minhasBases: {
+    titulo: "Minhas bases",
+    descricao: "Marque as bases e franquias que você acompanha. Os relatórios, as solicitações e as aprovações passam a mostrar só elas.",
+    busca: "Buscar base ou franquia",
+    franquia: "franquia",
+    salvar: "Salvar minhas bases",
+    salvo: "Bases salvas.",
+    marcadas: "{n} marcada(s)",
   },
   duvidas: {
     balao: "Dúvidas? Fale com a gente",
@@ -190,9 +200,11 @@ export const ptBR = {
     sucesso: "Senha alterada com sucesso.",
   },
   alcance: {
-    GLOBAL: "Todas as bases",
+    GLOBAL: "Todas as bases e franquias",
     REGIONAL: "Bases das suas regionais",
     BASE: "Só as suas bases",
+    FRANQUIAS: "Todas as franquias",
+    FRANQUIA: "Só a sua franquia",
   },
   perfisPadrao: {
     dev: { nome: "Dev", descricao: "Controle total do portal, inclusive de módulos futuros." },
@@ -201,11 +213,14 @@ export const ptBR = {
     almoxarifado: { nome: "Almoxarifado", descricao: "Separa, envia e controla o estoque." },
     base: { nome: "Base", descricao: "Solicita insumos para a própria base (sujeita ao ciclo de 3 meses)." },
     franquia: { nome: "Franquia", descricao: "Solicita insumos e vê os valores." },
+    "rm-supervisor": { nome: "RM / Supervisor", descricao: "Escolhe as próprias bases e franquias, vê os relatórios delas e aprova os pedidos." },
   },
   alcanceUsuario: {
-    GLOBAL: "vê todas as bases",
+    GLOBAL: "vê todas as bases e franquias",
     REGIONAL: "vê as bases das regionais marcadas",
     BASE: "vê só as bases marcadas",
+    FRANQUIAS: "vê todas as franquias",
+    FRANQUIA: "vê só as franquias marcadas",
   },
   usuarios: {
     aprovar: "Aprovar",
@@ -250,7 +265,8 @@ export const ptBR = {
     tipo: "Tipo de acesso",
     regionaisBases: "Regionais e bases",
     regionaisBasesDica: "Marque a regional para dar acesso a todas as bases dela (perfis regionais), ou bases avulsas.",
-    acessoGlobal: "Este tipo de acesso vê todas as regionais e bases: não precisa marcar nada.",
+    acessoGlobal: "Este tipo de acesso vê todas as regionais, bases e franquias: não precisa marcar nada.",
+    acessoFranquias: "Este tipo de acesso vê todas as franquias: não precisa marcar nada.",
     acessoBases: "Base(s) da pessoa",
     acessoBasesDica: "Marque a base onde a pessoa trabalha. Ela só pede e acompanha os pedidos dessa(s) base(s).",
     acessoRegionais: "Regionais e bases",
@@ -319,6 +335,9 @@ export const ptBR = {
     estrutura: {
       ver: { label: "Ver regionais e bases", description: "" },
       editar: { label: "Criar e editar regionais e bases", description: "" },
+    },
+    bases: {
+      escolher: { label: "Escolher as próprias bases e franquias", description: "RM/supervisor marca em \"Minhas bases\" quais bases e franquias acompanha." },
     },
     auditoria: {
       ver: { label: "Ver o histórico de alterações", description: "" },

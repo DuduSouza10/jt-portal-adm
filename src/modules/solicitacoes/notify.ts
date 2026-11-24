@@ -13,7 +13,7 @@ type Tx = Prisma.TransactionClient;
  * Usuários ativos que têm a permissão (explícita: o curinga do Dev não entra, para o Dev não receber tudo)
  * e cujo alcance cobre a base: GLOBAL, ou vinculado à base, ou à regional dela.
  */
-async function usuariosCom(tx: Tx, permission: Permission, base: { id: string; regionalId: string }) {
+async function usuariosCom(tx: Tx, permission: Permission, base: { id: string; regionalId: string; type?: string }) {
   const rows = await tx.user.findMany({
     where: {
       active: true,
@@ -22,6 +22,7 @@ async function usuariosCom(tx: Tx, permission: Permission, base: { id: string; r
         { profile: { scope: "GLOBAL" } },
         { bases: { some: { baseId: base.id } } },
         { profile: { scope: "REGIONAL" }, regionals: { some: { regionalId: base.regionalId } } },
+        ...(base.type === "FRANQUIA" ? [{ profile: { scope: "FRANQUIAS" as const } }] : []),
       ],
     },
     select: { id: true },
@@ -84,7 +85,7 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
       priority: true,
       status: true,
       createdById: true,
-      base: { select: { id: true, code: true, name: true, regionalId: true, feishuChatId: true, regional: { select: GRUPOS } } },
+      base: { select: { id: true, code: true, name: true, type: true, regionalId: true, feishuChatId: true, regional: { select: GRUPOS } } },
       almoxarifado: { select: { id: true, regionalId: true, regional: { select: GRUPOS } } },
     },
   });
@@ -96,7 +97,7 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
     urgente: s.priority === "URGENTE",
     temAlmoxarifado: !!s.almoxarifado,
     naExpedicao: s.status === "SEPARADA" || s.status === "ENVIADA",
-    atorDaBase: ator.id === s.createdById || (ator.scope === "BASE" && ator.baseIds.includes(s.base.id)),
+    atorDaBase: ator.id === s.createdById || ((ator.scope === "BASE" || ator.scope === "FRANQUIA") && ator.baseIds.includes(s.base.id)),
     atorNome: ator.name,
   });
 

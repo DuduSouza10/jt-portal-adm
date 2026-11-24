@@ -34,11 +34,11 @@ export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id
     db.accessProfile.findMany({ orderBy: { name: "asc" } }),
     // Só oferece regionais/bases do alcance do ator.
     db.regional.findMany({
-      where: { active: true, ...(me.scope !== "GLOBAL" && { OR: [{ id: { in: [...me.regionalIds] } }, { bases: { some: { id: { in: [...me.baseIds] } } } }] }) },
+      where: { active: true, ...(me.scope !== "GLOBAL" && me.scope !== "FRANQUIAS" && { OR: [{ id: { in: [...me.regionalIds] } }, { bases: { some: { id: { in: [...me.baseIds] } } } }] }) },
       orderBy: { code: "asc" },
       include: {
         bases: {
-          where: { active: true, ...(me.scope === "BASE" && { id: { in: [...me.baseIds] } }) },
+          where: { active: true, ...((me.scope === "BASE" || me.scope === "FRANQUIA") && { id: { in: [...me.baseIds] } }), ...(me.scope === "FRANQUIAS" && { OR: [{ type: "FRANQUIA" as const }, { id: { in: [...me.baseIds] } }] }) },
           orderBy: { code: "asc" },
         },
       },

@@ -84,9 +84,11 @@ model Base {
 
 /// Até onde o usuário enxerga dados das bases.
 enum AccessScope {
-  GLOBAL // todas as bases
+  GLOBAL // todas as bases e franquias
   REGIONAL // bases das regionais vinculadas ao usuário
   BASE // só as bases vinculadas ao usuário
+  FRANQUIAS // todas as franquias (+ as bases vinculadas)
+  FRANQUIA // só a(s) franquia(s) vinculada(s) ao usuário (igual a BASE, para franquia)
 }
 
 /// Tipo de acesso (perfil). Define as permissões e o alcance dos dados.

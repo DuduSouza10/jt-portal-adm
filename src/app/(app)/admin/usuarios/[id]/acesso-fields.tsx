@@ -6,7 +6,9 @@ import { Field, selectClass } from "@/components/form-field";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/client";
 
-type Scope = "GLOBAL" | "REGIONAL" | "BASE";
+type Scope = "GLOBAL" | "REGIONAL" | "BASE" | "FRANQUIAS" | "FRANQUIA";
+/** Bases que cada alcance de "só vinculadas" aceita: BASE = bases e franquias (não almoxarifado); FRANQUIA = só franquias. */
+const aceita = (scope: Scope | undefined, type: string) => (scope === "FRANQUIA" ? type === "FRANQUIA" : scope !== "BASE" || type !== "ALMOXARIFADO");
 type BaseOpt = { id: string; code: string; name: string; type: "BASE" | "FRANQUIA" | "ALMOXARIFADO" };
 type RegionalOpt = { id: string; code: string; name: string; bases: BaseOpt[] };
 
@@ -49,15 +51,15 @@ export function AcessoFields({
       regionals
         .map((r) => ({
           ...r,
-          bases: r.bases.filter((b) => (scope !== "BASE" || b.type !== "ALMOXARIFADO") && (!q || `${b.code} ${b.name}`.toLowerCase().includes(q))),
+          bases: r.bases.filter((b) => aceita(scope, b.type) && (!q || `${b.code} ${b.name}`.toLowerCase().includes(q))),
         }))
         .filter((r) => r.bases.length || (scope === "REGIONAL" && (!q || `${r.code} ${r.name}`.toLowerCase().includes(q)))),
     [regionals, scope, q],
   );
   const visiveis = { bases: new Set(filtradas.flatMap((r) => r.bases.map((b) => b.id))), regs: new Set(filtradas.map((r) => r.id)) };
   // Bases que valem para o tipo escolhido (Base/Franquia não ficam ligadas a almoxarifado).
-  const podeBase = new Set(regionals.flatMap((r) => r.bases.filter((b) => scope !== "BASE" || b.type !== "ALMOXARIFADO").map((b) => b.id)));
-  const marcadas = scope === "BASE" ? [...bases].length : [...regs].length + [...bases].length;
+  const podeBase = new Set(regionals.flatMap((r) => r.bases.filter((b) => aceita(scope, b.type)).map((b) => b.id)));
+  const marcadas = scope === "BASE" || scope === "FRANQUIA" ? [...bases].length : [...regs].length + [...bases].length;
 
   const caixaBase = (b: BaseOpt, incluida: boolean) => (
     <label key={b.id} className="flex min-w-0 items-center gap-2 text-sm">
@@ -90,10 +92,10 @@ export function AcessoFields({
         </select>
       </Field>
 
-      {scope === "GLOBAL" ? (
-        <p className="rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">{t("usuarios.acessoGlobal")}</p>
+      {scope === "GLOBAL" || scope === "FRANQUIAS" ? (
+        <p className="rounded-lg border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">{t(scope === "GLOBAL" ? "usuarios.acessoGlobal" : "usuarios.acessoFranquias")}</p>
       ) : scope ? (
-        <Field label={t(scope === "BASE" ? "usuarios.acessoBases" : "usuarios.acessoRegionais")} hint={t(scope === "BASE" ? "usuarios.acessoBasesDica" : "usuarios.acessoRegionaisDica")}>
+        <Field label={t(scope === "BASE" || scope === "FRANQUIA" ? "usuarios.acessoBases" : "usuarios.acessoRegionais")} hint={t(scope === "BASE" || scope === "FRANQUIA" ? "usuarios.acessoBasesDica" : "usuarios.acessoRegionaisDica")}>
           <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
