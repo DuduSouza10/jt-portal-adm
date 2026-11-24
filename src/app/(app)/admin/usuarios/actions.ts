@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { firstIssue, runAction, type FormState } from "@/lib/action-result";
 import { formToObject } from "@/lib/form";
 import { userSchema } from "@/modules/acessos/schemas";
-import { aprovarAcesso, resetPassword, saveUser } from "@/modules/acessos/service";
+import { aprovarAcesso, deleteUser, resetPassword, saveUser, setUserActive } from "@/modules/acessos/service";
 
 export async function saveUserAction(id: string | null, _: FormState, form: FormData): Promise<FormState> {
   const actor = await requirePermission("usuarios.editar");
@@ -52,4 +52,21 @@ export async function aprovarAcessoAction(id: string): Promise<FormState> {
   });
   revalidatePath("/admin/usuarios");
   return r;
+}
+
+/** Desativa ou reativa (mantém o histórico). */
+export async function setUserActiveAction(id: string, active: boolean): Promise<FormState> {
+  const actor = await requirePermission("usuarios.editar");
+  const r = await runAction("usuario.ativo", () => setUserActive(actor, id, active));
+  revalidatePath("/admin/usuarios");
+  return r;
+}
+
+/** Exclui de vez (só quem não tem histórico). */
+export async function deleteUserAction(id: string): Promise<FormState> {
+  const actor = await requirePermission("usuarios.excluir");
+  const r = await runAction("usuario.excluir", async () => { await deleteUser(actor, id); });
+  if (r.error) return r;
+  revalidatePath("/admin/usuarios");
+  redirect("/admin/usuarios");
 }

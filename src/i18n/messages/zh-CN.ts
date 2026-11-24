@@ -214,6 +214,15 @@ export const zhCN: Messages = {
     resetTitulo: "重置密码",
     resetDescricao: "生成临时密码，并结束该用户所有已登录的会话。",
     resetBotao: "生成临时密码",
+    desativarTitulo: "停用或删除",
+    desativarDescricao: "停用会立即取消访问并保留历史记录，之后可以重新启用。删除会永久删除用户，仅适用于没有申领单和库存记录的用户。",
+    desativar: "停用用户",
+    reativar: "重新启用用户",
+    excluir: "永久删除",
+    excluirConfirmaTitulo: "永久删除 {nome}？",
+    excluirConfirmaTexto: "用户 {login} 将被删除且无法恢复。如果只是不再允许此人登录，建议停用。",
+    excluirConfirmar: "确认删除",
+    excluirCancelar: "取消",
   },
   perfis: {
     titulo: "权限角色",
@@ -250,6 +259,7 @@ export const zhCN: Messages = {
     usuarios: {
       ver: { label: "查看用户", description: "" },
       editar: { label: "创建和编辑用户", description: "包括重置密码和停用账号。" },
+      excluir: { label: "删除用户", description: "永久删除没有历史记录的用户。" },
     },
     perfis: {
       gerenciar: { label: "管理权限角色", description: "创建角色并修改权限。" },

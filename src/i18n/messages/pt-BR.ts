@@ -211,6 +211,15 @@ export const ptBR = {
     resetTitulo: "Redefinir senha",
     resetDescricao: "Gera uma senha temporária e encerra as sessões abertas do usuário.",
     resetBotao: "Gerar senha temporária",
+    desativarTitulo: "Desativar ou excluir",
+    desativarDescricao: "Desativar tira o acesso na hora e mantém o histórico; dá para reativar depois. Excluir apaga o usuário de vez e só funciona para quem não tem pedidos nem movimentações de estoque.",
+    desativar: "Desativar usuário",
+    reativar: "Reativar usuário",
+    excluir: "Excluir permanentemente",
+    excluirConfirmaTitulo: "Excluir {nome} permanentemente?",
+    excluirConfirmaTexto: "O usuário {login} será apagado e não poderá ser recuperado. Se a pessoa só não deve mais entrar, prefira desativar.",
+    excluirConfirmar: "Sim, excluir",
+    excluirCancelar: "Cancelar",
   },
   perfis: {
     titulo: "Tipos de acesso",
@@ -247,6 +256,7 @@ export const ptBR = {
     usuarios: {
       ver: { label: "Ver usuários", description: "" },
       editar: { label: "Criar e editar usuários", description: "Inclui redefinir senha e desativar." },
+      excluir: { label: "Excluir usuários", description: "Apaga de vez quem não tem histórico." },
     },
     perfis: {
       gerenciar: { label: "Gerenciar tipos de acesso", description: "Criar perfis e mudar permissões." },
