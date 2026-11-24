@@ -6,10 +6,9 @@ import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
 import { isFeishuLoginEnabled } from "@/lib/feishu/config";
 import { getT } from "@/i18n/server";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, PageHeader } from "@/components/page-header";
+import { ListaBases } from "./lista-bases";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -60,43 +59,7 @@ export default async function StructurePage() {
         }
       />
       {regionals.length === 0 && <EmptyState>{t("estrutura.vazio")}</EmptyState>}
-      <div className="space-y-4">
-        {regionals.map((r) => (
-          <Card key={r.id} className={r.active ? "" : "opacity-60"}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Link href={`/admin/estrutura/regionais/${r.id}`} className="hover:underline">
-                  {r.code} · {r.name}
-                </Link>
-                {!r.active && <Badge variant="outline">{t("comum.inativa")}</Badge>}
-                <span className="text-sm font-normal text-muted-foreground">{t("estrutura.nBases", { n: r.bases.length })}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {r.bases.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("estrutura.semBases")}</p>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {r.bases.map((b) => (
-                    <Link
-                      key={b.id}
-                      href={`/admin/estrutura/bases/${b.id}`}
-                      className={`rounded-lg border bg-card p-2.5 text-sm transition hover:border-primary/60 hover:shadow-sm ${b.active ? "" : "opacity-50"}`}
-                    >
-                      <span className="font-medium">{b.code}</span> · {b.name}
-                      <span className="block text-xs text-muted-foreground">
-                        {t(`tiposBase.${b.type}`)}
-                        {b.city && ` · ${b.city}${b.state ? `/${b.state}` : ""}`}
-                        {!b.active && ` · ${t("comum.inativa")}`}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <ListaBases regionals={regionals} editable={editable} />
     </>
   );
 }
