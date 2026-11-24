@@ -127,8 +127,8 @@ describe("avisos das solicitações", () => {
     await comentar(u.base, id, "Pode mandar hoje?");
     expect((await notifs("gestor")).length).toBe(antes + 1);
     expect((await notifs("almox")).at(-1)).toMatch(/Novo comentário/);
-    // Mesmo grupo (equipe) para os dois públicos: um cartão só.
-    expect(await db.feishuOutbox.count({ where: { createdAt: { gte: started }, event: { startsWith: "solicitacao.comentario" } } })).toBe(1);
+    // Mesmo grupo (equipe) para aprovação e separação: um cartão só; o pedido já está na expedição (S12): +1 no grupo dela.
+    expect(await db.feishuOutbox.count({ where: { createdAt: { gte: started }, event: { startsWith: "solicitacao.comentario" } } })).toBe(2);
   });
 
   it("a página da notificação aponta para a solicitação", async () => {

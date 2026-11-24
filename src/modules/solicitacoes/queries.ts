@@ -16,9 +16,26 @@ export function basesParaPedir(actor: Actor) {
   const scope = baseScopeWhere(actor);
   return db.base.findMany({
     where: { active: true, type: { not: "ALMOXARIFADO" }, ...(scope && { AND: [scope] }) },
-    select: { id: true, code: true, name: true, type: true },
+    select: { id: true, code: true, name: true, type: true, regionalId: true },
     orderBy: { code: "asc" },
   });
+}
+
+/**
+ * S11: disponível (físico − reservado) de cada produto nos almoxarifados ATIVOS de cada regional.
+ * A base só pede o que o almoxarifado da regional dela tem: SPN pede do estoque de SPN, MG do de MG.
+ */
+export async function disponivelPorRegional(produtoIds?: string[]) {
+  const rows = await db.stockBalance.findMany({
+    where: { ...(produtoIds && { produtoId: { in: produtoIds } }), base: { type: "ALMOXARIFADO", active: true } },
+    select: { produtoId: true, quantity: true, reserved: true, base: { select: { regionalId: true } } },
+  });
+  const out: Record<string, Record<string, number>> = {};
+  for (const r of rows) {
+    const m = (out[r.base.regionalId] ??= {});
+    m[r.produtoId] = (m[r.produtoId] ?? 0) + Math.max(0, r.quantity - r.reserved);
+  }
+  return out;
 }
 
 /** Produtos que podem ser pedidos: insumos (padrão) ou só os lacres, conforme a aba. */

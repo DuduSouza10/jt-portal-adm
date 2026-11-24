@@ -128,7 +128,11 @@ describe("fluxo completo", () => {
   });
 
   it("aprovação sem estoque falha inteira e o pedido continua pendente", async () => {
-    const s = await criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p2, quantity: 50 }] });
+    // S11: a base só pede o que tem (50 > 5 é recusado já ao pedir).
+    await expect(criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p2, quantity: 50 }] })).rejects.toThrow(/só há 5/);
+    const s = await criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p2, quantity: 5 }] });
+    // O saldo acabou entre o pedido e a aprovação: a aprovação falha inteira.
+    await db.stockBalance.update({ where: { baseId_produtoId: { baseId: almox, produtoId: p2 } }, data: { quantity: 1 } });
     await expect(aprovar(gestor(), { id: s.id, almoxarifadoId: almox, quantidades: {}, note: null })).rejects.toThrow(/insuficiente|disponível/);
     expect(await status(s.id)).toBe("PENDENTE");
     await recusar(gestor(), s.id, "sem estoque");

@@ -13,14 +13,22 @@ import type { FormState } from "@/lib/action-result";
 import { criarAction } from "../actions";
 
 type Produto = { id: string; code: string; name: string; unit: string };
-type Base = { id: string; code: string; name: string; pedePessoas: boolean; cicloAte: string | null };
+type Base = { id: string; code: string; name: string; regionalId: string; pedePessoas: boolean; cicloAte: string | null };
 type Linha = { key: number; produtoId: string; texto: string; quantity: string };
 
-export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produto[] }) {
+/**
+ * disponivel: por regional, quanto de cada produto há nos almoxarifados dela (S11). A lista só mostra o que
+ * o almoxarifado da regional da base tem, e a quantidade não passa do disponível (o servidor confere de novo).
+ */
+export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base[]; produtos: Produto[]; disponivel: Record<string, Record<string, number>> }) {
   const t = useT();
   const tm = useServerMessage();
   const { state, pending, formProps } = useKeepForm<FormState>(criarAction, {});
   const nextKey = useRef(1);
+  const [baseId, setBaseId] = useState(bases.length === 1 ? bases[0].id : "");
+  const base = bases.find((b) => b.id === baseId);
+  const disp = useMemo(() => (base ? (disponivel[base.regionalId] ?? {}) : {}), [base, disponivel]);
+  const produtos = useMemo(() => todos.filter((p) => (disp[p.id] ?? 0) > 0), [todos, disp]);
   const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", texto: "", quantity: "" }]);
 
   // Busca por "CÓDIGO — nome": o datalist do navegador filtra conforme digita.
@@ -30,9 +38,8 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
   const update = (key: number, patch: Partial<Linha>) => setLinhas((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const addLinha = () => setLinhas((ls) => [...ls, { key: nextKey.current++, produtoId: "", texto: "", quantity: "" }]);
   const itens = linhas.filter((l) => l.produtoId || l.quantity).map((l) => ({ produtoId: l.produtoId, quantity: Number(l.quantity) }));
-  const [baseId, setBaseId] = useState(bases.length === 1 ? bases[0].id : "");
-  const base = bases.find((b) => b.id === baseId);
-  const invalid = itens.length === 0 || itens.some((i) => !i.produtoId || !(i.quantity > 0)) || !!base?.cicloAte;
+  const acima = itens.some((i) => i.produtoId && i.quantity > (disp[i.produtoId] ?? 0));
+  const invalid = itens.length === 0 || itens.some((i) => !i.produtoId || !(i.quantity > 0)) || !!base?.cicloAte || acima;
 
   return (
     <form {...formProps} className="space-y-4">
@@ -79,9 +86,15 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
         </Alert>
       )}
 
+      {base && produtos.length === 0 && (
+        <Alert>
+          <AlertDescription className="text-foreground">{t("solicitacoes.nova.semEstoqueRegional")}</AlertDescription>
+        </Alert>
+      )}
+
       <datalist id="produtos-list">
         {produtos.map((p) => (
-          <option key={p.id} value={`${p.code} — ${p.name}`} />
+          <option key={p.id} value={`${p.code} — ${p.name}`} label={t("solicitacoes.nova.disponivel", { n: disp[p.id] })} />
         ))}
       </datalist>
 
@@ -108,6 +121,7 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
               <Input
                 type="number"
                 min={1}
+                max={p ? disp[p.id] : undefined}
                 step={1}
                 inputMode="numeric"
                 value={l.quantity}
@@ -122,7 +136,14 @@ export function PedidoForm({ bases, produtos }: { bases: Base[]; produtos: Produ
                 }}
                 className="w-28"
               />
-              <span className="w-10 pt-2 text-xs text-muted-foreground">{p?.unit}</span>
+              <span className="w-24 pt-1 text-xs text-muted-foreground">
+                {p?.unit}
+                {p && (
+                  <span className={`block ${Number(l.quantity) > (disp[p.id] ?? 0) ? "font-medium text-destructive" : ""}`}>
+                    {t("solicitacoes.nova.disponivel", { n: disp[p.id] ?? 0 })}
+                  </span>
+                )}
+              </span>
               <Button
                 type="button"
                 variant="ghost"

@@ -22,6 +22,7 @@ const NAV_KEY: Record<string, keyof Messages["nav"]> = {
   "/admin/perfis": "perfis",
   "/admin/estrutura": "estrutura",
   "/admin/auditoria": "auditoria",
+  "/admin/duvidas": "duvidas",
   "/admin/feishu": "feishu",
   "/relatorios": "relatorios",
   "/admin/configuracoes": "configuracoes",

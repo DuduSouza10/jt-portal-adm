@@ -139,6 +139,10 @@ model User {
   solicitacoesCriadas Solicitacao[]       @relation("SolicitacaoCriador")
   solicitacaoEventos  SolicitacaoEvento[]
 
+  // dúvidas (balão de ajuda)
+  duvidas         DuvidaMensagem[] @relation("DuvidaDe")
+  duvidasEscritas DuvidaMensagem[] @relation("DuvidaAutor")
+
   @@index([profileId])
   @@index([active, name])
 }
@@ -589,4 +593,24 @@ model BloqueioProduto {
 
   @@unique([baseId, produtoId])
   @@index([blockedUntil])
+}
+
+// ===========================================================================
+// DÚVIDAS (balão de ajuda): conversa de cada usuário com a equipe do portal (devs/admins)
+// ===========================================================================
+
+/// Mensagem da conversa de dúvidas de UM usuário (solicitanteId). daEquipe = resposta da equipe.
+model DuvidaMensagem {
+  id            String   @id @default(cuid())
+  solicitanteId String
+  autorId       String?
+  texto         String
+  daEquipe      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  solicitante User  @relation("DuvidaDe", fields: [solicitanteId], references: [id], onDelete: Cascade)
+  autor       User? @relation("DuvidaAutor", fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([solicitanteId, createdAt])
+  @@index([createdAt])
 }
