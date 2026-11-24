@@ -9,7 +9,7 @@ import type { AbertoLinha } from "./graficos";
 /** Leituras dos relatórios. Sempre dentro do alcance de quem vê (bases da regional, etc.) e dos filtros da tela. */
 
 /** Filtros da tela de relatórios (todos opcionais). */
-export type Filtro = { regionalId?: string; baseId?: string; almoxId?: string };
+export type Filtro = { regionalId?: string; baseId?: string; almoxId?: string; /** Relatório só das franquias (aba Franquias). */ soFranquias?: boolean };
 
 const orderSelect = {
   id: true,
@@ -32,7 +32,7 @@ export type ReportOrder = SlaOrder & { partial: boolean; base: Ref & { regional:
 /** Alcance do usuário + filtros escolhidos. */
 function where(actor: Actor, f: Filtro = {}): Prisma.SolicitacaoWhereInput {
   const s = baseScopeWhere(actor);
-  const base: Prisma.BaseWhereInput[] = [...(s ? [s] : []), ...(f.regionalId ? [{ regionalId: f.regionalId }] : []), ...(f.baseId ? [{ id: f.baseId }] : [])];
+  const base: Prisma.BaseWhereInput[] = [...(s ? [s] : []), ...(f.regionalId ? [{ regionalId: f.regionalId }] : []), ...(f.baseId ? [{ id: f.baseId }] : []), ...(f.soFranquias ? [{ type: "FRANQUIA" as const }] : [])];
   return { ...(base.length && { base: { AND: base } }), ...(f.almoxId && { almoxarifadoId: f.almoxId }) };
 }
 
@@ -106,7 +106,10 @@ export async function stockValue(actor: Actor, f: Filtro = {}) {
   const rows = await db.stockBalance.findMany({
     where: {
       quantity: { gt: 0 },
-      base: { AND: [almoxarifadosWhere(actor), ...(f.regionalId ? [{ regionalId: f.regionalId }] : []), ...(f.almoxId ? [{ id: f.almoxId }] : [])] },
+      // Só franquias: o estoque de cada franquia (K7); senão, o dos almoxarifados.
+      base: f.soFranquias
+        ? { AND: [{ type: "FRANQUIA" }, ...(baseScopeWhere(actor) ? [baseScopeWhere(actor)!] : []), ...(f.regionalId ? [{ regionalId: f.regionalId }] : []), ...(f.baseId ? [{ id: f.baseId }] : [])] }
+        : { AND: [almoxarifadosWhere(actor), ...(f.regionalId ? [{ regionalId: f.regionalId }] : []), ...(f.almoxId ? [{ id: f.almoxId }] : [])] },
     },
     select: { quantity: true, avgCost: true, base: { select: { id: true, code: true, name: true } } },
   });
@@ -135,11 +138,11 @@ export async function shippedStats(actor: Actor, start: Date, end: Date, f: Filt
 }
 
 /** Opções dos filtros: só o que está no alcance de quem vê. */
-export async function filtroOptions(actor: Actor) {
+export async function filtroOptions(actor: Actor, { soFranquias = false } = {}) {
   const s = baseScopeWhere(actor);
   const [bases, almox] = await Promise.all([
     db.base.findMany({
-      where: { type: { not: "ALMOXARIFADO" }, ...(s && { AND: [s] }) },
+      where: { type: soFranquias ? "FRANQUIA" : { not: "ALMOXARIFADO" }, ...(s && { AND: [s] }) },
       select: { id: true, code: true, name: true, regional: { select: { id: true, code: true, name: true } } },
       orderBy: { code: "asc" },
     }),

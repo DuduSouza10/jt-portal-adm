@@ -108,6 +108,15 @@ export const PERMISSION_GROUPS = [
     owner: "Eduardo",
     permissions: [{ key: "relatorios.ver", label: "Ver e exportar relatórios" }],
   },
+  {
+    module: "franquias",
+    label: "Franquias",
+    owner: "núcleo",
+    permissions: [
+      { key: "franquias.ver", label: "Ver a aba Franquias", description: "Pedidos, estoque e relatórios das franquias do seu alcance." },
+      { key: "franquias.estoque", label: "Registrar uso no estoque da franquia" },
+    ],
+  },
 ] as const satisfies readonly PermissionGroup[];
 
 type Groups = typeof PERMISSION_GROUPS;

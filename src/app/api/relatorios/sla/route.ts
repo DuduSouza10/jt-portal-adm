@@ -13,16 +13,18 @@ import { db } from "@/lib/db";
 // - separação/expedição: solicitações separadas/enviadas no mês; demais: criadas no mês.
 export async function GET(req: Request) {
   const user = await getCurrentUser();
-  if (!user || user.mustChangePassword || !can(user, "relatorios.ver")) return new Response("Sem permissão", { status: 403 });
+  const soFranquias = new URL(req.url).searchParams.get("franquias") === "1";
+  // Relatório das franquias (aba Franquias) usa franquias.ver; o geral, relatorios.ver.
+  if (!user || user.mustChangePassword || !can(user, soFranquias ? "franquias.ver" : "relatorios.ver")) return new Response("Sem permissão", { status: 403 });
   const t = createTranslator(await getLocale());
   const now = new Date();
   const sp = new URL(req.url).searchParams;
   const { start, end, key } = monthRange(sp.get("mes") ?? undefined, now);
   const verValores = can(user, "produtos.precos");
   const visao = sp.get("visao") ?? "tudo";
-  const opts = await filtroOptions(user);
+  const opts = await filtroOptions(user, { soFranquias });
   const pick = <T extends { id: string }>(list: T[], id: string | null) => (id && list.some((x) => x.id === id) ? id : undefined);
-  const filtro: Filtro = { regionalId: pick(opts.regionais, sp.get("regional")), baseId: pick(opts.bases, sp.get("base")), almoxId: pick(opts.almoxarifados, sp.get("almox")) };
+  const filtro: Filtro = { regionalId: pick(opts.regionais, sp.get("regional")), baseId: pick(opts.bases, sp.get("base")), almoxId: pick(opts.almoxarifados, sp.get("almox")), soFranquias };
 
   const dt = (d: Date | null) => (d ? d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "");
   const num = (v: number | null, digits = 1) => (v == null ? "" : v.toFixed(digits).replace(".", ","));

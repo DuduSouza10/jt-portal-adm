@@ -32,7 +32,7 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
       "estoque.ver", "estoque.movimentar", "estoque.inventario",
       "produtos.ver", "produtos.editar", "produtos.precos", "produtos.precificar",
       "solicitacoes.criar", "solicitacoes.ver", "solicitacoes.aprovar", "solicitacoes.excluir", "solicitacoes.liberar",
-      "expedicao.separar", "expedicao.enviar", "relatorios.ver",
+      "expedicao.separar", "expedicao.enviar", "relatorios.ver", "franquias.ver", "franquias.estoque",
     ],
   },
   {
@@ -81,6 +81,7 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     name: "Franquia",
     description: "Solicita insumos e vê os valores.",
     scope: "BASE",
-    permissions: ["produtos.precos", "solicitacoes.criar", "solicitacoes.ver"],
+    // franquias.*: a franquia usa a aba Franquias (pedidos, lacres, estoque próprio e relatórios dela).
+    permissions: ["produtos.precos", "solicitacoes.criar", "solicitacoes.ver", "franquias.ver", "franquias.estoque"],
   },
 ];

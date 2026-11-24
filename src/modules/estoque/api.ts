@@ -145,3 +145,42 @@ export async function baixarReserva(
     await tx.stockReservation.update({ where: { id: r.id }, data: { status: "BAIXADA", shipped: plan.baixa } });
   }
 }
+
+/**
+ * Recebimento numa FRANQUIA (K7): o que foi enviado entra no estoque da própria franquia, com o custo
+ * médio do almoxarifado que enviou. Chamado pelo service de solicitações ao confirmar o recebimento.
+ */
+export async function entradaFranquia(tx: Tx, p: { solicitacaoId: string; franquiaId: string; actorId: string | null }) {
+  await lockSolicitacao(tx, p.solicitacaoId);
+  const ja = await tx.stockMovement.count({ where: { refType: "recebimento", refId: p.solicitacaoId } });
+  if (ja) return; // já entrou (clique duplo)
+  const enviados = await tx.stockReservation.findMany({
+    where: { refType: REF, refId: p.solicitacaoId, status: "BAIXADA", shipped: { gt: 0 } },
+    include: { produto: true },
+    orderBy: { produtoId: "asc" },
+  });
+  if (!enviados.length) return;
+  const custos = await tx.stockBalance.findMany({
+    where: { OR: enviados.map((r) => ({ baseId: r.baseId, produtoId: r.produtoId })) },
+    select: { baseId: true, produtoId: true, avgCost: true },
+  });
+  const custo = (r: { baseId: string; produtoId: string }) => {
+    const c = Number(custos.find((x) => x.baseId === r.baseId && x.produtoId === r.produtoId)?.avgCost ?? 0);
+    return c > 0 ? c : null;
+  };
+  const batchId = newBatchId();
+  for (const r of enviados) {
+    await move(tx, {
+      baseId: p.franquiaId,
+      produtoId: r.produtoId,
+      label: produtoLabel(r.produto),
+      op: { type: "ENTRADA", quantity: r.shipped },
+      unitCost: custo(r),
+      batchId,
+      actorId: p.actorId,
+      reason: "Recebimento do pedido",
+      refType: "recebimento",
+      refId: p.solicitacaoId,
+    });
+  }
+}

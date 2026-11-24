@@ -7,7 +7,7 @@ import type { CurrentUser } from "@/lib/auth/session";
 import { canAccessBase } from "@/lib/permissions/check";
 import { loadProdutos, move, newBatchId, produtoLabel, STOCK_TX } from "./engine";
 import { mergeUnitCosts, normalizeItems } from "./rules";
-import type { EntradaInput, InventarioInput, MinimoInput, SaidaInput, TransferenciaInput } from "./schemas";
+import type { EntradaInput, InventarioInput, MinimoInput, SaidaInput, TransferenciaInput, UsoFranquiaInput } from "./schemas";
 
 type Tx = Prisma.TransactionClient;
 
@@ -200,4 +200,27 @@ export async function definirMinimo(actor: CurrentUser, input: MinimoInput) {
       tx,
     );
   });
+}
+
+/** Franquia registra o que usou do próprio estoque (K7). Só base do tipo Franquia, dentro do alcance. */
+export async function registrarUsoFranquia(actor: CurrentUser, input: UsoFranquiaInput) {
+  return db.$transaction(async (tx) => {
+    const base = await tx.base.findUnique({ where: { id: input.baseId } });
+    if (!base || base.type !== "FRANQUIA" || !canAccessBase(actor, base)) throw new DomainError("Franquia não encontrada.");
+    const produtos = await loadProdutos(tx, [input.produtoId]);
+    const batchId = newBatchId();
+    await move(tx, {
+      baseId: base.id,
+      produtoId: input.produtoId,
+      label: produtoLabel(produtos.get(input.produtoId)!),
+      op: { type: "SAIDA", quantity: input.quantity },
+      batchId,
+      actorId: actor.id,
+      reason: input.reason ?? "Uso na franquia",
+    });
+    await audit(
+      { actorId: actor.id, action: "estoque.uso-franquia", entity: "StockBatch", entityId: batchId, summary: `Uso em ${base.code}: ${input.quantity} × ${produtos.get(input.produtoId)!.code}` },
+      tx,
+    );
+  }, STOCK_TX);
 }

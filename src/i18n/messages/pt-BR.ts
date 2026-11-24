@@ -55,6 +55,7 @@ export const ptBR = {
     inicio: { label: "Início", description: "Resumo do dia" },
     solicitarInsumos: { label: "Solicitar insumos", description: "Montar e enviar um pedido" },
     solicitarLacres: { label: "Solicitar lacres", description: "Pedir lacres numerados" },
+    franquias: { label: "Franquias", description: "Pedidos, lacres, estoque e relatórios das franquias" },
     solicitacoes: { label: "Solicitações", description: "Acompanhar pedidos" },
     expedicao: { label: "Expedição", description: "Separar e enviar" },
     separacao: { label: "Separação", description: "Separar os pedidos aprovados" },
@@ -67,6 +68,24 @@ export const ptBR = {
     feishu: { label: "Feishu", description: "Avisos no Feishu: teste e mensagens enviadas" },
     relatorios: { label: "Relatórios", description: "SLA das solicitações, valores e gasto por base" },
     configuracoes: { label: "Configurações", description: "Prazos de SLA e horário comercial" },
+  },
+  franquias: {
+    titulo: "Franquias",
+    descricao: "Pedidos, lacres, estoque e relatórios só das franquias.",
+    abas: { solicitacoes: "Solicitações", lacres: "Solicitar lacres", estoque: "Estoque", relatorios: "Relatórios" },
+    estoque: {
+      descricao: "O que cada franquia tem em casa. O pedido recebido entra sozinho; o que foi usado, a franquia registra aqui.",
+      franquia: "Franquia",
+      vazio: "Nenhum saldo ainda. O estoque da franquia começa quando ela confirma o recebimento de um pedido.",
+      registrarUso: "Registrar uso",
+      usoAjuda: "Tira do estoque da franquia o que foi usado.",
+      produto: "Produto",
+      quantidade: "Quantidade",
+      motivo: "Observação (opcional)",
+      salvar: "Registrar",
+      registrado: "Uso registrado.",
+      col: { codigo: "Código", produto: "Produto", saldo: "Saldo" },
+    },
   },
   inicio: {
     aguardandoLiberacao: "Seu acesso está aguardando liberação. Assim que o administrador aprovar, você já pode pedir insumos para a sua base.",
@@ -250,6 +269,7 @@ export const ptBR = {
     solicitacoes: "Solicitações",
     expedicao: "Separação e expedição",
     relatorios: "Relatórios",
+    franquias: "Franquias",
     integracoes: "Integrações",
     configuracoes: "Configurações",
   },
@@ -298,6 +318,10 @@ export const ptBR = {
     },
     relatorios: {
       ver: { label: "Ver e exportar relatórios", description: "" },
+    },
+    franquias: {
+      ver: { label: "Ver a aba Franquias", description: "Pedidos, estoque e relatórios das franquias do seu alcance." },
+      estoque: { label: "Registrar uso no estoque da franquia", description: "" },
     },
   },
   produtos: {

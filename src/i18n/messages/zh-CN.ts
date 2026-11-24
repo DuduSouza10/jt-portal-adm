@@ -58,6 +58,7 @@ export const zhCN: Messages = {
     inicio: { label: "首页", description: "今日概况" },
     solicitarInsumos: { label: "申领物料", description: "填写并提交申领单" },
     solicitarLacres: { label: "申领封签", description: "申领编号封签" },
+    franquias: { label: "加盟网点", description: "加盟网点的申领单、封签、库存与报表" },
     solicitacoes: { label: "申领单", description: "跟踪申领进度" },
     expedicao: { label: "发货", description: "拣货与发货" },
     separacao: { label: "拣货", description: "拣选已批准的申领单" },
@@ -70,6 +71,24 @@ export const zhCN: Messages = {
     feishu: { label: "飞书", description: "飞书通知：测试与已发送消息" },
     relatorios: { label: "报表", description: "申领单 SLA、金额与各网点花费" },
     configuracoes: { label: "系统设置", description: "SLA 时限与工作时间" },
+  },
+  franquias: {
+    titulo: "加盟网点",
+    descricao: "只显示加盟网点的申领单、封签、库存与报表。",
+    abas: { solicitacoes: "申领单", lacres: "申领封签", estoque: "库存", relatorios: "报表" },
+    estoque: {
+      descricao: "每个加盟网点手上的库存。确认收货后自动入库；用掉的数量在这里登记。",
+      franquia: "加盟网点",
+      vazio: "还没有库存。加盟网点确认收货后才开始有库存。",
+      registrarUso: "登记使用",
+      usoAjuda: "从加盟网点库存中扣除已使用的数量。",
+      produto: "产品",
+      quantidade: "数量",
+      motivo: "备注（可选）",
+      salvar: "登记",
+      registrado: "已登记使用。",
+      col: { codigo: "编码", produto: "产品", saldo: "库存" },
+    },
   },
   inicio: {
     aguardandoLiberacao: "您的访问正在等待开通。管理员批准后，您即可为所在网点申领物料。",
@@ -253,6 +272,7 @@ export const zhCN: Messages = {
     solicitacoes: "申领单",
     expedicao: "拣货与发货",
     relatorios: "报表",
+    franquias: "加盟网点",
     integracoes: "集成",
     configuracoes: "系统设置",
   },
@@ -301,6 +321,10 @@ export const zhCN: Messages = {
     },
     relatorios: {
       ver: { label: "查看和导出报表", description: "" },
+    },
+    franquias: {
+      ver: { label: "查看“加盟网点”页面", description: "查看权限范围内加盟网点的申领单、库存与报表。" },
+      estoque: { label: "登记加盟网点库存使用", description: "" },
     },
   },
   produtos: {
