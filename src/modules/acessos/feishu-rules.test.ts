@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { codigoBase, codigoRegional, comSufixo, detectar, detectarTodas, loginSugerido, mesmoNome, siglaCortada, tipoBase, type Dept, desceNoOrganograma, estruturaDoOrganograma } from "./feishu-rules";
+import { perfilDoNovo, codigoBase, codigoRegional, comSufixo, detectar, detectarTodas, loginSugerido, mesmoNome, siglaCortada, tipoBase, type Dept, desceNoOrganograma, estruturaDoOrganograma } from "./feishu-rules";
 
 // Cadeias como o Feishu devolve: do setor da pessoa até a raiz. Nomes do organograma real.
 const d = (name: string, id = name) => ({ id: `od-${id}`, name });
@@ -126,5 +126,18 @@ describe("estruturaDoOrganograma (importação de todas as bases)", () => {
     const desce = (id: string) => desceNoOrganograma(by.get(id)!, by.get(by.get(id)!.parentId ?? ""));
     expect(["mn", "spn", "gr1", "dc1"].map(desce)).toEqual([true, true, true, true]);
     expect(["gi", "sjp", "cd1", "exp"].map(desce)).toEqual([false, false, false, false]);
+  });
+});
+
+describe("perfilDoNovo (um por base)", () => {
+  const FRC = { id: "frc", type: "BASE" };
+  const F = { id: "f", type: "FRANQUIA" };
+  it("primeiro da base entra direto", () => {
+    expect(perfilDoNovo([FRC], new Set())).toBe("base");
+    expect(perfilDoNovo([F], new Set())).toBe("franquia");
+  });
+  it("base já ocupada ou sem base: aguarda", () => {
+    expect(perfilDoNovo([FRC], new Set(["frc"]))).toBe("aguardando");
+    expect(perfilDoNovo([], new Set())).toBe("aguardando");
   });
 });

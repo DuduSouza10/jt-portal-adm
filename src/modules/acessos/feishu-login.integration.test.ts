@@ -127,8 +127,16 @@ describe("B. vínculo seguro", () => {
     expect(await db.user.count({ where: { feishuOpenId: p.openId } })).toBe(1);
   });
 
-describe("aprovação (todo novo entra aguardando)", () => {
-  it("novo de uma unidade entra aguardando, já na base; o admin aprova e ele vira Base, com aviso no sino", async () => {
+describe("um por base: o primeiro entra direto, o resto aguarda", () => {
+  it("primeiro da base entra direto como Base, sem aviso aos admins", async () => {
+    const r = await login(perfil("apr0"), [chainMG("APR")]);
+    if (r.kind !== "ok") throw new Error(r.kind);
+    expect(r).toMatchObject({ created: true, pending: false });
+    const u = await db.user.findUniqueOrThrow({ where: { id: r.userId }, include: { profile: true } });
+    expect(u.profile.key).toBe("base");
+  });
+
+  it("segundo da mesma base entra aguardando; o admin aprova e ele vira Base, com aviso no sino", async () => {
     const r = await login(perfil("apr"), [chainMG("APR")]);
     if (r.kind !== "ok") throw new Error(r.kind);
     expect(r).toMatchObject({ created: true, pending: true });
