@@ -21,6 +21,7 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { key: "usuarios.ver", label: "Ver usuários" },
       { key: "usuarios.editar", label: "Criar e editar usuários", description: "Inclui redefinir senha e desativar." },
+      { key: "usuarios.excluir", label: "Excluir usuários", description: "Apaga de vez quem não tem histórico." },
       { key: "perfis.gerenciar", label: "Gerenciar tipos de acesso", description: "Criar perfis e mudar permissões." },
     ],
   },

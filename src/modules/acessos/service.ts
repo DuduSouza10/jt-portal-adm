@@ -136,6 +136,49 @@ export async function resetPassword(actor: CurrentUser, id: string) {
   return { login: user.login, tempPassword };
 }
 
+/** Desativa (tira o acesso na hora, encerra as sessões, mantém o histórico) ou reativa. */
+export async function setUserActive(actor: CurrentUser, id: string, active: boolean) {
+  const user = await db.user.findUnique({ where: { id }, include: { profile: true, bases: true, regionals: true } });
+  if (!user) throw new DomainError("Usuário não encontrado.");
+  await assertCanManage(actor, user.profile, linksOf(user));
+  if (id === actor.id && !active) throw new DomainError("Você não pode desativar o próprio usuário.");
+  if (user.active === active) return;
+  await db.$transaction(async (tx) => {
+    await tx.user.update({ where: { id }, data: { active } });
+    if (!active) await tx.session.deleteMany({ where: { userId: id } });
+    await audit(
+      { actorId: actor.id, action: active ? "usuario.reativar" : "usuario.desativar", entity: "User", entityId: id, summary: `${active ? "Reativou" : "Desativou"} ${user.login}` },
+      tx,
+    );
+  });
+}
+
+/**
+ * Exclui o usuário de vez (E12). Só quem não tem histórico de operação: pedido criado ou movimentação de
+ * estoque prendem a pessoa ao registro (quem pediu, quem movimentou), então esses são só desativados.
+ * Sessões, vínculos e avisos saem junto; na auditoria o nome some do "quem fez", mas o resumo fica.
+ */
+export async function deleteUser(actor: CurrentUser, id: string) {
+  const user = await db.user.findUnique({ where: { id }, include: { profile: true, bases: true, regionals: true } });
+  if (!user) throw new DomainError("Usuário não encontrado.");
+  if (id === actor.id) throw new DomainError("Você não pode excluir o próprio usuário.");
+  await assertCanManage(actor, user.profile, linksOf(user));
+  await db.$transaction(async (tx) => {
+    const [pedidos, movimentos] = await Promise.all([
+      tx.solicitacao.count({ where: { createdById: id } }),
+      tx.stockMovement.count({ where: { actorId: id } }),
+    ]);
+    if (pedidos || movimentos)
+      throw new DomainError("Este usuário tem pedidos ou movimentações de estoque no histórico. Desative em vez de excluir.");
+    await tx.user.delete({ where: { id } });
+    await audit(
+      { actorId: actor.id, action: "usuario.excluir", entity: "User", entityId: id, summary: `Excluiu permanentemente ${user.login} (${user.name})` },
+      tx,
+    );
+  });
+  return { login: user.login };
+}
+
 // ============================================================ Tipos de acesso (perfis)
 
 export async function saveProfile(actor: CurrentUser, id: string | null, input: ProfileInput) {

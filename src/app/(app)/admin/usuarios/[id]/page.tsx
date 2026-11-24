@@ -14,6 +14,7 @@ import { getT } from "@/i18n/server";
 import { profileText } from "@/i18n/labels";
 import { resetPasswordAction, saveUserAction } from "../actions";
 import { AcessoFields } from "./acesso-fields";
+import { DesativarExcluir } from "./desativar-excluir";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -114,6 +115,21 @@ export default async function UserEditPage(props: PageProps<"/admin/usuarios/[id
               action={resetPasswordAction.bind(null, user!.id)}
               submitLabel={t("usuarios.resetBotao")}
               variant="outline"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {!isNew && editable && user!.id !== me.id && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("usuarios.desativarTitulo")}</CardTitle>
+            <CardDescription>{t("usuarios.desativarDescricao")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DesativarExcluir
+              user={{ id: user!.id, name: user!.name, login: user!.login, active: user!.active }}
+              podeExcluir={can(me, "usuarios.excluir")}
             />
           </CardContent>
         </Card>
