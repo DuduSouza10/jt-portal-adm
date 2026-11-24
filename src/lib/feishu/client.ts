@@ -117,7 +117,7 @@ async function getDepartment(id: string, token: string): Promise<FeishuDept> {
  * Departamentos da pessoa, cada um com a cadeia de "pais" até onde o app enxerga
  * (ex.: CD CTG 001 → DC MNH 001 → Gestão Regional → Subsidiária Minas Gerais → Subsidiária MN).
  */
-export async function getUserDepartmentChains(openId: string, maxDepth = 8): Promise<FeishuDept[][]> {
+export async function getUserDepartmentChains(openId: string): Promise<FeishuDept[][]> {
   const token = await getTenantAccessToken();
   const r = await call<{ data: { user: { department_ids?: string[] } } }>(
     `/open-apis/contact/v3/users/${encodeURIComponent(openId)}?user_id_type=open_id&department_id_type=open_department_id`,
@@ -125,18 +125,15 @@ export async function getUserDepartmentChains(openId: string, maxDepth = 8): Pro
   );
   const chains: FeishuDept[][] = [];
   for (const id of r.data.user.department_ids ?? []) {
-    const chain: FeishuDept[] = [];
-    let current: string | undefined = id;
-    for (let i = 0; current && i < maxDepth; i++) {
-      try {
-        const dep = await getDepartment(current, token);
-        chain.push(dep);
-        current = dep.parentId;
-      } catch {
-        break; // acima do alcance do app (ex.: J&T Brasil): a cadeia termina aí
-      }
-    }
-    chains.push(chain);
+    // O próprio departamento + os "pais" (do mais próximo até a raiz que o app enxerga), numa chamada só.
+    // Não dá para subir pelo parent_department_id: o Feishu deixou de devolver esse campo no
+    // GET /departments/:id para este app (2026-11-24), e a cadeia parava no primeiro nível.
+    const self = await getDepartment(id, token);
+    const pais = await call<{ data: { items?: { name: string; open_department_id: string }[] } }>(
+      `/open-apis/contact/v3/departments/parent?department_id_type=open_department_id&department_id=${encodeURIComponent(id)}&page_size=50`,
+      { token },
+    ).catch(() => null);
+    chains.push([self, ...(pais?.data.items ?? []).map((d) => ({ id: d.open_department_id, name: d.name }))]);
   }
   return chains;
 }
