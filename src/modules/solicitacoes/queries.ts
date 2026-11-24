@@ -39,12 +39,12 @@ export function almoxarifadosAtivos() {
   });
 }
 
-export type ListFilter = { status?: SolicitacaoStatus; abertas?: boolean; baseId?: string; q?: number; page: number };
+export type ListFilter = { status?: SolicitacaoStatus; abertas?: boolean; baseId?: string; q?: number; page: number; soFranquias?: boolean };
 
 export async function listSolicitacoes(actor: Actor, f: ListFilter) {
   const scope = baseScopeWhere(actor);
   const where: Prisma.SolicitacaoWhereInput = {
-    ...(scope && { base: scope }),
+    ...((scope || f.soFranquias) && { base: { AND: [...(scope ? [scope] : []), ...(f.soFranquias ? [{ type: "FRANQUIA" as const }] : [])] } }),
     ...(f.status ? { status: f.status } : f.abertas ? { status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA"] } } : {}),
     ...(f.baseId && { baseId: f.baseId }),
     ...(f.q && { number: f.q }),

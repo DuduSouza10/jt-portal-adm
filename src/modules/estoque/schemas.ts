@@ -76,3 +76,12 @@ export const MOVEMENT_LABEL = {
   LIBERACAO: "Liberação de reserva",
   BAIXA: "Baixa (envio)",
 } as const;
+
+/** Uso no estoque da franquia (K7): um produto por vez, quantidade inteira > 0. */
+export const usoFranquiaSchema = z.object({
+  baseId: z.string().min(1, "Escolha a franquia."),
+  produtoId: z.string().min(1, "Escolha o produto."),
+  quantity: z.coerce.number().int("Quantidade inteira.").min(1, "Quantidade maior que zero.").max(1_000_000, "Quantidade muito alta."),
+  reason: optionalText,
+});
+export type UsoFranquiaInput = z.infer<typeof usoFranquiaSchema>;

@@ -20,7 +20,8 @@ describe("tipos de acesso padrão", () => {
   });
 
   it("E9: Base e Franquia só pedem insumos e acompanham os próprios pedidos", () => {
-    const solicitante = ["produtos.precos", "solicitacoes.criar", "solicitacoes.ver"];
+    // franquias.*: a Franquia usa a aba Franquias (pedidos, lacres, estoque e relatórios dela), decisão do Diogo 2026-11-24.
+    const solicitante = ["produtos.precos", "solicitacoes.criar", "solicitacoes.ver", "franquias.ver", "franquias.estoque"];
     for (const key of ["base", "franquia"]) {
       const p = DEFAULT_PROFILES.find((x) => x.key === key)!;
       expect(p.scope, key).toBe("BASE");

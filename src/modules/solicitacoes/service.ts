@@ -5,7 +5,7 @@ import { audit } from "@/lib/audit";
 import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
 import { can, canAccessBase, canAny } from "@/lib/permissions/check";
-import { baixarReserva, liberarReserva, reservar, STOCK_TX } from "@/modules/estoque/api";
+import { baixarReserva, entradaFranquia, liberarReserva, reservar, STOCK_TX } from "@/modules/estoque/api";
 import { formatNumber, planQuantities, TO, transitionError, type Acao } from "./rules";
 import type { AprovarInput, CriarInput, EnvioInput, SepararInput } from "./schemas";
 import { notificar } from "./notify";
@@ -151,7 +151,9 @@ export async function receber(user: CurrentUser, id: string, note: string | null
   return db.$transaction(async (tx) => {
     const s = await load(tx, user, id, "receber");
     await transition(tx, user, s, "receber", { receivedAt: new Date() }, note);
-  });
+    // Franquia controla o estoque dela (K7): o que recebeu entra no estoque da franquia.
+    if (s.base.type === "FRANQUIA") await entradaFranquia(tx, { solicitacaoId: s.id, franquiaId: s.baseId, actorId: user.id });
+  }, STOCK_TX);
 }
 
 export async function cancelar(user: CurrentUser, id: string, reason: string) {

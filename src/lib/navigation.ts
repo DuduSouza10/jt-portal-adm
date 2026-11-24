@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/solicitacoes/nova", label: "Solicitar insumos", description: "Montar e enviar um pedido", permissions: ["solicitacoes.criar"], section: "operacao" },
   { href: "/solicitacoes", label: "Solicitações", description: "Acompanhar pedidos e aprovar", permissions: ["solicitacoes.ver"], section: "operacao" },
   { href: "/solicitacoes/lacres", label: "Solicitar lacres", description: "Pedir lacres numerados", permissions: ["solicitacoes.criar"], section: "operacao" },
+  { href: "/franquias", label: "Franquias", description: "Pedidos, lacres, estoque e relatórios das franquias", permissions: ["franquias.ver"], section: "operacao" },
   { href: "/separacao", label: "Separação", description: "Separar os pedidos aprovados", permissions: ["expedicao.separar"], section: "operacao" },
   { href: "/expedicao", label: "Expedição", description: "Carregar e confirmar o envio", permissions: ["expedicao.enviar"], section: "operacao" },
   { href: "/produtos", label: "Produtos", description: "Catálogo de insumos e limites por período", permissions: ["produtos.ver"], section: "gestao" },
@@ -43,6 +44,9 @@ export const SECTION_LABEL: Record<NavItem["section"], string> = {
   admin: "Administração",
 };
 
-export function navFor(user: { permissions: readonly string[] }) {
-  return NAV_ITEMS.filter((i) => canAny(user, i.permissions));
+export function navFor(user: { permissions: readonly string[]; scope?: string }) {
+  const itens = NAV_ITEMS.filter((i) => canAny(user, i.permissions));
+  // Usuário de franquia (alcance de base com a aba Franquias) usa só a aba Franquias: tudo dele está lá.
+  if (user.scope === "BASE" && canAny(user, ["franquias.ver"])) return itens.filter((i) => i.href === "/franquias");
+  return itens;
 }
