@@ -6,18 +6,15 @@ export function unreadCount(userId: string) {
   return db.notification.count({ where: { userId, readAt: null } });
 }
 
-export const PAGE_SIZE = 50;
+/** Quantos avisos o balão do sino mostra (os mais recentes). */
+export const RECENT_LIMIT = 15;
 
-export async function listNotifications(userId: string, page: number) {
-  const [rows, total, unread] = await Promise.all([
-    db.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-    }),
-    db.notification.count({ where: { userId } }),
-    unreadCount(userId),
-  ]);
-  return { rows, total, unread };
+/** Avisos mais recentes do usuário, para o balão do sino. */
+export function recentNotifications(userId: string, take = RECENT_LIMIT) {
+  return db.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take,
+    select: { id: true, title: true, body: true, createdAt: true, readAt: true },
+  });
 }

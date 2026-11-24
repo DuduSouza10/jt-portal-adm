@@ -790,7 +790,6 @@ export const ptBR = {
   notificacoes: {
     titulo: "Notificações",
     naoLidas: "{n} não lida(s)",
-    tudoLido: "Tudo lido.",
     marcarTodas: "Marcar todas como lidas",
     vazio: "Nenhuma notificação.",
     naoLidaAria: "não lida",

@@ -1,10 +1,11 @@
 import { cache } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Bell } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { navFor, SECTION_LABEL, type NavItem } from "@/lib/navigation";
-import { unreadCount } from "@/modules/notificacoes/queries";
+import { recentNotifications, unreadCount } from "@/modules/notificacoes/queries";
+import { fmtDateTime } from "@/lib/format";
+import { NotificationBell } from "@/components/notification-bell";
 import { contadores } from "@/modules/solicitacoes/queries";
 import { getT } from "@/i18n/server";
 import { navText, profileText } from "@/i18n/labels";
@@ -56,7 +57,8 @@ export async function AppSidebar() {
 
 export async function AppTopbar() {
   const { user, t, groups, subtitle } = await loadNav();
-  const unread = await unreadCount(user.id);
+  const [unread, recentes] = await Promise.all([unreadCount(user.id), recentNotifications(user.id)]);
+  const avisos = recentes.map((n) => ({ id: n.id, title: n.title, body: n.body, when: fmtDateTime(n.createdAt, t.locale), read: !!n.readAt }));
   return (
     <div className="flex h-15 items-center gap-3 px-4 sm:px-7">
       <MobileNav
@@ -68,32 +70,13 @@ export async function AppTopbar() {
       />
       <Breadcrumb groups={groups} />
       <div className="ml-auto flex items-center gap-1.5">
-        <NotificationBell unread={unread} label={unread ? t("notificacoes.sinoNaoLidas", { n: unread }) : t("notificacoes.titulo")} />
+        <NotificationBell unread={unread} items={avisos} />
         <div className="lg:hidden">
           <ThemeToggle className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-ring" />
         </div>
         <TopAvatar name={user.name} label={t("menu.trocarSenha")} />
       </div>
     </div>
-  );
-}
-
-/** Sino do cabeçalho: leva à lista de avisos e mostra quantos ainda não foram lidos. */
-function NotificationBell({ unread, label }: { unread: number; label: string }) {
-  return (
-    <Link
-      href="/notificacoes"
-      aria-label={label}
-      title={label}
-      className="relative inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-    >
-      <Bell className="size-[18px]" aria-hidden />
-      {unread > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1 text-[11px] leading-none font-semibold text-primary-foreground tabular-nums ring-2 ring-background">
-          {unread > 99 ? "99+" : unread}
-        </span>
-      )}
-    </Link>
   );
 }
 

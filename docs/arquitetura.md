@@ -193,7 +193,7 @@ Trazido do sistema antigo de insumos. Regras S7 e S8 em `regras-de-negocio.md`.
 - **Destinos** (`lib/feishu/outbox.ts`): equipe = grupo (app) > webhook > mensagem direta; expedição = webhook próprio > equipe; base = mensagem direta (`User.feishuOpenId`) + grupo da base (`Base.feishuChatId`).
 - **Agendador**: `netlify/functions/agendador.mts` chama `POST /api/cron/run` (com `CRON_SECRET`) a cada 15 min em horário comercial: lembretes, resumo diário, fila do Feishu, limpeza de fotos de envio (180 dias) e de notificações lidas (90 dias).
 - **Admin**: `/admin/feishu` (permissão `integracoes.gerenciar`) mostra a configuração, envia teste e reenvia o que falhou.
-- **Sino na tela**: `/notificacoes` lista; o contador do cabeçalho usa `unreadCount(user.id)` de `modules/notificacoes/queries.ts` (o ícone no cabeçalho é do front, Eduardo).
+- **Sino na tela**: o sino do cabeçalho (`components/notification-bell.tsx`) abre um balão com os 15 avisos mais recentes (`recentNotifications` em `modules/notificacoes/queries.ts`); clicar num aviso marca como lido e abre o link dele, e "Marcar todas" zera o contador. Não existe página `/notificacoes`. O contador usa `unreadCount(user.id)` (o ícone no cabeçalho é do front, Eduardo).
 - **Outro módulo quer avisar?** Siga o mesmo padrão: regras puras → `tx.notification.createMany` + `enqueue(tx, ...)` na transação → `flushFeishuSoon()` na action.
 
 ## Escala (≈ 5.000 usuários)
