@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ActionForm } from "@/components/action-form";
 import { CheckField, Field, selectClass } from "@/components/form-field";
+import { ExcluirBase } from "./excluir-base";
 import { PageHeader } from "@/components/page-header";
 import { getT } from "@/i18n/server";
 import { saveBaseAction } from "../../actions";
@@ -88,6 +89,17 @@ export default async function BaseEditPage(props: PageProps<"/admin/estrutura/ba
           </ActionForm>
         </CardContent>
       </Card>
+      {!isNew && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("estrutura.excluirTitulo")}</CardTitle>
+            <CardDescription>{t("estrutura.excluirDescricao")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExcluirBase base={{ id: base!.id, code: base!.code, name: base!.name }} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

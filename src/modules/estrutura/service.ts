@@ -62,3 +62,30 @@ export async function saveBase(actor: CurrentUser, id: string | null, input: Bas
     return b.id;
   });
 }
+
+/**
+ * Exclui a base de vez (E13, base que fechou). Só sem histórico: pedido (como base ou almoxarifado) ou
+ * movimentação de estoque prendem a base ao registro; essas só são desativadas. Saem junto os vínculos de
+ * usuários, ciclos, bloqueios e saldos zerados. Quem fica sem nenhuma base volta a "precisar de base".
+ */
+export async function deleteBase(actor: CurrentUser, id: string) {
+  return db.$transaction(async (tx) => {
+    const base = await tx.base.findUnique({ where: { id } });
+    if (!base) throw new DomainError("Base não encontrada.");
+    const [pedidos, movimentos] = await Promise.all([
+      tx.solicitacao.count({ where: { OR: [{ baseId: id }, { almoxarifadoId: id }] } }),
+      tx.stockMovement.count({ where: { baseId: id } }),
+    ]);
+    if (pedidos || movimentos)
+      throw new DomainError("Esta base tem pedidos ou movimentações de estoque no histórico. Desative em vez de excluir.");
+    await tx.stockReservation.deleteMany({ where: { baseId: id } });
+    await tx.stockBalance.deleteMany({ where: { baseId: id } });
+    const usuarios = await tx.userBase.count({ where: { baseId: id } });
+    await tx.base.delete({ where: { id } });
+    await audit(
+      { actorId: actor.id, action: "base.excluir", entity: "Base", entityId: id, summary: `Excluiu permanentemente a base ${base.code} (${base.name})${usuarios ? `; ${usuarios} usuário(s) desvinculado(s)` : ""}` },
+      tx,
+    );
+    return { code: base.code };
+  });
+}
