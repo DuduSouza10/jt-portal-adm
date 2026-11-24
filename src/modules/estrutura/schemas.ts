@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { checkbox, codeField, optionalText } from "@/lib/form";
 
-const chatId = optionalText.pipe(z.string().regex(/^oc_[A-Za-z0-9_-]{6,80}$/, "chat_id do grupo do Feishu começa com oc_.").nullable().optional());
+// Grupo da regional no Feishu: link do webhook do bot do grupo (https://open.feishu.cn/open-apis/bot/v2/hook/...) ou chat_id oc_...
+const chatId = optionalText.pipe(
+  z
+    .string()
+    .regex(/^(oc_[A-Za-z0-9_-]{6,80}|https:\/\/open\.(feishu\.cn|larksuite\.com)\/open-apis\/bot\/v2\/hook\/[A-Za-z0-9-]{8,80})$/, "Cole o link do webhook do bot do grupo (https://open.feishu.cn/open-apis/bot/v2/hook/...) ou o chat_id oc_....")
+    .nullable()
+    .optional(),
+);
 
 export const regionalSchema = z.object({
   code: codeField,

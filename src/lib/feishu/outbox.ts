@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import type { Card } from "@/lib/feishu/cards";
-import { deliver, messagingConfig, SHIPPING_WEBHOOK_TARGET, type Channel } from "@/lib/feishu/send";
+import { deliver, FEISHU_WEBHOOK_RE, messagingConfig, SHIPPING_WEBHOOK_TARGET, type Channel } from "@/lib/feishu/send";
 import { errorInfo, logger } from "@/lib/logger";
 
 type Tx = Prisma.TransactionClient;
@@ -23,6 +23,16 @@ export type Destination = { channel: Channel; target: string | null };
 export type Route = "equipe" | "expedicao" | "base";
 /** Grupos do Feishu de uma regional (Regional.feishuStaffChatId / feishuShippingChatId). */
 export type RegionalChats = { feishuStaffChatId: string | null; feishuShippingChatId: string | null } | null;
+
+/**
+ * Grupo de uma regional: pode ser o link do webhook do bot do grupo (não precisa do app) ou o chat_id oc_...
+ * (precisa do app). null = a regional não tem esse grupo (ou é chat_id sem o app configurado).
+ */
+function grupoRegional(v: string | null | undefined, app: boolean): Destination | null {
+  if (!v) return null;
+  if (FEISHU_WEBHOOK_RE.test(v)) return { channel: "webhook", target: v };
+  return app ? { channel: "chat", target: v } : null;
+}
 
 export async function destinations(
   tx: Tx,
@@ -45,9 +55,11 @@ export async function destinations(
     if (cfg.app && baseChatId) out.push({ channel: "chat", target: baseChatId });
     return out;
   }
-  if (route === "expedicao" && cfg.app && regional?.feishuShippingChatId) return [{ channel: "chat", target: regional.feishuShippingChatId }];
+  const exp = route === "expedicao" ? grupoRegional(regional?.feishuShippingChatId, cfg.app) : null;
+  if (exp) return [exp];
   if (route === "expedicao" && cfg.shippingWebhook) return [{ channel: "webhook", target: SHIPPING_WEBHOOK_TARGET }];
-  if (cfg.app && regional?.feishuStaffChatId) return [{ channel: "chat", target: regional.feishuStaffChatId }];
+  const eq = grupoRegional(regional?.feishuStaffChatId, cfg.app);
+  if (eq) return [eq];
   if (cfg.app && cfg.staffChatId) return [{ channel: "chat", target: cfg.staffChatId }];
   if (cfg.webhook) return [{ channel: "webhook", target: null }];
   return dms();
