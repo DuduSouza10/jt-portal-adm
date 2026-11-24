@@ -190,8 +190,8 @@ export async function saveProfile(actor: CurrentUser, id: string | null, input: 
 }
 
 /**
- * Aprovar quem entrou pelo Feishu e está "Aguardando liberação" (E11): vira Base (ou Franquia, se alguma
- * base dele for franquia) nas bases que o organograma já vinculou. Passa pelas mesmas checagens do
+ * Aprovar quem entrou pelo Feishu e está "Aguardando liberação" (E11): vira Base nas bases que o organograma
+ * já vinculou, MESMO em franquia (sem ver preços; decisão do Diogo, 2026-11-24: o admin troca para Franquia no cadastro). Passa pelas mesmas checagens do
  * cadastro (saveUser) e avisa a pessoa no sino. Sem base vinculada, o admin escolhe no cadastro.
  */
 export async function aprovarAcesso(actor: CurrentUser, id: string) {
@@ -203,8 +203,7 @@ export async function aprovarAcesso(actor: CurrentUser, id: string) {
   if (u.profile.key !== "aguardando") throw new DomainError("Este usuário não está aguardando liberação.");
   const bases = u.bases.filter((b) => b.base.type !== "ALMOXARIFADO");
   if (!bases.length) throw new DomainError("Sem base vinculada: abra o cadastro e escolha o tipo de acesso e a base.");
-  const key = bases.some((b) => b.base.type === "FRANQUIA") ? "franquia" : "base";
-  const perfil = await db.accessProfile.findUnique({ where: { key } });
+  const perfil = await db.accessProfile.findUnique({ where: { key: "base" } });
   if (!perfil) throw new DomainError("Tipo de acesso não encontrado.");
   await saveUser(actor, id, {
     name: u.name,

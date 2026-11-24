@@ -157,6 +157,19 @@ describe("um por base: o primeiro entra direto, o resto aguarda", () => {
     await db.auditLog.deleteMany({ where: { actorId: adm.id } });
   });
 
+  it("franquia: o primeiro e o aprovado entram como Base, sem ver preços", async () => {
+    const a = await login(perfil("fr1"), [chainMG("F ORL")]);
+    const b = await login(perfil("fr2"), [chainMG("F ORL")]);
+    if (a.kind !== "ok" || b.kind !== "ok") throw new Error("login");
+    expect((await db.user.findUniqueOrThrow({ where: { id: a.userId }, include: { profile: true } })).profile.key).toBe("base");
+    expect(b.pending).toBe(true);
+    const profile = await db.accessProfile.findUniqueOrThrow({ where: { key: `${tag}-adm` } });
+    const adm = await db.user.findFirstOrThrow({ where: { login: `${tag}aprovador` } });
+    const actor = { id: adm.id, name: "Aprovador", login: adm.login, email: null, mustChangePassword: false, profile: { id: profile.id, key: profile.key, name: "Admin teste" }, permissions: ["*"], scope: "GLOBAL", bases: [], baseIds: [], regionalIds: [] } as never;
+    await aprovarAcesso(actor, b.userId);
+    expect((await db.user.findUniqueOrThrow({ where: { id: b.userId }, include: { profile: true } })).profile.key).toBe("base");
+  });
+
   it("sem base (fora de unidade) não aprova direto: o admin escolhe no cadastro", async () => {
     const r = await login(perfil("gi"), [[dept("gi", "Gestão Integrada"), MN]]);
     if (r.kind !== "ok") throw new Error(r.kind);

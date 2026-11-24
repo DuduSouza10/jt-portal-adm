@@ -7,7 +7,7 @@ import { useServerMessage, useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 import { aprovarAcessoAction } from "./actions";
 
-/** Botão "Aprovar" de quem está aguardando liberação (vira Base/Franquia na base já vinculada). */
+/** Botão "Aprovar" de quem está aguardando liberação (vira Base na base já vinculada, mesmo em franquia). */
 export function AprovarButton({ userId }: { userId: string }) {
   const t = useT();
   const tm = useServerMessage();
