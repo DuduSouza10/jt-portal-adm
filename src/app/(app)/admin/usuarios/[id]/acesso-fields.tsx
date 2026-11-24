@@ -1,8 +1,9 @@
 "use client";
 
+import { SelectBox } from "@/components/ui/combobox";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { Field, selectClass } from "@/components/form-field";
+import { Field } from "@/components/form-field";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/i18n/client";
 
@@ -80,7 +81,7 @@ export function AcessoFields({
   return (
     <>
       <Field label={t("usuarios.tipo")} htmlFor="profileId">
-        <select id="profileId" name="profileId" value={perfil} onChange={(e) => setPerfil(e.target.value)} required className={selectClass}>
+        <SelectBox id="profileId" name="profileId" value={perfil} onValueChange={setPerfil} required>
           <option value="" disabled>
             {t("comum.escolha")}
           </option>
@@ -89,7 +90,7 @@ export function AcessoFields({
               {p.label}
             </option>
           ))}
-        </select>
+        </SelectBox>
       </Field>
 
       {scope === "GLOBAL" || scope === "FRANQUIAS" ? (

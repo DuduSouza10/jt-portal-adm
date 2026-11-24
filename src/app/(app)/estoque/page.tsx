@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
@@ -8,7 +9,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam, param } from "@/components/pagination";
 import { EstoqueNav } from "./nav";
 import { MinimoForm } from "./minimo-form";
@@ -41,14 +41,14 @@ export default async function SaldosPage(props: PageProps<"/estoque">) {
       ) : (
         <>
           <form className="flex flex-wrap items-center gap-2">
-            <select name="base" defaultValue={base} className={`${selectClass} max-w-64`}>
+            <SelectBox name="base" defaultValue={base} className="max-w-64">
               <option value="">{t("estoque.todosAlmox", { n: almox.length })}</option>
               {almox.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.code} · {a.name}
                 </option>
               ))}
-            </select>
+            </SelectBox>
             <Input name="q" defaultValue={q} placeholder={t("estoque.produtoBusca")} className="max-w-xs" />
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="min" value="1" defaultChecked={min} className="size-4" />

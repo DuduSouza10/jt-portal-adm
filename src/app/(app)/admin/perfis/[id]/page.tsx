@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -8,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ActionForm } from "@/components/action-form";
-import { Field, selectClass } from "@/components/form-field";
+import { Field } from "@/components/form-field";
 import { PageHeader } from "@/components/page-header";
 import { saveProfileAction } from "../actions";
 import { getT } from "@/i18n/server";
@@ -51,13 +52,13 @@ export default async function ProfileEditPage(props: PageProps<"/admin/perfis/[i
               <Input id="description" name="description" defaultValue={profile?.description ?? ""} />
             </Field>
             <Field label={t("perfis.alcance")} htmlFor="scope" hint={t("perfis.alcanceDica")}>
-              <select id="scope" name="scope" defaultValue={profile?.scope ?? "BASE"} className={selectClass}>
+              <SelectBox id="scope" name="scope" defaultValue={profile?.scope ?? "BASE"}>
                 {(["GLOBAL", "REGIONAL", "FRANQUIAS", "BASE", "FRANQUIA"] as const).map((k) => (
                   <option key={k} value={k}>
                     {t(`alcance.${k}`)}
                   </option>
                 ))}
-              </select>
+              </SelectBox>
             </Field>
 
             {isWildcard ? (

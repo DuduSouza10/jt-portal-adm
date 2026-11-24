@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import type { StockMovementType } from "@/generated/prisma/enums";
 import { requirePermission } from "@/lib/auth/session";
@@ -10,7 +11,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam, param } from "@/components/pagination";
 import { EstoqueNav } from "../nav";
 
@@ -40,22 +40,22 @@ export default async function MovimentacoesPage(props: PageProps<"/estoque/movim
       <PageHeader title={t("movimentacoes.titulo")} description={t("movimentacoes.descricao")} />
       <EstoqueNav user={user} current="/estoque/movimentacoes" />
       <form className="flex flex-wrap gap-2">
-        <select name="base" defaultValue={base} className={`${selectClass} max-w-56`}>
+        <SelectBox name="base" defaultValue={base} className="max-w-56">
           <option value="">{t("movimentacoes.todosAlmox")}</option>
           {almox.map((a) => (
             <option key={a.id} value={a.id}>
               {a.code}
             </option>
           ))}
-        </select>
-        <select name="tipo" defaultValue={tipo ?? ""} className={`${selectClass} max-w-56`}>
+        </SelectBox>
+        <SelectBox name="tipo" defaultValue={tipo ?? ""} className="max-w-56">
           <option value="">{t("movimentacoes.todosTipos")}</option>
           {(Object.keys(MOVEMENT_LABEL) as StockMovementType[]).map((k) => (
             <option key={k} value={k}>
               {t(`tiposMovimento.${k}`)}
             </option>
           ))}
-        </select>
+        </SelectBox>
         <Input name="q" defaultValue={q} placeholder={t("movimentacoes.busca")} className="max-w-xs" />
         {lote && <input type="hidden" name="lote" value={lote} />}
         <Button type="submit" variant="outline">

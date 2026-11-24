@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { baseScopeWhere, can } from "@/lib/permissions/check";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ActionForm } from "@/components/action-form";
 import { EmptyState } from "@/components/page-header";
-import { Field, selectClass } from "@/components/form-field";
+import { Field } from "@/components/form-field";
 import { Pagination, pageParam, param } from "@/components/pagination";
 import { FranquiasNav } from "../nav";
 import { registrarUsoAction } from "./actions";
@@ -56,24 +57,24 @@ export default async function FranquiasEstoquePage(props: PageProps<"/franquias/
                 <ActionForm action={registrarUsoAction} submitLabel={t("franquias.estoque.salvar")}>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label={t("franquias.estoque.franquia")} htmlFor="baseId">
-                      <select id="baseId" name="baseId" defaultValue={baseIds.length === 1 ? baseIds[0] : ""} required className={selectClass}>
+                      <SelectBox id="baseId" name="baseId" defaultValue={baseIds.length === 1 ? baseIds[0] : ""} required>
                         {franquias.length > 1 && <option value="">{t("comum.escolha")}</option>}
                         {franquias.map((f) => (
                           <option key={f.id} value={f.id}>
                             {f.code} · {f.name}
                           </option>
                         ))}
-                      </select>
+                      </SelectBox>
                     </Field>
                     <Field label={t("franquias.estoque.produto")} htmlFor="produtoId">
-                      <select id="produtoId" name="produtoId" defaultValue="" required className={selectClass}>
+                      <SelectBox id="produtoId" name="produtoId" defaultValue="" required>
                         <option value="">{t("comum.escolha")}</option>
                         {produtos.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.code} · {p.name}
                           </option>
                         ))}
-                      </select>
+                      </SelectBox>
                     </Field>
                     <Field label={t("franquias.estoque.quantidade")} htmlFor="quantity">
                       <Input id="quantity" name="quantity" type="number" min={1} step={1} required />
@@ -88,14 +89,14 @@ export default async function FranquiasEstoquePage(props: PageProps<"/franquias/
           )}
           <form className="flex flex-wrap items-center gap-2">
             {franquias.length > 1 && (
-              <select name="base" defaultValue={base} className={`${selectClass} max-w-64`}>
+              <SelectBox name="base" defaultValue={base} className="max-w-64">
                 <option value="">{t("franquias.titulo")}</option>
                 {franquias.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.code} · {f.name}
                   </option>
                 ))}
-              </select>
+              </SelectBox>
             )}
             <Input name="q" defaultValue={q} placeholder={t("estoque.produtoBusca")} className="max-w-xs" />
             <Button type="submit" variant="outline">

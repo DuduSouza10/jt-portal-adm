@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
@@ -5,7 +6,6 @@ import { listAlmoxarifados, listProdutosAtivos } from "@/modules/estoque/queries
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { selectClass } from "@/components/form-field";
 import { param } from "@/components/pagination";
 import { EstoqueNav } from "../nav";
 import { InventarioForm } from "./inventario-form";
@@ -43,7 +43,7 @@ export default async function InventarioPage(props: PageProps<"/estoque/inventar
       ) : (
         <>
           <form className="flex gap-2">
-            <select name="base" defaultValue={base?.id ?? ""} className={`${selectClass} max-w-72`} required>
+            <SelectBox name="base" defaultValue={base?.id ?? ""} className="max-w-72" required>
               <option value="" disabled>
                 {t("inventario.escolhaAlmox")}
               </option>
@@ -52,7 +52,7 @@ export default async function InventarioPage(props: PageProps<"/estoque/inventar
                   {a.code} · {a.name}
                 </option>
               ))}
-            </select>
+            </SelectBox>
             <Button type="submit" variant="outline">
               {t("comum.abrir")}
             </Button>
