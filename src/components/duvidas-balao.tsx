@@ -29,7 +29,10 @@ export function DuvidasBalao() {
   useEffect(() => {
     if (aberto) carregar();
   }, [aberto, state, carregar]);
-  useEffect(() => fim.current?.scrollIntoView({ block: "end" }), [msgs]);
+  // Chaves de propósito: no Chrome novo scrollIntoView devolve uma Promise, e efeito que devolve algo derruba a página.
+  useEffect(() => {
+    fim.current?.scrollIntoView({ block: "end" });
+  }, [msgs]);
 
   return (
     <div className="fixed right-4 bottom-4 z-40 flex flex-col items-end gap-3 print:hidden sm:right-6 sm:bottom-6">
