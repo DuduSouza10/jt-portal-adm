@@ -42,7 +42,7 @@ const ZH: [string, string][] = [
   ["Você não pode gerenciar usuários com alcance maior que o seu.", "你不能管理数据范围比你更大的用户。"],
   ["Você não pode desativar o próprio usuário.", "你不能停用自己的账号。"],
   ["Você não pode excluir o próprio usuário.", "你不能删除自己的账号。"],
-  ["Este usuário tem pedidos ou movimentações de estoque no histórico. Desative em vez de excluir.", "该用户有申领单或库存记录，请停用而不是删除。"],
+  ["Este usuário tem pedidos, movimentações de estoque ou alterações de preço no histórico. Desative em vez de excluir.", "该用户有申领单、库存记录或调价记录，请停用而不是删除。"],
   ["Você não pode mudar o próprio tipo de acesso.", "你不能修改自己的权限角色。"],
   ["Você não pode mudar as próprias bases e regionais.", "你不能修改自己所属的网点和区域。"],
   ["Você não pode conceder permissões que você mesmo não tem.", "你不能授予自己没有的权限。"],
