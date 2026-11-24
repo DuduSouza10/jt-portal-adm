@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { mapColumns, parseBool, parseIntBR } from "./csv";
-import { parseBases, parseBaseType, BASES_TEMPLATE_CSV } from "@/modules/estrutura/importacao";
+import { parseBases, parseBaseType } from "@/modules/estrutura/importacao";
 import { parseProdutos, PRODUTOS_TEMPLATE_CSV } from "@/modules/produtos/importacao";
 import { parseEstoque, ESTOQUE_TEMPLATE_CSV } from "@/modules/estoque/importacao";
 import { parseCsv } from "./csv";
+
 import { translateServerMessage } from "@/i18n/server-messages";
+
+// CSV continua aceito na importação (o modelo para baixar é .xlsx, ver modules/estrutura/planilha.ts).
+const BASES_CSV =
+  "sigla;nome;tipo;regional;nome_regional;cnpj;cidade;uf;endereco;ativo\n" +
+  "BHZ01;Belo Horizonte 01;base;MG;Minas Gerais;;Belo Horizonte;MG;Rua Exemplo, 100;sim\n" +
+  "CTG01;Contagem 01;franquia;MG;;12.345.678/0001-90;Contagem;MG;;sim\n" +
+  "ALM-MG;Almoxarifado MG;almoxarifado;MG;;;Contagem;MG;;sim\n";
 
 const table = (csv: string) => parseCsv(csv);
 
@@ -29,7 +37,7 @@ describe("leitura comum", () => {
 
 describe("regionais e bases", () => {
   it("lê a planilha modelo sem erro", () => {
-    const r = parseBases(table(BASES_TEMPLATE_CSV));
+    const r = parseBases(table(BASES_CSV));
     expect(r.errors).toEqual([]);
     expect(r.rows.map((x) => x.type)).toEqual(["BASE", "FRANQUIA", "ALMOXARIFADO"]);
     expect(r.rows[0]).toMatchObject({ code: "BHZ01", regionalCode: "MG", regionalName: "Minas Gerais", state: "MG", active: true });

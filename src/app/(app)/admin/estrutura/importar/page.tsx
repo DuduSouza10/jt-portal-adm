@@ -24,6 +24,12 @@ export default async function ImportarBasesPage() {
                 <li>{t("importacao.bases.ajuda1")}</li>
                 <li>{t("importacao.bases.ajuda2")}</li>
                 <li>{t("importacao.bases.ajuda3")}</li>
+                <li>
+                  {t("importacao.bases.ajuda4")}{" "}
+                  <a href="/api/exportar/bases" download className="font-medium text-primary underline-offset-4 hover:underline">
+                    {t("importacao.bases.exportar")}
+                  </a>
+                </li>
               </ul>
             }
           />

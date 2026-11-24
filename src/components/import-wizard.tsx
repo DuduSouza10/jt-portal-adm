@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, selectClass } from "@/components/form-field";
 import { useServerMessage, useT } from "@/i18n/client";
-import { chunk, decodeCsvBytes, parseCsv, type ImportResult, type RowError } from "@/lib/importacao/csv";
+import { chunk, type ImportResult, type RowError } from "@/lib/importacao/csv";
+import { ArquivoInvalido, lerArquivoPlanilha, tipoDoArquivo } from "@/lib/importacao/arquivo";
 
 /**
  * Tela de importação por planilha, comum a estrutura, produtos e estoque:
@@ -51,7 +52,8 @@ export function ImportWizard<R extends { line: number }>({
   applyBatch = 100,
 }: {
   instructions: React.ReactNode;
-  template: { filename: string; csv: string };
+  /** `csv`: gerado aqui no navegador. `href`: arquivo pronto no servidor (ex.: modelo .xlsx). */
+  template: { filename: string; csv: string } | { filename: string; href: string };
   parse: (table: string[][]) => ParseResult<R>;
   validar: (rows: R[], opts: Opts) => Promise<ActionResult>;
   aplicar: (rows: R[], opts: Opts) => Promise<ActionResult>;
@@ -96,8 +98,12 @@ export function ImportWizard<R extends { line: number }>({
   async function onFile(file: File) {
     reset();
     setFileName(file.name);
-    if (!/\.(csv|txt)$/i.test(file.name)) return setFatal(t("importacao.soCsv"));
-    setParsed(parse(parseCsv(decodeCsvBytes(await file.arrayBuffer()))));
+    if (!tipoDoArquivo(file.name)) return setFatal(t("importacao.soPlanilha"));
+    try {
+      setParsed(parse(await lerArquivoPlanilha(file)));
+    } catch (e) {
+      setFatal(t(e instanceof ArquivoInvalido && e.message === "tamanho" ? "importacao.arquivoGrande" : "importacao.arquivoIlegivel"));
+    }
   }
 
   async function runBatches(list: R[], size: number, fn: typeof validar) {
@@ -151,13 +157,26 @@ export function ImportWizard<R extends { line: number }>({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => {
-            const url = URL.createObjectURL(new Blob(["﻿" + template.csv], { type: "text/csv;charset=utf-8" }));
-            Object.assign(document.createElement("a"), { href: url, download: template.filename }).click();
-            URL.revokeObjectURL(url);
-          }}
+          asChild={"href" in template}
+          onClick={
+            "csv" in template
+              ? () => {
+                  const url = URL.createObjectURL(new Blob(["﻿" + template.csv], { type: "text/csv;charset=utf-8" }));
+                  Object.assign(document.createElement("a"), { href: url, download: template.filename }).click();
+                  URL.revokeObjectURL(url);
+                }
+              : undefined
+          }
         >
-          <Download /> {t("importacao.baixarModelo")}
+          {"href" in template ? (
+            <a href={template.href} download={template.filename}>
+              <Download /> {t("importacao.baixarModelo")}
+            </a>
+          ) : (
+            <>
+              <Download /> {t("importacao.baixarModelo")}
+            </>
+          )}
         </Button>
         <div className="grid gap-4 sm:grid-cols-2">
           {visible.map((o) => (
@@ -196,7 +215,7 @@ export function ImportWizard<R extends { line: number }>({
               <input
                 id="import-file"
                 type="file"
-                accept=".csv,text/csv,.txt"
+                accept=".xlsx,.csv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 className="sr-only"
                 disabled={busy}
                 onChange={(e) => {
