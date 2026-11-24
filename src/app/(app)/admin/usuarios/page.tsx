@@ -144,7 +144,12 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
                   </TableCell>
                   <TableCell className="text-muted-foreground">{fmtDateTime(u.lastLoginAt, t.locale)}</TableCell>
                   {podeAprovar && aguardando > 0 && (
-                    <TableCell className="text-right">{u.active && u.profile.key === "aguardando" && <AprovarButton userId={u.id} />}</TableCell>
+                    <TableCell className="text-right">{u.active && u.profile.key === "aguardando" && (
+                      <AprovarButton
+                        pessoa={{ id: u.id, name: u.name, login: u.login, email: u.email, bases: u.bases.map((b) => `${b.base.code} · ${b.base.name}`), criadoEm: fmtDateTime(u.createdAt, t.locale) }}
+                        podeExcluir={can(me, "usuarios.excluir")}
+                      />
+                    )}</TableCell>
                   )}
                 </TableRow>
               ))}
