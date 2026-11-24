@@ -139,7 +139,7 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
     }
 
     // Novo (decisão do Diogo, 2026-11-24): o PRIMEIRO da base entra direto, só com o acesso de pedir insumos
-    // (Base, ou Franquia se a base for franquia). Base que já tem alguém, ou pessoa sem base → "Aguardando liberação".
+    // (sempre Base, mesmo em franquia: sem ver preço). Base que já tem alguém, ou pessoa sem base → "Aguardando liberação".
     const ocupadas = new Set(
       (
         await tx.userBase.findMany({

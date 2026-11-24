@@ -134,7 +134,7 @@ describe("perfilDoNovo (um por base)", () => {
   const F = { id: "f", type: "FRANQUIA" };
   it("primeiro da base entra direto", () => {
     expect(perfilDoNovo([FRC], new Set())).toBe("base");
-    expect(perfilDoNovo([F], new Set())).toBe("franquia");
+    expect(perfilDoNovo([F], new Set())).toBe("base"); // franquia também: sem ver preço
   });
   it("base já ocupada ou sem base: aguarda", () => {
     expect(perfilDoNovo([FRC], new Set(["frc"]))).toBe("aguardando");

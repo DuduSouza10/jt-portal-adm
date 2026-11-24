@@ -160,13 +160,12 @@ export function estruturaDoOrganograma(depts: (Dept & { parentId?: string })[]):
 /**
  * Tipo de acesso de quem entra pelo Feishu pela primeira vez (E11, decisão do Diogo, 2026-11-24):
  * só UMA pessoa por base entra sozinha. Se alguma base dela ainda não tem ninguém com acesso, entra como
- * Base (ou Franquia, se for franquia). Base já ocupada, ou pessoa sem base → "aguardando" (o admin libera).
+ * Base (só pedir insumos), MESMO numa franquia: ninguém vê preço sem o admin liberar. Base já ocupada,
+ * ou pessoa sem base → "aguardando" (o admin libera).
  */
 export function perfilDoNovo(
   bases: readonly { id: string; type: string }[],
   ocupadas: ReadonlySet<string>,
-): "base" | "franquia" | "aguardando" {
-  const livre = bases.find((b) => !ocupadas.has(b.id));
-  if (!livre) return "aguardando";
-  return livre.type === "FRANQUIA" ? "franquia" : "base";
+): "base" | "aguardando" {
+  return bases.some((b) => !ocupadas.has(b.id)) ? "base" : "aguardando";
 }
