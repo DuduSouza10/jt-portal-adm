@@ -49,12 +49,17 @@ export async function sendAppCard(receiveIdType: "chat_id" | "open_id", receiveI
 /** Webhook do grupo da expedição (bot personalizado próprio). */
 export const SHIPPING_WEBHOOK_TARGET = "expedicao";
 
+/** Link de webhook de bot de grupo do Feishu/Lark (o grupo de uma regional pode ser cadastrado assim). */
+export const FEISHU_WEBHOOK_RE = /^https:\/\/open\.(feishu\.cn|larksuite\.com)\/open-apis\/bot\/v2\/hook\/[A-Za-z0-9-]{8,80}$/;
+
 export async function deliver(channel: Channel, target: string | null, card: Card) {
   if (channel === "webhook" && target === SHIPPING_WEBHOOK_TARGET) {
     const url = process.env.FEISHU_SHIPPING_WEBHOOK_URL;
     if (!url) throw new FeishuError("FEISHU_SHIPPING_WEBHOOK_URL não configurado.");
     return sendWebhookCard(card, url, process.env.FEISHU_SHIPPING_WEBHOOK_SECRET);
   }
+  // Webhook do grupo de uma regional (link cadastrado na regional). Só aceita o domínio do Feishu/Lark.
+  if (channel === "webhook" && target && FEISHU_WEBHOOK_RE.test(target)) return sendWebhookCard(card, target, undefined);
   if (channel === "webhook") return sendWebhookCard(card);
   if (!target) throw new FeishuError("Destino vazio.");
   return sendAppCard(channel === "chat" ? "chat_id" : "open_id", target, card);

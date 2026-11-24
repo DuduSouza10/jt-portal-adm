@@ -49,6 +49,17 @@ describe("destinations com grupos por regional", () => {
     expect(await destinations(tx, "equipe", [], null, SPN)).toEqual([{ channel: "webhook", target: null }]);
   });
 
+  it("grupo da regional por link de webhook: funciona sem o app e vem antes do geral", async () => {
+    process.env.FEISHU_WEBHOOK_URL = "https://exemplo.invalid/equipe";
+    process.env.FEISHU_SHIPPING_WEBHOOK_URL = "https://exemplo.invalid/exp";
+    const hook = (id: string) => `https://open.feishu.cn/open-apis/bot/v2/hook/${id}`;
+    const SPNhook = { feishuStaffChatId: hook("aaaaaaaa-1111"), feishuShippingChatId: hook("bbbbbbbb-2222") };
+    expect(await destinations(tx, "equipe", [], null, SPNhook)).toEqual([{ channel: "webhook", target: hook("aaaaaaaa-1111") }]);
+    expect(await destinations(tx, "expedicao", [], null, SPNhook)).toEqual([{ channel: "webhook", target: hook("bbbbbbbb-2222") }]);
+    // Outra regional sem grupo: cai no webhook geral.
+    expect(await destinations(tx, "equipe", [], null, { feishuStaffChatId: null, feishuShippingChatId: null })).toEqual([{ channel: "webhook", target: null }]);
+  });
+
   it("o grupo da base não muda", async () => {
     comApp();
     const r = await destinations(tx, "base", ["u1"], "oc_base", SPN);

@@ -190,6 +190,7 @@ const ZH: [string, string][] = [
   ["Executado: {x}", "已执行：{x}"],
   ["open_id do Feishu começa com ou_.", "飞书 open_id 以 ou_ 开头。"],
   ["chat_id do grupo do Feishu começa com oc_.", "飞书群 chat_id 以 oc_ 开头。"],
+  ["Cole o link do webhook do bot do grupo (https://open.feishu.cn/open-apis/bot/v2/hook/...) ou o chat_id oc_....", "请粘贴群机器人的 webhook 链接（https://open.feishu.cn/open-apis/bot/v2/hook/...）或 chat_id（oc_...）。"],
   // ------------------------------------------------------------- Importação por planilha (estrutura, produtos, estoque)
   ["Nome vazio ou muito curto.", "名称为空或太短。"],
   ['Valor de "ativo" não reconhecido: "{v}". Use sim/não.', "无法识别“是否启用”的值：“{v}”。请填 sim/não。"],
