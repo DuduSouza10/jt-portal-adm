@@ -42,6 +42,8 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
 
   const number = formatNumber(s.number);
   const pode = (a: Acao) => allowed(user, a, s) && !transitionError(a, s.status, number);
+  // Itens digitados que não estão no cadastro (texto livre).
+  const outros = Array.isArray(s.outrosItens) ? (s.outrosItens as { nome: string; quantity: number }[]) : [];
   const itensAprovados = s.itens.filter((i) => (i.approved ?? 0) > 0);
 
   const [almoxarifados, disponivel] = pode("aprovar")
@@ -149,6 +151,25 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
               </TableBody>
             </Table>
           </Card>
+
+          {outros.length > 0 && (
+            <Card className="border-warning/40 bg-warning/5">
+              <CardHeader>
+                <CardTitle className="text-base">{t("solicitacoes.detalhe.outrosTitulo")}</CardTitle>
+                <p className="text-sm text-muted-foreground">{t("solicitacoes.detalhe.outrosAjuda")}</p>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y text-sm">
+                  {outros.map((o, i) => (
+                    <li key={i} className="flex items-center justify-between gap-3 py-1.5">
+                      <span className="min-w-0 truncate font-medium">{o.nome}</span>
+                      <span className="shrink-0 tabular-nums">{o.quantity}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
 
           {s.peopleCount != null && (
             <p className="text-sm">

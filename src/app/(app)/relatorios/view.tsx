@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import Link from "next/link";
 import { AlarmClock, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, Download, Hourglass, Package, PackageCheck, Receipt, Timer, TrendingDown, TrendingUp, Truck, Wallet, X } from "lucide-react";
 import type { CurrentUser } from "@/lib/auth/session";
@@ -25,7 +26,6 @@ import {
   type StageSummary,
 } from "@/modules/relatorios/sla";
 import { countInPeriod, filtroOptions, openOrderLines, openOrders, ordersInPeriod, shippedStats, spendLines, stockValue, type Filtro, type ReportOrder } from "@/modules/relatorios/queries";
-import { selectClass } from "@/components/form-field";
 import { ChartTooltip } from "@/components/chart-tooltip";
 import { Grafico3D } from "@/components/charts/grafico-3d";
 import { dayCalendarGrid, spendMonthGrid, valorPorBase, type ValorBase } from "@/modules/relatorios/graficos";
@@ -270,34 +270,34 @@ export async function RelatoriosView({
             )}
           </div>
           {opts.regionais.length > 1 && (
-            <select name="regional" defaultValue={filtro.regionalId ?? ""} className={`${selectClass} w-auto max-w-52`} aria-label={t("relatorios.filtroRegional")}>
+            <SelectBox name="regional" defaultValue={filtro.regionalId ?? ""} className="w-auto max-w-52" aria-label={t("relatorios.filtroRegional")}>
               <option value="">{t("relatorios.todasRegionais")}</option>
               {opts.regionais.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.code} · {r.name}
                 </option>
               ))}
-            </select>
+            </SelectBox>
           )}
           {basesDaRegional.length > 1 && (
-            <select name="base" defaultValue={filtro.baseId ?? ""} className={`${selectClass} w-auto max-w-52`} aria-label={t("relatorios.filtroBase")}>
+            <SelectBox name="base" defaultValue={filtro.baseId ?? ""} className="w-auto max-w-52" aria-label={t("relatorios.filtroBase")}>
               <option value="">{t("relatorios.todasBases")}</option>
               {basesDaRegional.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.code} · {b.name}
                 </option>
               ))}
-            </select>
+            </SelectBox>
           )}
           {opts.almoxarifados.length > 1 && (
-            <select name="almox" defaultValue={filtro.almoxId ?? ""} className={`${selectClass} w-auto max-w-52`} aria-label={t("relatorios.filtroAlmox")}>
+            <SelectBox name="almox" defaultValue={filtro.almoxId ?? ""} className="w-auto max-w-52" aria-label={t("relatorios.filtroAlmox")}>
               <option value="">{t("relatorios.todosAlmox")}</option>
               {opts.almoxarifados.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.code} · {a.name}
                 </option>
               ))}
-            </select>
+            </SelectBox>
           )}
           <Button type="submit" variant="outline">
             {t("comum.filtrar")}

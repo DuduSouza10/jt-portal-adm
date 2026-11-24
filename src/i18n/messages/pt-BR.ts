@@ -28,6 +28,14 @@ export const ptBR = {
     detalhes: "detalhes",
     carregando: "Carregando",
     registrando: "Registrando...",
+    seletor: {
+      buscar: "Buscar…",
+      semResultado: "Nada para mostrar.",
+      semResultadoPara: "Nada encontrado para “{q}”.",
+      mostrando: "Mostrando {n} de {total}. Continue digitando para filtrar.",
+      usarTexto: "Usar “{q}”",
+      foraCadastro: "Não está no cadastro: segue como texto no pedido",
+    },
   },
   tema: {
     alternar: "Alternar tema",
@@ -710,6 +718,9 @@ export const ptBR = {
       produtoN: "Produto {n}",
       escolhaLista: "Escolha um produto da lista.",
       disponivel: "disponível: {n}",
+      escolhaBaseInsumos: "Escolha a base para ver os insumos disponíveis.",
+      foraCadastro: "Fora do cadastro: o pedido segue com este nome e quem aprova confere a disponibilidade.",
+      semInsumos: "Nenhum insumo com saldo nesta base.",
       semEstoqueRegional: "O almoxarifado da sua regional não tem nada disponível agora.",
       qtd: "Qtd.",
       quantidadeN: "Quantidade {n}",
@@ -720,6 +731,8 @@ export const ptBR = {
       enviar: "Enviar pedido",
     },
     detalhe: {
+      outrosTitulo: "Fora do cadastro",
+      outrosAjuda: "A base digitou estes insumos e eles não existem em Produtos. Não mexem em estoque: confira com o almoxarifado.",
     pessoas: "Pessoas na base:",
       pedidaPor: "{base} — pedida por {nome} em {data}",
       imprimirGuia: "Imprimir guia",

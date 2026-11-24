@@ -84,6 +84,34 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
+describe("itens fora do cadastro", () => {
+  it("pedido só com texto livre é criado, não mexe em estoque e pode ser aprovado", async () => {
+    const antes = await bal(p1);
+    const s = await criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [], outros: [{ nome: "Lacre azul 30cm", quantity: 40 }] });
+    const salvo = await db.solicitacao.findUniqueOrThrow({ where: { id: s.id }, include: { itens: true } });
+    expect(salvo.itens).toHaveLength(0);
+    expect(salvo.outrosItens).toEqual([{ nome: "Lacre azul 30cm", quantity: 40 }]);
+    expect(await bal(p1)).toMatchObject({ quantity: antes?.quantity, reserved: antes?.reserved });
+    await aprovar(gestor(), { id: s.id, almoxarifadoId: almox, quantidades: {}, note: null });
+    expect((await db.solicitacao.findUniqueOrThrow({ where: { id: s.id } })).status).toBe("APROVADA");
+    expect(await bal(p1)).toMatchObject({ quantity: antes?.quantity, reserved: antes?.reserved });
+    // O resto do fluxo também anda sem item de estoque.
+    await iniciarSeparacao(almoxPerfil(), s.id);
+    await separar(almoxPerfil(), { id: s.id, quantidades: {} });
+    const r = await enviarLote(expedicao(), { ids: [s.id], tripId: "VIAGEM-LIVRE", volumes: 1, shippingNotes: null }, photo);
+    expect(r.failed).toHaveLength(0);
+    await receber(basePerfil(), s.id, null);
+    expect(await status(s.id)).toBe("RECEBIDA");
+    expect(await bal(p1)).toMatchObject({ quantity: antes?.quantity, reserved: antes?.reserved });
+  });
+
+  it("exige ao menos um item, do cadastro ou digitado", async () => {
+    const { criarSchema } = await import("./schemas");
+    expect(criarSchema.safeParse({ baseId: base, itens: "[]", outros: "[]" }).success).toBe(false);
+    expect(criarSchema.safeParse({ baseId: base, itens: "[]", outros: JSON.stringify([{ nome: "Fita", quantity: 2 }]) }).success).toBe(true);
+  });
+});
+
 describe("fluxo completo", () => {
   it("pede → aprova → separa parcial → envia → recebe, com o estoque certo em cada etapa", async () => {
     const s = await criar(basePerfil(), { baseId: base, priority: "URGENTE", peopleCount: 5, notes: null, itens: [{ produtoId: p1, quantity: 30 }, { produtoId: p2, quantity: 5 }] });

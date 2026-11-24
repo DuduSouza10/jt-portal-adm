@@ -29,10 +29,15 @@ export const criarSchema = z.object({
   itens: json(
     z
       .array(z.object({ produtoId: z.string().min(1, "Escolha o produto."), quantity: qty.min(1, "Quantidade mínima: 1.") }))
-      .min(1, "Adicione ao menos um produto.")
       .max(200, "Máximo de 200 produtos por pedido."),
   ),
-});
+  /** Itens digitados que não estão no cadastro: seguem como texto para quem aprova resolver. */
+  outros: json(
+    z
+      .array(z.object({ nome: z.string().trim().min(2, "Informe o nome do insumo.").max(120, "Nome do insumo muito longo."), quantity: qty.min(1, "Quantidade mínima: 1.").max(999_999, "Quantidade muito alta.") }))
+      .max(30, "Máximo de 30 itens fora do cadastro por pedido."),
+  ).default([]),
+}).refine((v) => v.itens.length + v.outros.length > 0, { message: "Adicione ao menos um produto.", path: ["itens"] });
 export type CriarInput = z.infer<typeof criarSchema>;
 
 /** produtoId → quantidade (aprovação e separação). */

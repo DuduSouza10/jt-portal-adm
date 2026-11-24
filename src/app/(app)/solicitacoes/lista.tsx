@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import Link from "next/link";
 import type { SolicitacaoStatus } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/session";
@@ -13,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import type { ReactNode } from "react";
-import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam, param } from "@/components/pagination";
 import { PriorityBadge, StatusBadge } from "./badges";
 
@@ -72,23 +72,23 @@ export async function SolicitacoesLista({
         />
       )}
       <form className="flex flex-wrap items-center gap-2">
-        <select name="status" defaultValue={status ?? ""} className={`${selectClass} max-w-56`}>
+        <SelectBox name="status" defaultValue={status ?? ""} className="max-w-56">
           <option value="">{t("solicitacoes.emAberto")}</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {statusText(t, s)}
             </option>
           ))}
-        </select>
+        </SelectBox>
         {bases.length > 1 && (
-          <select name="base" defaultValue={baseId} className={`${selectClass} max-w-56`}>
+          <SelectBox name="base" defaultValue={baseId} className="max-w-56">
             <option value="">{t("solicitacoes.todasBases")}</option>
             {bases.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.code} · {b.name}
               </option>
             ))}
-          </select>
+          </SelectBox>
         )}
         <Input name="q" defaultValue={qRaw} placeholder={t("solicitacoes.numPh")} className="max-w-48" />
         <label className="flex items-center gap-2 text-sm">

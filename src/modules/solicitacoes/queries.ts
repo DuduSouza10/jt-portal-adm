@@ -38,6 +38,11 @@ export async function disponivelPorRegional(produtoIds?: string[]) {
   return out;
 }
 
+/** Só o que tem saldo em algum almoxarifado: produto sem estoque não aparece na busca nem vai para o navegador. */
+export function comSaldo<T extends { id: string }>(produtos: T[], disponivel: Record<string, Record<string, number>>) {
+  return produtos.filter((p) => Object.values(disponivel).some((r) => (r[p.id] ?? 0) > 0));
+}
+
 /** Produtos que podem ser pedidos: insumos (padrão) ou só os lacres, conforme a aba. */
 export function produtosParaPedir({ lacres = false }: { lacres?: boolean } = {}) {
   return db.produto.findMany({

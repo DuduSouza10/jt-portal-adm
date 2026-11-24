@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { getT } from "@/i18n/server";
-import { basesParaPedir, disponivelPorRegional, produtosParaPedir } from "@/modules/solicitacoes/queries";
+import { comSaldo, basesParaPedir, disponivelPorRegional, produtosParaPedir } from "@/modules/solicitacoes/queries";
 import { db } from "@/lib/db";
 import { activeCycle, isExempt } from "@/modules/solicitacoes/limites.service";
 import { getPedidoSettings } from "@/lib/settings";
@@ -39,7 +39,7 @@ export default async function FranquiasLacresPage() {
       ) : (
         <Card className="max-w-4xl">
           <CardContent>
-            <PedidoForm bases={bases} produtos={produtos} disponivel={disponivel} />
+            <PedidoForm bases={bases} produtos={comSaldo(produtos, disponivel)} disponivel={disponivel} />
           </CardContent>
         </Card>
       )}

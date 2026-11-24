@@ -411,6 +411,8 @@ model Solicitacao {
   decisionNote   String? // motivo da recusa/cancelamento ou observação da aprovação
   partial        Boolean           @default(false) // separado/enviado com menos que o aprovado
   peopleCount    Int? // S2: pessoas na base no momento do pedido (obrigatório para base)
+  /// Itens digitados que não existem no cadastro de produtos: [{ nome, quantity }]. Só texto: não mexem em estoque nem em limite.
+  outrosItens    Json?
 
   // expedição
   tripId          String? // ID da viagem (a "saca"/carga que leva o pedido)

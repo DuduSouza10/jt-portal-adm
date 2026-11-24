@@ -92,9 +92,12 @@ async function transition(
   await notificar(tx, s.id, { tipo: "status", from: s.status, to, nota: note, parcial: data.partial === true }, user);
 }
 
-function plan(linhas: Parameters<typeof planQuantities>[0], informado: Record<string, number>, etapa: string) {
+/** Pedido com itens digitados fora do cadastro (texto livre). */
+const temOutros = (s: { outrosItens: unknown }) => Array.isArray(s.outrosItens) && s.outrosItens.length > 0;
+
+function plan(linhas: Parameters<typeof planQuantities>[0], informado: Record<string, number>, etapa: string, permitirVazio = false) {
   try {
-    return planQuantities(linhas, informado, { etapa });
+    return planQuantities(linhas, informado, { etapa, permitirVazio });
   } catch (e) {
     throw new DomainError((e as Error).message);
   }
@@ -102,7 +105,8 @@ function plan(linhas: Parameters<typeof planQuantities>[0], informado: Record<st
 
 // ------------------------------------------------------------------ Base
 
-export async function criar(user: CurrentUser, input: CriarInput) {
+export async function criar(user: CurrentUser, dados: Omit<CriarInput, "outros"> & { outros?: CriarInput["outros"] }) {
+  const input = { ...dados, outros: dados.outros ?? [] };
   const cfg = await getPedidoSettings();
   return db.$transaction(async (tx) => {
     const base = await tx.base.findUnique({ where: { id: input.baseId } });
@@ -139,6 +143,7 @@ export async function criar(user: CurrentUser, input: CriarInput) {
         priority: input.priority,
         notes: input.notes,
         peopleCount: input.peopleCount ?? null,
+        outrosItens: input.outros.length > 0 ? input.outros : undefined,
         itens: { create: input.itens.map((i) => ({ produtoId: i.produtoId, requested: i.quantity })) },
         eventos: { create: { type: "CRIADA", toStatus: "PENDENTE", actorId: user.id, note: input.notes } },
       },
@@ -149,7 +154,7 @@ export async function criar(user: CurrentUser, input: CriarInput) {
         action: "solicitacao.criar",
         entity: "Solicitacao",
         entityId: s.id,
-        summary: `${formatNumber(s.number)} criada para ${base.code}: ${ids.length} produto(s)${input.priority === "URGENTE" ? " · URGENTE" : ""}`,
+        summary: `${formatNumber(s.number)} criada para ${base.code}: ${ids.length} produto(s)${input.outros.length > 0 ? ` + ${input.outros.length} fora do cadastro` : ""}${input.priority === "URGENTE" ? " · URGENTE" : ""}`,
       },
       tx,
     );
@@ -198,6 +203,7 @@ export async function aprovar(user: CurrentUser, input: AprovarInput) {
       s.itens.map((i) => ({ produtoId: i.produtoId, label: i.produto.code, max: i.requested })),
       input.quantidades,
       "aprovado",
+      temOutros(s),
     );
     for (const it of s.itens) await tx.solicitacaoItem.update({ where: { id: it.id }, data: { approved: quantities.get(it.produtoId)! } });
 
@@ -209,12 +215,9 @@ export async function aprovar(user: CurrentUser, input: AprovarInput) {
       { almoxarifadoId: almox.id, approvedAt: new Date(), decisionNote: input.note },
       [`Atendida por ${almox.code}`, input.note].filter(Boolean).join(" · "),
     );
-    await reservar(tx, {
-      solicitacaoId: s.id,
-      almoxarifadoId: almox.id,
-      actorId: user.id,
-      itens: [...quantities].filter(([, q]) => q > 0).map(([produtoId, quantity]) => ({ produtoId, quantity })),
-    });
+    const reservas = [...quantities].filter(([, q]) => q > 0).map(([produtoId, quantity]) => ({ produtoId, quantity }));
+    // Pedido só com itens digitados (fora do cadastro) não tem estoque a reservar.
+    if (reservas.length > 0) await reservar(tx, { solicitacaoId: s.id, almoxarifadoId: almox.id, actorId: user.id, itens: reservas });
   }, STOCK_TX);
 }
 
@@ -241,7 +244,7 @@ export async function separar(user: CurrentUser, input: SepararInput) {
     const linhas = s.itens
       .filter((i) => (i.approved ?? 0) > 0)
       .map((i) => ({ produtoId: i.produtoId, label: i.produto.code, max: i.approved! }));
-    const { quantities, partial } = plan(linhas, input.quantidades, "separado");
+    const { quantities, partial } = plan(linhas, input.quantidades, "separado", temOutros(s));
     for (const it of s.itens) await tx.solicitacaoItem.update({ where: { id: it.id }, data: { separated: quantities.get(it.produtoId) ?? 0 } });
     const now = new Date();
     await transition(
@@ -293,11 +296,14 @@ async function enviarUm(user: CurrentUser, id: string, data: EnvioInput & { phot
       },
       info,
     );
-    await baixarReserva(tx, {
-      solicitacaoId: s.id,
-      actorId: user.id,
-      enviados: s.itens.filter((i) => (i.approved ?? 0) > 0).map((i) => ({ produtoId: i.produtoId, quantity: i.separated ?? 0 })),
-    });
+    // Sem itens do cadastro (pedido só com texto livre) não há reserva para baixar.
+    if (s.itens.some((i) => (i.approved ?? 0) > 0)) {
+      await baixarReserva(tx, {
+        solicitacaoId: s.id,
+        actorId: user.id,
+        enviados: s.itens.filter((i) => (i.approved ?? 0) > 0).map((i) => ({ produtoId: i.produtoId, quantity: i.separated ?? 0 })),
+      });
+    }
     // Custo de cada item no envio (custo médio do almoxarifado, gravado na baixa): base do gasto por base.
     const baixas = await tx.stockMovement.findMany({
       where: { refType: "solicitacao", refId: s.id, type: "BAIXA" },

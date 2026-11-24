@@ -31,6 +31,14 @@ export const zhCN: Messages = {
     detalhes: "详情",
     carregando: "加载中",
     registrando: "登记中...",
+    seletor: {
+      buscar: "搜索…",
+      semResultado: "没有可显示的内容。",
+      semResultadoPara: "未找到“{q}”。",
+      mostrando: "显示 {n} / {total} 项，继续输入可筛选。",
+      usarTexto: "使用“{q}”",
+      foraCadastro: "不在产品目录中：将作为文字随订单提交",
+    },
   },
   tema: {
     alternar: "切换主题",
@@ -713,6 +721,9 @@ export const zhCN: Messages = {
       produtoN: "产品 {n}",
       escolhaLista: "请从列表中选择产品。",
       disponivel: "可用：{n}",
+      escolhaBaseInsumos: "请先选择网点，再查看可用物料。",
+      foraCadastro: "不在目录中：订单将带着此名称提交，由审批人确认库存。",
+      semInsumos: "该网点没有库存物料。",
       semEstoqueRegional: "你所在区域的仓库目前没有可用库存。",
       qtd: "数量",
       quantidadeN: "数量 {n}",
@@ -723,6 +734,8 @@ export const zhCN: Messages = {
       enviar: "提交申领单",
     },
     detalhe: {
+      outrosTitulo: "不在目录中",
+      outrosAjuda: "网点手动输入了这些物料，产品目录中没有。不影响库存，请与仓库确认。",
     pessoas: "网点人数：",
       pedidaPor: "{base} — {nome} 于 {data} 提交",
       imprimirGuia: "打印拣货单",
