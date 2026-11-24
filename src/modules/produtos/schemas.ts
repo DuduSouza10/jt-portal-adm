@@ -55,6 +55,7 @@ export const produtoSchema = z.object({
     .max(10, "Unidade: de 1 a 10 caracteres."),
   // Caixa desmarcada não envia o campo. `checkbox` sozinho recusa o campo ausente no zod 4.6 (ver Issue #18), então aceitamos ausente aqui.
   active: checkbox.optional().transform((v) => v ?? false),
+  lacre: checkbox.optional().transform((v) => v ?? false),
   limitBase: limite,
   limitFranquia: limite,
   limitBlockDays: dias,

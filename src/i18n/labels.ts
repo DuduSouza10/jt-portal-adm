@@ -11,6 +11,7 @@ const NAV_KEY: Record<string, keyof Messages["nav"]> = {
   "/": "inicio",
   "/solicitacoes/nova": "solicitarInsumos",
   "/solicitacoes": "solicitacoes",
+  "/solicitacoes/lacres": "solicitarLacres",
   "/expedicao": "expedicao",
   "/separacao": "separacao",
   "/produtos": "produtos",

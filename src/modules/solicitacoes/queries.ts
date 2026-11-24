@@ -21,9 +21,10 @@ export function basesParaPedir(actor: Actor) {
   });
 }
 
-export function produtosParaPedir() {
+/** Produtos que podem ser pedidos: insumos (padrão) ou só os lacres, conforme a aba. */
+export function produtosParaPedir({ lacres = false }: { lacres?: boolean } = {}) {
   return db.produto.findMany({
-    where: { active: true },
+    where: { active: true, lacre: lacres },
     select: { id: true, code: true, name: true, unit: true },
     orderBy: { code: "asc" },
   });

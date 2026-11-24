@@ -65,11 +65,20 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           s.almoxarifado &&
           (pode("separar") || s.status === "SEPARADA") &&
           allowed(user, "separar", s) && (
-            <Button asChild variant="outline">
-              <Link href={`/solicitacoes/${s.id}/guia`} target="_blank">
-                <Printer /> {t("solicitacoes.detalhe.imprimirGuia")}
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link href={`/solicitacoes/${s.id}/guia`} target="_blank">
+                  <Printer /> {t("solicitacoes.detalhe.imprimirGuia")}
+                </Link>
+              </Button>
+              {(s.status === "SEPARADA" || s.status === "ENVIADA" || s.status === "RECEBIDA") && (
+                <Button asChild variant="outline">
+                  <Link href={`/solicitacoes/${s.id}/etiqueta`} target="_blank">
+                    <Printer /> {t("solicitacoes.etiqueta.botao")}
+                  </Link>
+                </Button>
+              )}
+            </div>
           )
         }
       />
