@@ -1,6 +1,7 @@
 /** Desativar e excluir usuário (E12) contra um PostgreSQL real. */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
+import { DomainError } from "@/lib/errors";
 import { deleteUser, setUserActive } from "./service";
 
 const tag = `ex${Date.now().toString(36)}`;
@@ -52,6 +53,16 @@ describe("desativar e excluir", () => {
     await db.solicitacao.create({ data: { baseId, createdById: u.id } });
     await expect(deleteUser(actor, u.id)).rejects.toThrow("Desative em vez de excluir");
     expect(await db.user.findUnique({ where: { id: u.id } })).not.toBeNull();
+  });
+
+  it("com alteração de preço no histórico: não exclui, pede para desativar (a chave estrangeira do PrecoHistorico bloquearia)", async () => {
+    const u = await novo("h");
+    const prod = await db.produto.create({ data: { code: `${tag}-P`, name: `Produto ${tag}`, unit: "UN" } });
+    await db.precoHistorico.create({ data: { produtoId: prod.id, valorNovo: 10, actorId: u.id } });
+    const err = await deleteUser(actor, u.id).then(() => null, (e) => e as Error);
+    expect(err).toBeInstanceOf(DomainError); // não um erro cru de chave estrangeira do Prisma
+    expect(await db.user.findUnique({ where: { id: u.id } })).not.toBeNull();
+    await db.produto.delete({ where: { id: prod.id } }); // o histórico sai junto (cascade)
   });
 
   it("não exclui nem desativa a si mesmo", async () => {
