@@ -32,6 +32,7 @@ export const PERMISSION_GROUPS = [
     permissions: [
       { key: "estrutura.ver", label: "Ver regionais e bases" },
       { key: "estrutura.editar", label: "Criar e editar regionais e bases" },
+      { key: "bases.escolher", label: "Escolher as próprias bases e franquias", description: "RM/supervisor marca em \"Minhas bases\" quais bases e franquias acompanha." },
     ],
   },
   {

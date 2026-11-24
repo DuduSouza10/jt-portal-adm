@@ -12,7 +12,8 @@ import type { Actor } from "@/lib/permissions/check";
 export function usersScopeWhere(actor: Actor): Prisma.UserWhereInput | undefined {
   if (actor.scope === "GLOBAL") return undefined;
   const byBase: Prisma.UserWhereInput = { bases: { some: { baseId: { in: [...actor.baseIds] } } } };
-  if (actor.scope === "BASE") return byBase;
+  if (actor.scope === "BASE" || actor.scope === "FRANQUIA") return byBase;
+  if (actor.scope === "FRANQUIAS") return { OR: [byBase, { bases: { some: { base: { type: "FRANQUIA" } } } }] };
   return {
     OR: [
       byBase,

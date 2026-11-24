@@ -30,7 +30,7 @@ export const profileSchema = z.object({
     .toLowerCase()
     .regex(/^[a-z0-9_-]{2,30}$/, "Chave: 2 a 30 caracteres, só letras minúsculas, números, - ou _."),
   description: optionalText,
-  scope: z.enum(["GLOBAL", "REGIONAL", "BASE"]),
+  scope: z.enum(["GLOBAL", "REGIONAL", "BASE", "FRANQUIAS", "FRANQUIA"]),
   permissions: z.array(z.string()).default([]),
 });
 export type ProfileInput = z.infer<typeof profileSchema>;

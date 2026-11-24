@@ -68,6 +68,7 @@ export const zhCN: Messages = {
     perfis: { label: "权限角色", description: "各角色的权限与数据范围" },
     estrutura: { label: "区域与网点", description: "组织架构" },
     duvidas: { label: "疑问", description: "帮助气泡中的提问" },
+    minhasBases: { label: "我的网点", description: "选择你负责的网点和加盟网点" },
     auditoria: { label: "审计日志", description: "谁在何时改了什么" },
     feishu: { label: "飞书", description: "飞书通知：测试与已发送消息" },
     relatorios: { label: "报表", description: "申领单 SLA、金额与各网点花费" },
@@ -90,6 +91,15 @@ export const zhCN: Messages = {
       registrado: "已登记使用。",
       col: { codigo: "编码", produto: "产品", saldo: "库存" },
     },
+  },
+  minhasBases: {
+    titulo: "我的网点",
+    descricao: "勾选你负责的网点和加盟网点。报表、申领单和审批将只显示这些网点。",
+    busca: "搜索网点或加盟网点",
+    franquia: "加盟",
+    salvar: "保存我的网点",
+    salvo: "已保存。",
+    marcadas: "已选 {n} 个",
   },
   duvidas: {
     balao: "有疑问？联系我们",
@@ -193,9 +203,11 @@ export const zhCN: Messages = {
     sucesso: "密码修改成功。",
   },
   alcance: {
-    GLOBAL: "全部网点",
+    GLOBAL: "全部网点和加盟网点",
     REGIONAL: "所属区域的网点",
     BASE: "仅所属网点",
+    FRANQUIAS: "全部加盟网点",
+    FRANQUIA: "仅所属加盟网点",
   },
   perfisPadrao: {
     dev: { nome: "Dev", descricao: "拥有门户全部控制权，包括未来新增的模块。" },
@@ -204,11 +216,14 @@ export const zhCN: Messages = {
     almoxarifado: { nome: "仓库管理员", descricao: "负责拣货、发货和库存管理。" },
     base: { nome: "网点", descricao: "为本网点申领物料（受 3 个月周期限制）。" },
     franquia: { nome: "加盟商", descricao: "申领物料并可查看价格。" },
+    "rm-supervisor": { nome: "RM / 主管", descricao: "自行选择负责的网点和加盟网点，查看其报表并审批申领单。" },
   },
   alcanceUsuario: {
     GLOBAL: "可查看全部网点",
     REGIONAL: "可查看所选区域的网点",
     BASE: "仅可查看所选网点",
+    FRANQUIAS: "可查看全部加盟网点",
+    FRANQUIA: "仅可查看所选加盟网点",
   },
   usuarios: {
     aprovar: "批准",
@@ -253,7 +268,8 @@ export const zhCN: Messages = {
     tipo: "权限角色",
     regionaisBases: "区域与网点",
     regionaisBasesDica: "勾选区域即可访问该区域下全部网点（区域角色），也可单独勾选网点。",
-    acessoGlobal: "该权限角色可查看所有区域和网点，无需勾选。",
+    acessoGlobal: "该权限角色可查看所有区域、网点和加盟网点，无需勾选。",
+    acessoFranquias: "该权限角色可查看所有加盟网点，无需勾选。",
     acessoBases: "所属网点",
     acessoBasesDica: "勾选此人所在的网点。只能为该网点申领并跟踪申领单。",
     acessoRegionais: "区域和网点",
@@ -318,6 +334,9 @@ export const zhCN: Messages = {
     },
     perfis: {
       gerenciar: { label: "管理权限角色", description: "创建角色并修改权限。" },
+    },
+    bases: {
+      escolher: { label: "选择自己负责的网点和加盟网点", description: "RM/主管在“我的网点”中勾选自己负责的网点和加盟网点。" },
     },
     estrutura: {
       ver: { label: "查看区域与网点", description: "" },

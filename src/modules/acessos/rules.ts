@@ -1,3 +1,4 @@
+import { isOwnScope, type Scope } from "@/lib/permissions/check";
 import { ALL } from "@/lib/permissions/catalog";
 
 /**
@@ -24,11 +25,12 @@ export function ownProfileEditError(actor: { permissions: readonly string[]; pro
   return actor.profileId === profileId ? "Você não pode editar o seu próprio tipo de acesso." : null;
 }
 
-type ScopeInput ={ scope: "GLOBAL" | "REGIONAL" | "BASE"; baseIds: string[]; regionalIds: string[] };
+type ScopeInput = { scope: Scope; baseIds: string[]; regionalIds: string[] };
 
 /** Valida os vínculos exigidos pelo alcance do perfil. Retorna a mensagem de erro ou null. */
 export function scopeLinksError({ scope, baseIds, regionalIds }: ScopeInput): string | null {
   if (scope === "BASE" && baseIds.length === 0) return "Este tipo de acesso exige ao menos uma base.";
+  if (scope === "FRANQUIA" && baseIds.length === 0) return "Este tipo de acesso exige ao menos uma franquia.";
   if (scope === "REGIONAL" && regionalIds.length === 0 && baseIds.length === 0)
     return "Este tipo de acesso exige ao menos uma regional.";
   return null;
@@ -36,14 +38,20 @@ export function scopeLinksError({ scope, baseIds, regionalIds }: ScopeInput): st
 
 // ------------------------------------------------------------------ Alcance
 
-type Scope = "GLOBAL" | "REGIONAL" | "BASE";
-const SCOPE_RANK: Record<Scope, number> = { BASE: 1, REGIONAL: 2, GLOBAL: 3 };
 
 /** Alcance do ator, como vem da sessão. */
 export type ScopeActor = { scope: Scope; baseIds: readonly string[]; regionalIds: readonly string[] };
 
-/** O alcance `target` cabe no alcance do ator? (ninguém concede alcance maior que o seu) */
-export const scopeWithin = (target: Scope, actor: Scope) => SCOPE_RANK[target] <= SCOPE_RANK[actor];
+/**
+ * O alcance "target" cabe dentro do alcance do ator? GLOBAL cobre tudo; REGIONAL e FRANQUIAS cobrem os de
+ * "só vinculadas" (BASE/FRANQUIA) e a si mesmos, mas não um ao outro; BASE/FRANQUIA só cobrem BASE/FRANQUIA.
+ */
+export function scopeWithin(target: Scope, actor: Scope) {
+  if (actor === "GLOBAL" || target === actor) return true;
+  if (target === "GLOBAL") return false;
+  if (isOwnScope(target)) return true;
+  return false;
+}
 
 /**
  * Os vínculos (regionais e bases) estão dentro do alcance do ator?
@@ -56,7 +64,7 @@ export function linksOutsideScopeError(
   baseRegional: ReadonlyMap<string, string>,
 ): string | null {
   if (actor.scope === "GLOBAL") return null;
-  if (actor.scope === "BASE" && links.regionalIds.length) return "Você não pode vincular regionais.";
+  if (actor.scope !== "REGIONAL" && links.regionalIds.length) return "Você não pode vincular regionais.";
   const outRegional = links.regionalIds.some((r) => !actor.regionalIds.includes(r));
   if (outRegional) return "Você só pode vincular regionais do seu alcance.";
   const baseOk = (b: string) =>
