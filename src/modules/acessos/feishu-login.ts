@@ -5,7 +5,7 @@ import { audit } from "@/lib/audit";
 import { isUniqueError } from "@/lib/action-result";
 import type { FeishuDept, FeishuProfile } from "@/lib/feishu/client";
 import { errorInfo, logger } from "@/lib/logger";
-import { detectarTodas, loginSugerido, type Deteccao } from "./feishu-rules";
+import { detectarTodas, loginSugerido, perfilDoNovo, type Deteccao } from "./feishu-rules";
 import { baseDe } from "./feishu-estrutura";
 
 type Tx = Prisma.TransactionClient;
@@ -18,7 +18,8 @@ type Tx = Prisma.TransactionClient;
  *    Achado pelo open_id: qualquer conta. Achado pela matrícula ou pelo e-mail CORPORATIVO: só conta de base
  *    (alcance BASE). Conta da equipe (admin, gestor, almoxarifado…) só entra pelo Feishu depois que o admin
  *    preenche o open_id no cadastro dela: assim ninguém entra na conta de um admin trocando o e-mail no Feishu.
- * 2. Não tem usuário e está numa unidade → cria como "Aguardando liberação", já na base dela; o admin aprova.
+ * 2. Não tem usuário e está numa unidade → cria já na base dela. Se ninguém da base usa o portal ainda, entra
+ *    direto como Base (ou Franquia), só para pedir insumos; senão fica "Aguardando liberação" e o admin aprova.
  *    Se a base (ou a regional) ainda não existe no portal, é criada na hora, marcada "criada pelo Feishu".
  * 3. Não tem usuário e não está numa unidade (ex.: Gestão Integrada) → cria com "Aguardando liberação",
  *    sem acesso a nada, e avisa os administradores no sino.
@@ -137,9 +138,19 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
       return { kind: "ok" as const, userId: existing.id, created: false, pending: existing.profile.key === "aguardando" };
     }
 
-    // Novo: SEMPRE "Aguardando liberação" (decisão do Diogo, 2026-11-22), já com a base do organograma
-    // vinculada. O admin aprova em Usuários (vira Base/Franquia) ou escolhe outro tipo de acesso.
-    const key = "aguardando";
+    // Novo (decisão do Diogo, 2026-11-24): o PRIMEIRO da base entra direto, só com o acesso de pedir insumos
+    // (sempre Base, mesmo em franquia: sem ver preço). Só conta quem é DE BASE: admin, gestor e almoxarifado
+    // (alcance GLOBAL/REGIONAL) não ocupam a base, mesmo que estejam vinculados a ela. Base que já tem alguém, ou pessoa sem base → "Aguardando liberação".
+    const ocupadas = new Set(
+      (
+        await tx.userBase.findMany({
+          where: { baseId: { in: bases.map((b) => b.id) }, user: { active: true, profile: { scope: "BASE", key: { not: "aguardando" } } } },
+          select: { baseId: true },
+        })
+      ).map((u) => u.baseId),
+    );
+    const key = perfilDoNovo(bases, ocupadas);
+    const pending = key === "aguardando";
     const perfil = await tx.accessProfile.findUnique({ where: { key } });
     if (!perfil) throw new Error(`Tipo de acesso "${key}" não existe: rode o seed (npm run db:seed).`);
     const emailLivre = profile.email && !(await tx.user.findFirst({ where: { OR: [{ email: profile.email }, { login: profile.email }] }, select: { id: true } }));
@@ -165,7 +176,7 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
       },
       tx,
     );
-    await avisarAdmins(tx, user.id, profile.name, bases.length ? bases.map((b) => b.code).join(", ") : onde);
-    return { kind: "ok" as const, userId: user.id, created: true, pending: true };
+    if (pending) await avisarAdmins(tx, user.id, profile.name, bases.length ? bases.map((b) => b.code).join(", ") : onde);
+    return { kind: "ok" as const, userId: user.id, created: true, pending };
   });
 }
