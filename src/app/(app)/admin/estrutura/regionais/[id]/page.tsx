@@ -8,6 +8,7 @@ import { ActionForm } from "@/components/action-form";
 import { CheckField, Field } from "@/components/form-field";
 import { PageHeader } from "@/components/page-header";
 import { getT } from "@/i18n/server";
+import { Secao } from "../../secao";
 import { saveRegionalAction } from "../../actions";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -24,31 +25,35 @@ export default async function RegionalEditPage(props: PageProps<"/admin/estrutur
   if (!isNew && !regional) notFound();
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
+    <div className="mx-auto max-w-4xl space-y-4">
       <PageHeader
         title={isNew ? t("estrutura.novaRegional") : `${regional!.code} · ${regional!.name}`}
         back={{ href: "/admin/estrutura", label: t("estrutura.titulo") }}
       />
       <Card>
         <CardContent>
-          <ActionForm action={saveRegionalAction.bind(null, regional?.id ?? null)}>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label={t("estrutura.sigla")} htmlFor="code" hint={t("estrutura.siglaDicaRegional")}>
-                <Input id="code" name="code" defaultValue={regional?.code} required className="uppercase" />
-              </Field>
-              <Field label={t("estrutura.nome")} htmlFor="name" className="sm:col-span-2">
-                <Input id="name" name="name" defaultValue={regional?.name} required />
-              </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <ActionForm action={saveRegionalAction.bind(null, regional?.id ?? null)} className="space-y-6">
+            <Secao titulo={t("estrutura.secao.identificacao")} descricao={t("estrutura.secao.identificacaoRegionalDica")}>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field label={t("estrutura.sigla")} htmlFor="code" hint={t("estrutura.siglaDicaRegional")}>
+                  <Input id="code" name="code" defaultValue={regional?.code} required className="uppercase" />
+                </Field>
+                <Field label={t("estrutura.nome")} htmlFor="name" className="sm:col-span-2">
+                  <Input id="name" name="name" defaultValue={regional?.name} required />
+                </Field>
+              </div>
+            </Secao>
+            <Secao titulo={t("estrutura.secao.feishu")} descricao={t("estrutura.secao.feishuRegionalDica")}>
               <Field label={t("estrutura.grupoEquipe")} htmlFor="feishuStaffChatId" hint={t("estrutura.grupoEquipeDica")}>
                 <Input id="feishuStaffChatId" name="feishuStaffChatId" defaultValue={regional?.feishuStaffChatId ?? ""} autoCapitalize="none" />
               </Field>
               <Field label={t("estrutura.grupoExpedicao")} htmlFor="feishuShippingChatId" hint={t("estrutura.grupoExpedicaoDica")}>
                 <Input id="feishuShippingChatId" name="feishuShippingChatId" defaultValue={regional?.feishuShippingChatId ?? ""} autoCapitalize="none" />
               </Field>
-            </div>
-            <CheckField name="active" label={t("estrutura.regionalAtiva")} defaultChecked={regional?.active ?? true} />
+            </Secao>
+            <Secao titulo={t("estrutura.secao.situacao")}>
+              <CheckField name="active" label={t("estrutura.regionalAtiva")} defaultChecked={regional?.active ?? true} />
+            </Secao>
           </ActionForm>
         </CardContent>
       </Card>
