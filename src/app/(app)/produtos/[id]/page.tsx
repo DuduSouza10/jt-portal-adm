@@ -67,6 +67,7 @@ export default async function ProdutoEditPage(props: PageProps<"/produtos/[id]">
               </div>
             </div>
             <CheckField name="active" label={t("produtos.ativo")} defaultChecked={produto?.active ?? true} />
+            <CheckField name="lacre" label={t("produtos.lacre")} defaultChecked={produto?.lacre ?? false} />
           </ActionForm>
         </CardContent>
       </Card>

@@ -18,6 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   // ---- Operação: solicitações, separação e expedição
   { href: "/solicitacoes/nova", label: "Solicitar insumos", description: "Montar e enviar um pedido", permissions: ["solicitacoes.criar"], section: "operacao" },
   { href: "/solicitacoes", label: "Solicitações", description: "Acompanhar pedidos e aprovar", permissions: ["solicitacoes.ver"], section: "operacao" },
+  { href: "/solicitacoes/lacres", label: "Solicitar lacres", description: "Pedir lacres numerados", permissions: ["solicitacoes.criar"], section: "operacao" },
   { href: "/separacao", label: "Separação", description: "Separar os pedidos aprovados", permissions: ["expedicao.separar"], section: "operacao" },
   { href: "/expedicao", label: "Expedição", description: "Carregar e confirmar o envio", permissions: ["expedicao.enviar"], section: "operacao" },
   { href: "/produtos", label: "Produtos", description: "Catálogo de insumos e limites por período", permissions: ["produtos.ver"], section: "gestao" },

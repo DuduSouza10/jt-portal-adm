@@ -14,7 +14,7 @@ export async function saveProduto(actor: CurrentUser, id: string | null, input: 
     if (id) {
       const before = await tx.produto.findUnique({ where: { id } });
       if (!before) throw new DomainError("Produto não encontrado.");
-      const data = { name: input.name, unit: input.unit, active: input.active, limitBase: input.limitBase, limitFranquia: input.limitFranquia, limitBlockDays: input.limitBlockDays };
+      const data = { name: input.name, unit: input.unit, active: input.active, lacre: input.lacre, limitBase: input.limitBase, limitFranquia: input.limitFranquia, limitBlockDays: input.limitBlockDays };
       await tx.produto.update({ where: { id }, data });
       await audit(
         { actorId: actor.id, action: "produto.editar", entity: "Produto", entityId: id, summary: `Editou o produto ${before.code}`, data: diff(before, data) },

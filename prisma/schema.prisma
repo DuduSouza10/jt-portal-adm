@@ -234,6 +234,8 @@ model Produto {
   limitFranquia  Int?
   /// Período do limite (dias). Ao atingir o limite, o produto fica bloqueado para a base por este tempo.
   limitBlockDays Int      @default(60)
+  /// Lacre numerado: aparece só na aba "Solicitar lacres" (e não em "Solicitar insumos").
+  lacre          Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
