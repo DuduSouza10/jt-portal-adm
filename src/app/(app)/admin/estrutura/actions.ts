@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { firstIssue, runAction, type FormState } from "@/lib/action-result";
 import { formToObject } from "@/lib/form";
 import { baseSchema, regionalSchema } from "@/modules/estrutura/schemas";
-import { deleteBase, saveBase, saveRegional } from "@/modules/estrutura/service";
+import { ativarBases, deleteBase, excluirBases, saveBase, saveRegional } from "@/modules/estrutura/service";
 
 export async function saveRegionalAction(id: string | null, _: FormState, form: FormData): Promise<FormState> {
   const actor = await requirePermission("estrutura.editar");
@@ -41,4 +41,25 @@ export async function deleteBaseAction(id: string): Promise<FormState> {
   if (r.error) return r;
   revalidatePath("/admin/estrutura");
   redirect("/admin/estrutura");
+}
+
+/** Seleção em massa: exclui as sem histórico; as com histórico voltam na lista para desativar. */
+export async function excluirBasesAction(ids: string[]) {
+  const actor = await requirePermission("estrutura.editar");
+  let resultado: Awaited<ReturnType<typeof excluirBases>> | null = null;
+  const r = await runAction("base.excluir-massa", async () => {
+    resultado = await excluirBases(actor, ids);
+  });
+  revalidatePath("/admin/estrutura");
+  return { ...r, resultado: resultado as Awaited<ReturnType<typeof excluirBases>> | null };
+}
+
+/** Seleção em massa: desativa (ou reativa) as bases. */
+export async function ativarBasesAction(ids: string[], active: boolean) {
+  const actor = await requirePermission("estrutura.editar");
+  const r = await runAction("base.ativar-massa", async () => {
+    await ativarBases(actor, ids, active);
+  });
+  revalidatePath("/admin/estrutura");
+  return r;
 }

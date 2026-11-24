@@ -89,3 +89,49 @@ export async function deleteBase(actor: CurrentUser, id: string) {
     return { code: base.code };
   });
 }
+
+/**
+ * Exclusão em massa (E13): exclui de vez as bases sem histórico e devolve as que têm pedido ou
+ * movimentação de estoque (essas não são excluídas; a tela oferece desativar).
+ */
+export async function excluirBases(actor: CurrentUser, ids: string[]) {
+  const alvo = [...new Set(ids)];
+  if (!alvo.length) throw new DomainError("Selecione ao menos uma base.");
+  return db.$transaction(async (tx) => {
+    const bases = await tx.base.findMany({ where: { id: { in: alvo } }, select: { id: true, code: true, name: true } });
+    const [pedidos, pedidosAlmox, movimentos] = await Promise.all([
+      tx.solicitacao.findMany({ where: { baseId: { in: alvo } }, distinct: ["baseId"], select: { baseId: true } }),
+      tx.solicitacao.findMany({ where: { almoxarifadoId: { in: alvo } }, distinct: ["almoxarifadoId"], select: { almoxarifadoId: true } }),
+      tx.stockMovement.findMany({ where: { baseId: { in: alvo } }, distinct: ["baseId"], select: { baseId: true } }),
+    ]);
+    const presas = new Set([...pedidos.map((p) => p.baseId), ...pedidosAlmox.map((p) => p.almoxarifadoId!), ...movimentos.map((m) => m.baseId)]);
+    const livres = bases.filter((b) => !presas.has(b.id));
+    const ids = livres.map((b) => b.id);
+    if (ids.length) {
+      await tx.stockReservation.deleteMany({ where: { baseId: { in: ids } } });
+      await tx.stockBalance.deleteMany({ where: { baseId: { in: ids } } });
+      await tx.base.deleteMany({ where: { id: { in: ids } } });
+      await audit(
+        { actorId: actor.id, action: "base.excluir", entity: "Base", entityId: ids[0], summary: `Excluiu permanentemente ${ids.length} base(s): ${livres.map((b) => b.code).join(", ")}`.slice(0, 1000) },
+        tx,
+      );
+    }
+    return { excluidas: livres.length, comHistorico: bases.filter((b) => presas.has(b.id)).map((b) => ({ id: b.id, code: b.code })) };
+  }, { timeout: 60_000 });
+}
+
+/** Desativa (ou reativa) várias bases de uma vez: somem das listas e o histórico fica. */
+export async function ativarBases(actor: CurrentUser, ids: string[], active: boolean) {
+  const alvo = [...new Set(ids)];
+  if (!alvo.length) throw new DomainError("Selecione ao menos uma base.");
+  return db.$transaction(async (tx) => {
+    const bases = await tx.base.findMany({ where: { id: { in: alvo }, active: !active }, select: { id: true, code: true } });
+    if (!bases.length) return 0;
+    await tx.base.updateMany({ where: { id: { in: bases.map((b) => b.id) } }, data: { active } });
+    await audit(
+      { actorId: actor.id, action: active ? "base.reativar" : "base.desativar", entity: "Base", entityId: bases[0].id, summary: `${active ? "Reativou" : "Desativou"} ${bases.length} base(s): ${bases.map((b) => b.code).join(", ")}`.slice(0, 1000) },
+      tx,
+    );
+    return bases.length;
+  });
+}

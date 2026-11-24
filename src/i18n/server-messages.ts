@@ -91,6 +91,7 @@ const ZH: [string, string][] = [
   ["Uso registrado.", "已登记使用。"],
   ["Escreva a mensagem.", "请输入消息。"],
   ["Sem permissão.", "没有权限。"],
+  ["Selecione ao menos uma base.", "请至少选择一个网点。"],
   ["Seu tipo de acesso já vê as bases pelo alcance.", "你的权限角色已按范围查看网点。"],
   ["Marque ao menos uma base ou franquia.", "请至少选择一个网点或加盟网点。"],
   ["Bases salvas.", "已保存。"],
