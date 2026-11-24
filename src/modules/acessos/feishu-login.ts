@@ -139,11 +139,12 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
     }
 
     // Novo (decisão do Diogo, 2026-11-24): o PRIMEIRO da base entra direto, só com o acesso de pedir insumos
-    // (sempre Base, mesmo em franquia: sem ver preço). Base que já tem alguém, ou pessoa sem base → "Aguardando liberação".
+    // (sempre Base, mesmo em franquia: sem ver preço). Só conta quem é DE BASE: admin, gestor e almoxarifado
+    // (alcance GLOBAL/REGIONAL) não ocupam a base, mesmo que estejam vinculados a ela. Base que já tem alguém, ou pessoa sem base → "Aguardando liberação".
     const ocupadas = new Set(
       (
         await tx.userBase.findMany({
-          where: { baseId: { in: bases.map((b) => b.id) }, user: { active: true, profile: { key: { not: "aguardando" } } } },
+          where: { baseId: { in: bases.map((b) => b.id) }, user: { active: true, profile: { scope: "BASE", key: { not: "aguardando" } } } },
           select: { baseId: true },
         })
       ).map((u) => u.baseId),

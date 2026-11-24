@@ -157,6 +157,15 @@ describe("um por base: o primeiro entra direto, o resto aguarda", () => {
     await db.auditLog.deleteMany({ where: { actorId: adm.id } });
   });
 
+  it("admin vinculado à base não ocupa a vaga: o primeiro de base entra direto", async () => {
+    await login(perfil("adm0"), [chainMG("ADM")]); // cria a base
+    const b = await db.base.findFirstOrThrow({ where: { feishuDepartmentId: `od-${tag}-b-ADM` } });
+    await db.user.deleteMany({ where: { feishuOpenId: `ou_${tag}adm0` } });
+    await db.user.create({ data: { name: "Admin", login: `${tag}admbase`, profileId: staffProfileId, bases: { create: [{ baseId: b.id }] } } });
+    const r = await login(perfil("adm1"), [chainMG("ADM")]);
+    expect(r).toMatchObject({ kind: "ok", pending: false });
+  });
+
   it("franquia: o primeiro e o aprovado entram como Base, sem ver preços", async () => {
     const a = await login(perfil("fr1"), [chainMG("F ORL")]);
     const b = await login(perfil("fr2"), [chainMG("F ORL")]);
