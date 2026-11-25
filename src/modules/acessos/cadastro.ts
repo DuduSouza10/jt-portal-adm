@@ -15,7 +15,13 @@ export const cadastroSchema = z
       .trim()
       .regex(/^\S+(\s+\S+)+$/, "Informe o nome completo."),
     regionalId: z.string().min(1, "Escolha a regional."),
-    baseId: z.string().min(1, "Escolha a franquia."),
+    // Franquia da lista (baseId) OU, se não estiver na lista, o nome digitado (novaFranquia): ela é criada (E20).
+    baseId: z.string().optional().transform((v) => v || undefined),
+    novaFranquia: z
+      .string()
+      .optional()
+      .transform((v) => v?.trim().replace(/\s+/g, " ") || undefined)
+      .refine((v) => !v || (v.length >= 2 && v.length <= 60), "Nome da franquia: de 2 a 60 caracteres."),
     login: z
       .string()
       .trim()
@@ -24,5 +30,6 @@ export const cadastroSchema = z
     password: z.string().min(PASSWORD_MIN, `A senha precisa ter ao menos ${PASSWORD_MIN} caracteres.`),
     confirm: z.string(),
   })
-  .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "A confirmação não confere." });
+  .refine((v) => v.password === v.confirm, { path: ["confirm"], message: "A confirmação não confere." })
+  .refine((v) => !!v.baseId || !!v.novaFranquia, { path: ["baseId"], message: "Escolha a franquia ou escreva o nome dela." });
 export type CadastroInput = z.infer<typeof cadastroSchema>;

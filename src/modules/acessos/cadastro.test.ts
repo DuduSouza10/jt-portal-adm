@@ -14,7 +14,10 @@ describe("cadastroSchema (criar conta da franquia)", () => {
   });
   it("exige regional e franquia", () => {
     expect(cadastroSchema.safeParse({ ...ok, regionalId: "" }).error?.issues[0].message).toBe("Escolha a regional.");
-    expect(cadastroSchema.safeParse({ ...ok, baseId: "" }).error?.issues[0].message).toBe("Escolha a franquia.");
+    expect(cadastroSchema.safeParse({ ...ok, baseId: "" }).error?.issues[0].message).toBe("Escolha a franquia ou escreva o nome dela.");
+    // Franquia fora da lista: basta o nome digitado (E20).
+    expect(cadastroSchema.safeParse({ ...ok, baseId: "", novaFranquia: "F BDB SP" }).success).toBe(true);
+    expect(cadastroSchema.safeParse({ ...ok, baseId: "", novaFranquia: "F" }).success).toBe(false);
   });
   it("valida o login e a senha", () => {
     expect(cadastroSchema.safeParse({ ...ok, login: "a b" }).success).toBe(false);
