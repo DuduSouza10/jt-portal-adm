@@ -96,7 +96,7 @@ const ZH: [string, string][] = [
   ["Marque ao menos uma base ou franquia.", "请至少选择一个网点或加盟网点。"],
   ["Bases salvas.", "已保存。"],
   ["Este tipo de acesso exige ao menos uma franquia.", "此权限角色至少需要一个加盟网点。"],
-  ["só há {x} disponível no almoxarifado da sua regional.", "所在区域的仓库只剩 {x} 可用。"],
+  ["quantidade acima do disponível no almoxarifado da sua regional.", "数量超过所在区域仓库的可用量。"],
   ["sem estoque no almoxarifado da sua regional.", "所在区域的仓库没有库存。"],
   ["Mensagem muito longa (até 1000 caracteres).", "消息太长（最多 1000 个字符）。"],
   ["Escolha o almoxarifado.", "请选择仓库。"],

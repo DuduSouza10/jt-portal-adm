@@ -130,7 +130,8 @@ export async function criar(user: CurrentUser, dados: Omit<CriarInput, "outros">
       const tem = disp.filter((d) => d.produtoId === it.produtoId).reduce((s, d) => s + Math.max(0, d.quantity - d.reserved), 0);
       if (it.quantity > tem) {
         const p = produtos.find((x) => x.id === it.produtoId)!;
-        throw new DomainError(tem > 0 ? `${p.code}: só há ${tem} disponível no almoxarifado da sua regional.` : `${p.code}: sem estoque no almoxarifado da sua regional.`);
+        // Não diz quanto há: base e franquia não veem a quantidade em estoque.
+        throw new DomainError(tem > 0 ? `${p.code}: quantidade acima do disponível no almoxarifado da sua regional.` : `${p.code}: sem estoque no almoxarifado da sua regional.`);
       }
     }
     // S1–S3 (regras do portal do Eduardo): ciclo de 3 meses, nº de pessoas e limite por produto.
