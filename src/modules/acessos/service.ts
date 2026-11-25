@@ -283,7 +283,7 @@ export async function aprovarAcesso(actor: CurrentUser, id: string) {
 /**
  * RM/supervisor escolhe as próprias bases e franquias (E17). Exceção ao E8 ("ninguém muda as próprias
  * bases"): só com `bases.escolher` e alcance de "só vinculadas" (BASE/FRANQUIA). Almoxarifado não entra.
- * Troca a lista inteira e fica na auditoria.
+ * Troca a lista inteira (vazia = libera tudo, E20) e fica na auditoria.
  */
 /** Ids das bases que já são de outro supervisor (some da lista de quem é supervisor; o RM vê todas). */
 export async function basesDeOutrosSupervisores(userId: string) {
@@ -294,11 +294,35 @@ export async function basesDeOutrosSupervisores(userId: string) {
   return new Set(rows.map((r) => r.baseId));
 }
 
+/** Um supervisor ativo e as bases e franquias que ele detém (aba "Supervisores" de Minhas bases, E20). */
+export type SupervisorComBases = { id: string; name: string; bases: { id: string; code: string; name: string; type: string; regionalCode: string }[] };
+
+/** Todos os supervisores ativos, por nome, cada um com as bases ativas que tem (almoxarifado não entra). Só leitura. */
+export async function supervisoresComBases(): Promise<SupervisorComBases[]> {
+  const users = await db.user.findMany({
+    where: { active: true, profile: { key: SUPERVISOR_KEY } },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      bases: {
+        where: { base: { active: true, type: { not: "ALMOXARIFADO" } } },
+        select: { base: { select: { id: true, code: true, name: true, type: true, regional: { select: { code: true } } } } },
+      },
+    },
+  });
+  return users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    bases: u.bases.map((b) => ({ id: b.base.id, code: b.base.code, name: b.base.name, type: b.base.type, regionalCode: b.base.regional.code })).sort((a, b) => a.code.localeCompare(b.code)),
+  }));
+}
+
 export async function escolherMinhasBases(actor: CurrentUser, baseIds: string[]) {
   if (!actor.permissions.includes("bases.escolher") && !actor.permissions.includes(ALL)) throw new DomainError("Sem permissão.");
   if (actor.scope !== "BASE" && actor.scope !== "FRANQUIA") throw new DomainError("Seu tipo de acesso já vê as bases pelo alcance.");
+  // Lista vazia vale: é o jeito de liberar todas as bases (E20).
   const ids = [...new Set(baseIds)];
-  if (!ids.length) throw new DomainError("Marque ao menos uma base ou franquia.");
   const bases = await db.base.findMany({ where: { id: { in: ids }, active: true, type: { not: "ALMOXARIFADO" } }, select: { id: true, code: true } });
   if (bases.length !== ids.length) throw new DomainError("Base não encontrada.");
   await db.$transaction(async (tx) => {
@@ -312,9 +336,15 @@ export async function escolherMinhasBases(actor: CurrentUser, baseIds: string[])
       if (ocupadas.length) throw new DomainError(`Já estão com outro supervisor: ${[...new Set(ocupadas.map((o) => o.base.code))].sort().join(", ")}.`);
     }
     await tx.userBase.deleteMany({ where: { userId: actor.id } });
-    await tx.userBase.createMany({ data: ids.map((baseId) => ({ userId: actor.id, baseId })) });
+    if (ids.length) await tx.userBase.createMany({ data: ids.map((baseId) => ({ userId: actor.id, baseId })) });
     await audit(
-      { actorId: actor.id, action: "usuario.minhas-bases", entity: "User", entityId: actor.id, summary: `Escolheu as próprias bases: ${bases.map((b) => b.code).sort().join(", ")}` },
+      {
+        actorId: actor.id,
+        action: "usuario.minhas-bases",
+        entity: "User",
+        entityId: actor.id,
+        summary: bases.length ? `Escolheu as próprias bases: ${bases.map((b) => b.code).sort().join(", ")}` : "Liberou todas as próprias bases",
+      },
       tx,
     );
   });

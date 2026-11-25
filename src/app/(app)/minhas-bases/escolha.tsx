@@ -1,65 +1,77 @@
 "use client";
 
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ListPlus, X } from "lucide-react";
 import { useKeepForm } from "@/components/use-keep-form";
+import { EmptyState } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useServerMessage, useT } from "@/i18n/client";
 import { salvarMinhasBasesAction } from "./actions";
+import { filtrarRegionais, podarSelecao, type RegionalItem, type TipoFiltro } from "./filtro";
+import { alternar, alternarVarios, BarraAcao, Ferramentas, ListaPorRegional } from "./partes";
 
-type Regional = { id: string; code: string; name: string; bases: { id: string; code: string; name: string; type: string }[] };
-
-/** Lista de bases e franquias por regional, com busca; o que estiver marcado vira "minhas bases". */
-export function EscolhaBases({ regionais, marcadas }: { regionais: Regional[]; marcadas: string[] }) {
+/**
+ * Aba "Escolher bases": só o que está livre. Marcar e tocar em Adicionar junta as marcadas às que a pessoa já tem
+ * (a action grava a lista inteira). Se outro supervisor pegar uma base enquanto a tela está aberta, ela some da
+ * lista e da seleção na próxima atualização.
+ */
+export function EscolhaBases({ regionais, minhas }: { regionais: RegionalItem[]; minhas: string[] }) {
   const t = useT();
   const tm = useServerMessage();
-  const [sel, setSel] = useState(new Set(marcadas));
+  const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
   const [busca, setBusca] = useState("");
+  const [tipo, setTipo] = useState<TipoFiltro>("todos");
   const { state, pending, formProps } = useKeepForm(salvarMinhasBasesAction, {});
-  const q = busca.trim().toLowerCase();
-  const toggle = (id: string) => setSel((s) => (s.has(id) ? (s.delete(id), new Set(s)) : new Set(s.add(id))));
+
+  const todasIds = useMemo(() => regionais.flatMap((r) => r.bases.map((b) => b.id)), [regionais]);
+  const sel = useMemo(() => podarSelecao(marcadas, todasIds), [marcadas, todasIds]);
+  const blocos = useMemo(() => filtrarRegionais(regionais, busca, tipo), [regionais, busca, tipo]);
+  const totalPorRegional = useMemo(() => new Map(regionais.map((r) => [r.id, r.bases.length])), [regionais]);
+  const contagem = useMemo(() => {
+    const todas = regionais.flatMap((r) => r.bases);
+    return { todos: todas.length, BASE: todas.filter((b) => b.type === "BASE").length, FRANQUIA: todas.filter((b) => b.type === "FRANQUIA").length };
+  }, [regionais]);
+  const filtrando = busca.trim() !== "" || tipo !== "todos";
+
+  if (!regionais.length) return <EmptyState>{t("minhasBases.semLivres")}</EmptyState>;
 
   return (
     <form {...formProps} className="space-y-4">
-      {[...sel].map((id) => (
+      {[...minhas, ...sel].map((id) => (
         <input key={id} type="hidden" name="baseIds" value={id} />
       ))}
-      <div className="flex items-center gap-2">
-        <div className="relative max-w-sm flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder={t("minhasBases.busca")} className="pl-8" />
-        </div>
-        <span className="text-sm text-muted-foreground tabular-nums">{t("minhasBases.marcadas", { n: sel.size })}</span>
-      </div>
-      <div className="space-y-4">
-        {regionais.map((r) => {
-          const bases = r.bases.filter((b) => !q || `${b.code} ${b.name}`.toLowerCase().includes(q));
-          if (!bases.length) return null;
-          return (
-            <fieldset key={r.id} className="rounded-lg border p-3">
-              <legend className="px-1 text-sm font-medium">
-                {r.code} · {r.name}
-              </legend>
-              <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                {bases.map((b) => (
-                  <label key={b.id} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" className="size-4" checked={sel.has(b.id)} onChange={() => toggle(b.id)} />
-                    <span className="font-medium">{b.code}</span>
-                    <span className="truncate text-muted-foreground">{b.name}</span>
-                    {b.type === "FRANQUIA" && <span className="rounded bg-muted px-1.5 text-[11px]">{t("minhasBases.franquia")}</span>}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          );
-        })}
-      </div>
-      {state.error && <p className="text-sm text-destructive">{tm(state.error)}</p>}
-      {state.message && <p className="text-sm text-success">{tm(state.message)}</p>}
-      <Button type="submit" disabled={pending || sel.size === 0}>
-        {pending ? t("comum.salvando") : t("minhasBases.salvar")}
-      </Button>
+      <Ferramentas busca={busca} onBusca={setBusca} placeholder={t("minhasBases.busca")} tipo={tipo} onTipo={setTipo} contagem={contagem} />
+      {state.message && sel.size === 0 && (
+        <p role="status" className="rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
+          {tm(state.message)}
+        </p>
+      )}
+      {blocos.length === 0 ? (
+        <EmptyState>{t("minhasBases.nenhumaBusca")}</EmptyState>
+      ) : (
+        <ListaPorRegional
+          blocos={blocos}
+          totalPorRegional={totalPorRegional}
+          sel={sel}
+          onToggle={(id) => setMarcadas(alternar(sel, id))}
+          onToggleVarias={(ids) => setMarcadas(alternarVarios(sel, ids))}
+          filtrando={filtrando}
+          abertoPorPadrao={regionais.length === 1}
+          tom="primary"
+        />
+      )}
+      {sel.size > 0 && (
+        <BarraAcao>
+          <span className="mr-auto pl-1 text-sm font-semibold">{t("minhasBases.selecionadas", { n: sel.size })}</span>
+          {state.error && <span className="w-full text-sm text-destructive sm:w-auto">{tm(state.error)}</span>}
+          <Button type="button" variant="ghost" size="sm" onClick={() => setMarcadas(new Set())}>
+            <X /> {t("minhasBases.limparSelecao")}
+          </Button>
+          <Button type="submit" size="sm" disabled={pending}>
+            <ListPlus /> {pending ? t("comum.salvando") : t("minhasBases.adicionar")}
+          </Button>
+        </BarraAcao>
+      )}
     </form>
   );
 }
