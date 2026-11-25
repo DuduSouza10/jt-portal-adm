@@ -82,18 +82,28 @@ export function almoxarifadosAtivos() {
   });
 }
 
-export type ListFilter = { status?: SolicitacaoStatus; abertas?: boolean; baseId?: string; regionalId?: string; q?: number; page: number; soFranquias?: boolean };
+export type ListFilter = { status?: SolicitacaoStatus[]; baseId?: string; regionalId?: string; q?: number; page: number; soFranquias?: boolean };
 
-export async function listSolicitacoes(actor: Actor, f: ListFilter) {
+/** Alcance + filtros da lista (menos a situação, que muda de aba para aba). */
+function whereLista(actor: Actor, f: Omit<ListFilter, "status" | "page">): Prisma.SolicitacaoWhereInput {
   const scope = baseScopeWhere(actor);
-  const where: Prisma.SolicitacaoWhereInput = {
+  return {
     ...((scope || f.soFranquias) && { base: { AND: [...(scope ? [scope] : []), ...(f.soFranquias ? [{ type: "FRANQUIA" as const }] : [])] } }),
-    ...(f.status ? { status: f.status } : f.abertas ? { status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA"] } } : {}),
     ...(f.baseId && { baseId: f.baseId }),
     // Filtro por regional (SP/MG): soma-se ao alcance (o AND do alcance continua valendo).
     ...(f.regionalId && { AND: [{ base: { regionalId: f.regionalId } }] }),
     ...(f.q && { number: f.q }),
   };
+}
+
+/** Quantos pedidos há em cada situação, com os mesmos filtros da lista (para o número ao lado de cada aba). */
+export async function contagemPorStatus(actor: Actor, f: Omit<ListFilter, "status" | "page">) {
+  const rows = await db.solicitacao.groupBy({ by: ["status"], where: whereLista(actor, f), _count: { _all: true } });
+  return Object.fromEntries(rows.map((r) => [r.status, r._count._all])) as Partial<Record<SolicitacaoStatus, number>>;
+}
+
+export async function listSolicitacoes(actor: Actor, f: ListFilter) {
+  const where: Prisma.SolicitacaoWhereInput = { ...whereLista(actor, f), ...(f.status && { status: { in: f.status } }) };
   const [rows, total] = await Promise.all([
     db.solicitacao.findMany({
       where,
@@ -108,14 +118,15 @@ export async function listSolicitacoes(actor: Actor, f: ListFilter) {
         partial: true,
         createdAt: true,
         statusChangedAt: true,
-        base: { select: { code: true, name: true } },
+        base: { select: { code: true, name: true, regional: { select: { code: true } } } },
         almoxarifado: { select: { code: true } },
         _count: { select: { itens: true } },
       },
     }),
     db.solicitacao.count({ where }),
   ]);
-  return { rows, total };
+  // "agora" sai daqui (e não da tela) para a coluna "na etapa há" usar o mesmo instante em todas as linhas.
+  return { rows, total, agora: Date.now() };
 }
 
 export function getSolicitacao(id: string) {
