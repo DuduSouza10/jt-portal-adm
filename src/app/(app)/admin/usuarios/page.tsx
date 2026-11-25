@@ -1,3 +1,4 @@
+import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -95,7 +96,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
           <span className="font-medium text-warning">{t("usuarios.verAguardando")} →</span>
         </Link>
       )}
-      <form className="flex flex-wrap gap-2">
+      <FiltroForm className="flex flex-wrap gap-2">
         <Input name="q" defaultValue={q} placeholder={t("usuarios.buscar")} className="max-w-xs" />
         <SelectBox name="perfil" defaultValue={perfil} className="max-w-56">
           <option value="">{t("usuarios.todosTipos")}</option>
@@ -105,10 +106,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
             </option>
           ))}
         </SelectBox>
-        <Button type="submit" variant="outline">
-          {t("comum.filtrar")}
-        </Button>
-      </form>
+      </FiltroForm>
       {users.length === 0 ? (
         <EmptyState>{t("usuarios.vazio")}</EmptyState>
       ) : (

@@ -261,7 +261,11 @@ export function Combobox({
             disabled={disabled}
             placeholder={placeholder}
             className={cn(fieldClass, "pr-9 placeholder:text-muted-foreground")}
-            onFocus={(e) => e.currentTarget.select()}
+            onFocus={(e) => {
+              e.currentTarget.select();
+              // Voltou a um campo com texto digitado antes: já filtra pelo que está nele.
+              if (free && !selected && freeText) setQuery(freeText);
+            }}
             onClick={() => setOpen(true)}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -380,6 +384,8 @@ export function SelectBox({
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);
   const typed = React.useRef({ text: "", at: 0 });
+  const hidden = React.useRef<HTMLInputElement>(null);
+  const notify = React.useRef(false);
   const search = searchable ?? options.length >= SEARCH_FROM;
 
   const filtered = React.useMemo(() => filterOptions(options, query), [options, query]);
@@ -388,9 +394,16 @@ export function SelectBox({
 
   const choose = (o: ComboOption) => {
     if (value === undefined) setInner(o.value);
+    notify.current = o.value !== current;
     onValueChange?.(o.value);
     setOpen(false);
   };
+  // Avisa o formulário (ex.: filtro que atualiza a lista sozinho) depois que o campo escondido já tem o valor novo.
+  React.useEffect(() => {
+    if (!notify.current) return;
+    notify.current = false;
+    hidden.current?.dispatchEvent(new Event("change", { bubbles: true }));
+  }, [current]);
   const onOpenChange = (o: boolean) => {
     setOpen(o);
     if (o) {
@@ -419,6 +432,7 @@ export function SelectBox({
       <div className={cn("relative", className)}>
         {/* Campo invisível: leva o valor no formulário e faz o "required" funcionar como no <select>. */}
         <input
+          ref={hidden}
           name={name}
           value={current}
           required={required}

@@ -1,3 +1,4 @@
+import { FiltroForm } from "@/components/filtro-form";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { TrendingDown, TrendingUp } from "lucide-react";
@@ -81,12 +82,9 @@ export default async function PrecificacaoPage(props: PageProps<"/precificacao">
         </CardContent>
       </Card>
 
-      <form className="flex flex-wrap items-center gap-2">
+      <FiltroForm className="flex flex-wrap items-center gap-2">
         <Input name="q" defaultValue={q} placeholder={t("precificacao.buscar")} className="w-72" aria-label={t("comum.buscar")} />
         {soSemPreco && <input type="hidden" name="filtro" value="sem-preco" />}
-        <Button type="submit" variant="outline">
-          {t("comum.filtrar")}
-        </Button>
         <div className="ml-auto flex gap-1">
           <Button asChild variant={soSemPreco ? "ghost" : "secondary"} size="sm">
             <Link href={link({ filtro: undefined })}>{t("precificacao.todos")}</Link>
@@ -95,7 +93,7 @@ export default async function PrecificacaoPage(props: PageProps<"/precificacao">
             <Link href={link({ filtro: "sem-preco" })}>{t("precificacao.semPreco", { n: semPreco })}</Link>
           </Button>
         </div>
-      </form>
+      </FiltroForm>
 
       {linhas.length === 0 ? (
         <EmptyState>{t("precificacao.nenhum")}</EmptyState>

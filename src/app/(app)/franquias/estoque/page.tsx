@@ -1,3 +1,4 @@
+import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
@@ -5,7 +6,6 @@ import { baseScopeWhere, can } from "@/lib/permissions/check";
 import { db } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { listProdutosAtivos, listSaldos, PAGE_SIZE } from "@/modules/estoque/queries";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -87,7 +87,7 @@ export default async function FranquiasEstoquePage(props: PageProps<"/franquias/
               </CardContent>
             </Card>
           )}
-          <form className="flex flex-wrap items-center gap-2">
+          <FiltroForm className="flex flex-wrap items-center gap-2">
             {franquias.length > 1 && (
               <SelectBox name="base" defaultValue={base} className="max-w-64">
                 <option value="">{t("franquias.titulo")}</option>
@@ -99,10 +99,7 @@ export default async function FranquiasEstoquePage(props: PageProps<"/franquias/
               </SelectBox>
             )}
             <Input name="q" defaultValue={q} placeholder={t("estoque.produtoBusca")} className="max-w-xs" />
-            <Button type="submit" variant="outline">
-              {t("comum.filtrar")}
-            </Button>
-          </form>
+          </FiltroForm>
           {rows.length === 0 ? (
             <EmptyState>{t("franquias.estoque.vazio")}</EmptyState>
           ) : (

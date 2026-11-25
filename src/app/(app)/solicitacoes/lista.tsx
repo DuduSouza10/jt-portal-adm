@@ -1,3 +1,4 @@
+import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import Link from "next/link";
 import type { SolicitacaoStatus } from "@/generated/prisma/enums";
@@ -71,7 +72,7 @@ export async function SolicitacoesLista({
           }
         />
       )}
-      <form className="flex flex-wrap items-center gap-2">
+      <FiltroForm className="flex flex-wrap items-center gap-2">
         <SelectBox name="status" defaultValue={status ?? ""} className="max-w-56">
           <option value="">{t("solicitacoes.emAberto")}</option>
           {STATUSES.map((s) => (
@@ -95,10 +96,7 @@ export async function SolicitacoesLista({
           <input type="checkbox" name="todas" value="1" defaultChecked={!abertas && !status} className="size-4" />
           {t("solicitacoes.incluirFinalizadas")}
         </label>
-        <Button type="submit" variant="outline">
-          {t("comum.filtrar")}
-        </Button>
-      </form>
+      </FiltroForm>
       {rows.length === 0 ? (
         <EmptyState>{t("solicitacoes.vazio")}</EmptyState>
       ) : (

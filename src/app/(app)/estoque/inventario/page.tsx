@@ -1,9 +1,9 @@
+import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { listAlmoxarifados, listProdutosAtivos } from "@/modules/estoque/queries";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { param } from "@/components/pagination";
@@ -42,7 +42,7 @@ export default async function InventarioPage(props: PageProps<"/estoque/inventar
         <EmptyState>{t("estoque.semAlmoxCurto")}</EmptyState>
       ) : (
         <>
-          <form className="flex gap-2">
+          <FiltroForm className="flex gap-2">
             <SelectBox name="base" defaultValue={base?.id ?? ""} className="max-w-72" required>
               <option value="" disabled>
                 {t("inventario.escolhaAlmox")}
@@ -53,10 +53,7 @@ export default async function InventarioPage(props: PageProps<"/estoque/inventar
                 </option>
               ))}
             </SelectBox>
-            <Button type="submit" variant="outline">
-              {t("comum.abrir")}
-            </Button>
-          </form>
+          </FiltroForm>
           {base && (
             <Card>
               <CardContent>

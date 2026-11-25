@@ -1,3 +1,4 @@
+import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import type { StockMovementType } from "@/generated/prisma/enums";
@@ -39,7 +40,7 @@ export default async function MovimentacoesPage(props: PageProps<"/estoque/movim
     <>
       <PageHeader title={t("movimentacoes.titulo")} description={t("movimentacoes.descricao")} />
       <EstoqueNav user={user} current="/estoque/movimentacoes" />
-      <form className="flex flex-wrap gap-2">
+      <FiltroForm className="flex flex-wrap gap-2">
         <SelectBox name="base" defaultValue={base} className="max-w-56">
           <option value="">{t("movimentacoes.todosAlmox")}</option>
           {almox.map((a) => (
@@ -58,15 +59,12 @@ export default async function MovimentacoesPage(props: PageProps<"/estoque/movim
         </SelectBox>
         <Input name="q" defaultValue={q} placeholder={t("movimentacoes.busca")} className="max-w-xs" />
         {lote && <input type="hidden" name="lote" value={lote} />}
-        <Button type="submit" variant="outline">
-          {t("comum.filtrar")}
-        </Button>
         {lote && (
           <Button asChild variant="ghost">
             <a href="/estoque/movimentacoes">{t("movimentacoes.verTodas")}</a>
           </Button>
         )}
-      </form>
+      </FiltroForm>
       {rows.length === 0 ? (
         <EmptyState>{t("movimentacoes.vazio")}</EmptyState>
       ) : (

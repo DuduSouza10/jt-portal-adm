@@ -1,3 +1,4 @@
+import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import Link from "next/link";
 import { AlarmClock, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, Download, Hourglass, Package, PackageCheck, Receipt, Timer, TrendingDown, TrendingUp, Truck, Wallet, X } from "lucide-react";
@@ -248,7 +249,7 @@ export async function RelatoriosView({
             </Link>
           ))}
         </nav>
-        <form className="flex flex-wrap items-center gap-2">
+        <FiltroForm className="flex flex-wrap items-center gap-2">
           {visao !== "tudo" && <input type="hidden" name="visao" value={visao} />}
           <div className="flex items-center gap-1">
             <Button asChild variant="outline" size="icon" aria-label={t("relatorios.mesAnterior")}>
@@ -299,9 +300,6 @@ export async function RelatoriosView({
               ))}
             </SelectBox>
           )}
-          <Button type="submit" variant="outline">
-            {t("comum.filtrar")}
-          </Button>
           {filtroAtivo.length > 0 && (
             <Button asChild variant="ghost">
               <Link href={`${basePath}${query({ regional: undefined, base: undefined, almox: undefined })}`}>
@@ -309,7 +307,7 @@ export async function RelatoriosView({
               </Link>
             </Button>
           )}
-        </form>
+        </FiltroForm>
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{mesLabel}</span>
           {mesAtual && <> · {t("relatorios.mesEmAndamento", { dia: now.toLocaleDateString(t.locale, { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }) })}</>}

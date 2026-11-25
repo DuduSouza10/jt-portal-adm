@@ -22,7 +22,18 @@ type Linha = { key: number; produtoId: string; livre: string; quantity: string }
  * disponivel: por regional, quanto de cada produto há nos almoxarifados dela (S11). A lista só mostra o que
  * o almoxarifado da regional da base tem, e a quantidade não passa do disponível (o servidor confere de novo).
  */
-export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base[]; produtos: Produto[]; disponivel: Record<string, Record<string, number>> }) {
+export function PedidoForm({
+  bases,
+  produtos: todos,
+  disponivel,
+  almoxes,
+}: {
+  bases: Base[];
+  produtos: Produto[];
+  disponivel: Record<string, Record<string, number>>;
+  /** Códigos dos almoxarifados ativos de cada regional (só para explicar quando não há nada). */
+  almoxes: Record<string, string[]>;
+}) {
   const t = useT();
   const tm = useServerMessage();
   const { state, pending, formProps } = useKeepForm<FormState>(criarAction, {});
@@ -105,7 +116,11 @@ export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base
 
       {base && produtos.length === 0 && (
         <Alert>
-          <AlertDescription className="text-foreground">{t("solicitacoes.nova.semEstoqueRegional")}</AlertDescription>
+          <AlertDescription className="text-foreground">
+            {almoxes[base.regionalId]?.length
+              ? t("solicitacoes.nova.semEstoqueRegional", { almox: almoxes[base.regionalId].join(", ") })
+              : t("solicitacoes.nova.semAlmoxRegional")}
+          </AlertDescription>
         </Alert>
       )}
 

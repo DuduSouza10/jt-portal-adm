@@ -43,13 +43,29 @@ export function comSaldo<T extends { id: string }>(produtos: T[], disponivel: Re
   return produtos.filter((p) => Object.values(disponivel).some((r) => (r[p.id] ?? 0) > 0));
 }
 
+/**
+ * Lacre = produto marcado "É lacre" ou com "lacre"/封条 no nome. O nome conta porque é comum cadastrar o lacre
+ * sem marcar a caixinha, e aí ele sumia de "Solicitar lacres" mesmo com estoque.
+ */
+const EH_LACRE: Prisma.ProdutoWhereInput = {
+  OR: [{ lacre: true }, { name: { contains: "lacre", mode: "insensitive" } }, { name: { contains: "封条" } }],
+};
+
 /** Produtos que podem ser pedidos: insumos (padrão) ou só os lacres, conforme a aba. */
 export function produtosParaPedir({ lacres = false }: { lacres?: boolean } = {}) {
   return db.produto.findMany({
-    where: { active: true, lacre: lacres },
+    where: { active: true, ...(lacres ? EH_LACRE : { NOT: EH_LACRE }) },
     select: { id: true, code: true, name: true, unit: true },
     orderBy: { code: "asc" },
   });
+}
+
+/** Códigos dos almoxarifados ativos de cada regional (para explicar por que não há nada para pedir). */
+export async function almoxarifadosPorRegional() {
+  const rows = await db.base.findMany({ where: { type: "ALMOXARIFADO", active: true }, select: { code: true, regionalId: true }, orderBy: { code: "asc" } });
+  const out: Record<string, string[]> = {};
+  for (const r of rows) (out[r.regionalId] ??= []).push(r.code);
+  return out;
 }
 
 /** Almoxarifados que podem atender: todos os ativos; o da regional da base vem primeiro na tela. */
