@@ -43,8 +43,9 @@ beforeAll(async () => {
   almox = (await db.base.create({ data: { code: `${tag}-A`, name: "A", type: "ALMOXARIFADO", regionalId: r.id } })).id;
   base = (await db.base.create({ data: { code: `${tag}-B`, name: "Base", regionalId: r.id } })).id;
   franquia = (await db.base.create({ data: { code: `${tag}-F`, name: "Franquia", type: "FRANQUIA", regionalId: r.id } })).id;
-  luva = (await db.produto.create({ data: { code: `${tag}-LUVA`, name: "Luva", unit: "cx", limitBase: 10, limitFranquia: 4, limitBlockDays: 60 } })).id;
-  fita = (await db.produto.create({ data: { code: `${tag}-FITA`, name: "Fita" } })).id;
+  luva = (await db.produto.create({ data: { code: `${tag}-LUVA`, name: "Luva", unit: "cx", limitBase: 10, limitFranquia: 4, limitBlockDays: 60, lacre: true } })).id;
+  // S13: franquia só pede lacre; os produtos destes testes são lacres para a franquia poder pedir.
+  fita = (await db.produto.create({ data: { code: `${tag}-FITA`, name: "Fita", lacre: true } })).id;
   const profile = await db.accessProfile.create({ data: { key: tag.toLowerCase(), name: "T", scope: "GLOBAL", permissions: ["*"] } });
   userId = (await db.user.create({ data: { name: "T", login: tag.toLowerCase(), profileId: profile.id } })).id;
   await lancarEntrada(admin(), { baseId: almox, document: "NF", reason: null, itens: [{ produtoId: luva, quantity: 500 }, { produtoId: fita, quantity: 500 }] });
@@ -135,6 +136,12 @@ describe("S16: um pedido por vez", () => {
 });
 
 describe("S3: limite por produto", () => {
+  it("S13: franquia não pede insumo que não é lacre", async () => {
+    const papel = (await db.produto.create({ data: { code: `${tag}-PAPEL`, name: "Papel" } })).id;
+    await expect(criar(admin(), { baseId: franquia, priority: "NORMAL", notes: null, itens: [{ produtoId: papel, quantity: 1 }] })).rejects.toThrow("Franquia só pode pedir lacres");
+    await db.produto.delete({ where: { id: papel } });
+  });
+
   it("franquia: limite de 4 no período, bloqueio automático ao atingir e recusa desfaz", async () => {
     await expect(pedir(franquia, luva, 5, null)).rejects.toThrow("Limite permitido: 4 cx");
     await fechar(franquia);

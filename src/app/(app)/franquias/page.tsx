@@ -28,7 +28,7 @@ export default async function FranquiasPage(props: PageProps<"/franquias">) {
           can(user, "solicitacoes.criar") ? (
             <div className="flex justify-end">
               <Button asChild>
-                <Link href="/solicitacoes/nova">{t("solicitacoes.solicitar")}</Link>
+                <Link href="/franquias/lacres">{t("solicitacoes.lacres.titulo")}</Link>
               </Button>
             </div>
           ) : (
