@@ -6,8 +6,8 @@ import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
 import { can, canAccessBase, canAny } from "@/lib/permissions/check";
 import { baixarReserva, entradaFranquia, liberarReserva, reservar, STOCK_TX } from "@/modules/estoque/api";
-import { formatNumber, planQuantities, TO, transitionError, type Acao } from "./rules";
-import type { AprovarInput, CriarInput, EnvioInput, SepararInput } from "./schemas";
+import { cancelarItemError, formatNumber, planQuantities, TO, transitionError, type Acao, type OutroItem } from "./rules";
+import type { AprovarInput, CancelarItemInput, CriarInput, EnvioInput, SepararInput } from "./schemas";
 import { notificar } from "./notify";
 import * as limites from "./limites.service";
 import { getPedidoSettings } from "@/lib/settings";
@@ -92,8 +92,10 @@ async function transition(
   await notificar(tx, s.id, { tipo: "status", from: s.status, to, nota: note, parcial: data.partial === true }, user);
 }
 
-/** Pedido com itens digitados fora do cadastro (texto livre). */
-const temOutros = (s: { outrosItens: unknown }) => Array.isArray(s.outrosItens) && s.outrosItens.length > 0;
+/** Itens digitados fora do cadastro (texto livre), com a posição original (é ela que identifica o item ao cancelar). */
+const listaOutros = (s: { outrosItens: unknown }) => (Array.isArray(s.outrosItens) ? (s.outrosItens as OutroItem[]) : []);
+/** Pedido com itens digitados fora do cadastro que ainda valem (S17: os cancelados não contam). */
+const temOutros = (s: { outrosItens: unknown }) => listaOutros(s).some((o) => !o.cancelado);
 
 function plan(linhas: Parameters<typeof planQuantities>[0], informado: Record<string, number>, etapa: string, permitirVazio = false) {
   try {
@@ -200,13 +202,15 @@ export async function aprovar(user: CurrentUser, input: AprovarInput) {
     const almox = await tx.base.findUnique({ where: { id: input.almoxarifadoId } });
     if (!almox || almox.type !== "ALMOXARIFADO" || !almox.active) throw new DomainError("Almoxarifado inválido.");
 
+    // S17: item cancelado não entra na aprovação (fica com 0 aprovado).
+    const ativos = s.itens.filter((i) => !i.cancelledAt);
     const { quantities } = plan(
-      s.itens.map((i) => ({ produtoId: i.produtoId, label: i.produto.code, max: i.requested })),
+      ativos.map((i) => ({ produtoId: i.produtoId, label: i.produto.code, max: i.requested })),
       input.quantidades,
       "aprovado",
       temOutros(s),
     );
-    for (const it of s.itens) await tx.solicitacaoItem.update({ where: { id: it.id }, data: { approved: quantities.get(it.produtoId)! } });
+    for (const it of ativos) await tx.solicitacaoItem.update({ where: { id: it.id }, data: { approved: quantities.get(it.produtoId)! } });
 
     await transition(
       tx,
@@ -227,6 +231,59 @@ export async function recusar(user: CurrentUser, id: string, reason: string) {
     const s = await load(tx, user, id, "recusar");
     await transition(tx, user, s, "recusar", { decisionNote: reason }, reason);
     await limites.onDropped(tx, s.id, user.id);
+  });
+}
+
+/**
+ * S17: quem aprova tira UM item do pedido enquanto ele aguarda aprovação, com motivo, e o solicitante é avisado.
+ * O item fica no histórico (riscado, com o motivo), mas deixa de contar para estoque, limite e envio.
+ * Não dá para tirar o último item que sobrou (nesse caso é Recusar ou Cancelar pedido).
+ * Depois da aprovação o estoque já está reservado: tirar item aí exigiria liberar a reserva item a item (não feito).
+ */
+export async function cancelarItem(user: CurrentUser, input: CancelarItemInput) {
+  return db.$transaction(async (tx) => {
+    // Duas pessoas cancelando itens do mesmo pedido ao mesmo tempo não podem sobrescrever a lista de itens digitados.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pedido-item:${input.id}`}, 0))`;
+    const s = await tx.solicitacao.findUnique({ where: { id: input.id }, include: withBases });
+    if (!s || !canSee(user, s)) throw new DomainError("Solicitação não encontrada.");
+    if (!allowed(user, "aprovar", s)) throw new DomainError("Você não tem permissão para isso.");
+    const number = formatNumber(s.number);
+    const outros = listaOutros(s);
+    const ativos = s.itens.filter((i) => !i.cancelledAt).length + outros.filter((o) => !o.cancelado).length;
+    // Primeiro o status e se o item existe/já foi tirado; só depois "é o último que sobrou".
+    const errStatus = cancelarItemError(s.status, number, 2);
+    if (errStatus) throw new DomainError(errStatus);
+    const alvo = input.produtoId ? s.itens.find((i) => i.produtoId === input.produtoId) : outros[input.outro!];
+    if (!alvo) throw new DomainError("Item não encontrado neste pedido.");
+    if ("cancelledAt" in alvo ? alvo.cancelledAt : alvo.cancelado) throw new DomainError("Este item já foi cancelado.");
+    const errUltimo = cancelarItemError(s.status, number, ativos);
+    if (errUltimo) throw new DomainError(errUltimo);
+
+    const agora = new Date();
+    let nome: string;
+    if (input.produtoId) {
+      const it = alvo as (typeof s.itens)[number];
+      await tx.solicitacaoItem.update({ where: { id: it.id }, data: { cancelledAt: agora, cancelNote: input.reason, approved: 0 } });
+      // Se este item fez o produto atingir o limite, o bloqueio automático cai: o item não foi atendido.
+      await tx.bloqueioProduto.updateMany({
+        where: { sourceSolicitacaoId: s.id, produtoId: it.produtoId, revokedAt: null },
+        data: { revokedAt: agora, updatedById: user.id },
+      });
+      nome = `${it.produto.code} ${it.produto.name} (${it.requested} ${it.produto.unit})`;
+    } else {
+      const o = alvo as OutroItem;
+      const novo = outros.map((x, i) => (i === input.outro ? { ...x, cancelado: { motivo: input.reason, em: agora.toISOString() } } : x));
+      await tx.solicitacao.update({ where: { id: s.id }, data: { outrosItens: novo } });
+      nome = `${o.nome} (${o.quantity})`;
+    }
+    await tx.solicitacaoEvento.create({
+      data: { solicitacaoId: s.id, type: "ITEM_CANCELADO", note: `${nome}: ${input.reason}`, actorId: user.id },
+    });
+    await audit(
+      { actorId: user.id, action: "solicitacao.cancelarItem", entity: "Solicitacao", entityId: s.id, summary: `${number} (${s.base.code}): item cancelado, ${nome} · ${input.reason}` },
+      tx,
+    );
+    await notificar(tx, s.id, { tipo: "itemCancelado", item: nome, motivo: input.reason }, user);
   });
 }
 

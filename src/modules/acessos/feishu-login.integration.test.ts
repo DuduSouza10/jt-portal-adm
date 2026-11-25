@@ -36,7 +36,8 @@ afterAll(async () => {
   await db.user.deleteMany({ where: { OR: [{ feishuOpenId: { startsWith: `ou_${tag}` } }, { login: { startsWith: tag } }] } });
   await db.accessProfile.deleteMany({ where: { key: { startsWith: tag } } });
   await db.base.deleteMany({ where: { feishuDepartmentId: { startsWith: `od-${tag}` } } });
-  await db.regional.deleteMany({ where: { feishuDepartmentId: { startsWith: `od-${tag}` } } });
+  await db.base.deleteMany({ where: { code: `${tag}-MV` } });
+  await db.regional.deleteMany({ where: { OR: [{ feishuDepartmentId: { startsWith: `od-${tag}` } }, { code: `${tag}MV` }] } });
   await db.$disconnect();
 });
 
@@ -118,6 +119,28 @@ describe("B. vínculo seguro", () => {
     const r = await login(perfil("x6", { employeeNo: `${tag}-555` }));
     expect(r).toMatchObject({ kind: "ok", userId: u.id });
     expect((await db.user.findUniqueOrThrow({ where: { id: u.id } })).registration).toBeNull();
+  });
+
+  it("a base que o Dev colocou não é trocada nem acrescida pelo Feishu; sem base nenhuma, entra a do departamento", async () => {
+    const baseProfile = await db.accessProfile.findUniqueOrThrow({ where: { key: "base" } });
+    // Primeiro login cria a base do departamento "MVB"; essa é a base "do Feishu".
+    const primeiro = await login(perfil("mvb0"), [chainMG("MVB")]);
+    if (primeiro.kind !== "ok") throw new Error(primeiro.kind);
+    const baseFeishu = (await db.userBase.findFirstOrThrow({ where: { userId: primeiro.userId } })).baseId;
+
+    // Usuário que o Dev deixou numa base própria (não a do Feishu) e que entra pelo Feishu de outro departamento.
+    const regional = await db.regional.create({ data: { code: `${tag}MV`, name: `Manual ${tag}` } });
+    const baseDev = await db.base.create({ data: { code: `${tag}-MV`, name: "Base do Dev", regionalId: regional.id } });
+    const u = await db.user.create({
+      data: { name: "Dev mexeu", login: `${tag}devmexeu`, profileId: baseProfile.id, feishuOpenId: `ou_${tag}mvb1`, bases: { create: { baseId: baseDev.id } } },
+    });
+    await login(perfil("mvb1"), [chainMG("MVB")]);
+    expect((await db.userBase.findMany({ where: { userId: u.id } })).map((b) => b.baseId)).toEqual([baseDev.id]);
+
+    // Sem nenhuma base: pega a do departamento.
+    const sem = await db.user.create({ data: { name: "Sem base", login: `${tag}sembase`, profileId: baseProfile.id, feishuOpenId: `ou_${tag}mvb2` } });
+    await login(perfil("mvb2"), [chainMG("MVB")]);
+    expect((await db.userBase.findMany({ where: { userId: sem.id } })).map((b) => b.baseId)).toEqual([baseFeishu]);
   });
 
   it("dois primeiros logins ao mesmo tempo dão no mesmo usuário", async () => {

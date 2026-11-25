@@ -396,6 +396,7 @@ enum SolicitacaoEventoTipo {
   CRIADA
   STATUS
   COMENTARIO
+  ITEM_CANCELADO // quem aprova tirou um item do pedido (S17); o motivo vai na nota
 }
 
 /// Pedido de insumos de uma base.
@@ -451,6 +452,9 @@ model SolicitacaoItem {
   separated     Int? // separado (pode ser menor que o aprovado: pedido parcial)
   /// Custo unitário (R$) no envio (custo médio do almoxarifado naquele momento). Base do "gasto por base".
   unitCost      Decimal? @db.Decimal(14, 4)
+  /// S17: item tirado do pedido por quem aprova, ainda aguardando aprovação. Fica no histórico, mas não conta para estoque, limite nem envio.
+  cancelledAt   DateTime?
+  cancelNote    String?
 
   solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
   produto     Produto     @relation(fields: [produtoId], references: [id])

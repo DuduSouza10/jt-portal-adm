@@ -6,6 +6,7 @@ import { requirePermission, requireUser } from "@/lib/auth/session";
 import { firstIssue, runAction, type FormState } from "@/lib/action-result";
 import {
   aprovarSchema,
+  cancelarItemSchema,
   comentarioSchema,
   criarSchema,
   motivoSchema,
@@ -46,6 +47,15 @@ export async function aprovarAction(_: FormState, f: FormData): Promise<FormStat
   const r = await runAction("solicitacao.aprovar", () => svc.aprovar(user, p.data));
   if (!r.error) refresh(p.data.id);
   return r.error ? r : { ok: true, message: "Aprovada. O estoque foi reservado." };
+}
+
+export async function cancelarItemAction(_: FormState, f: FormData): Promise<FormState> {
+  const user = await requirePermission("solicitacoes.aprovar");
+  const p = cancelarItemSchema.safeParse(form(f));
+  if (!p.success) return { error: firstIssue(p.error) };
+  const r = await runAction("solicitacao.cancelarItem", () => svc.cancelarItem(user, p.data));
+  if (!r.error) refresh(p.data.id);
+  return r.error ? r : { ok: true, message: "Item cancelado. Quem pediu foi avisado." };
 }
 
 export async function recusarAction(_: FormState, f: FormData): Promise<FormState> {

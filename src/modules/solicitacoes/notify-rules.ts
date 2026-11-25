@@ -20,7 +20,8 @@ export type Publico = "aprovadores" | "base" | "separacao" | "expedicao";
 export type Evento =
   | { tipo: "criada" }
   | { tipo: "status"; to: SolicitacaoStatus; from: SolicitacaoStatus; nota?: string | null; parcial?: boolean }
-  | { tipo: "comentario"; texto: string };
+  | { tipo: "comentario"; texto: string }
+  | { tipo: "itemCancelado"; item: string; motivo: string };
 
 export type Contexto = {
   number: string; // SOL-000123
@@ -88,6 +89,10 @@ export function avisos(e: Evento, c: Contexto): Aviso[] {
       if (c.naExpedicao) out.push({ publico: "expedicao", titulo, corpo, cor: "wathet", link: "pedido" });
       return out;
     }
+
+    case "itemCancelado":
+      // S17: quem aprova tirou um item; quem pediu precisa saber qual e por quê.
+      return [{ publico: "base", titulo: `${n}: item cancelado`, corpo: cut(`${e.item}. Motivo: ${e.motivo}`), cor: "yellow", link: "pedido" }];
 
     case "status":
       switch (e.to) {

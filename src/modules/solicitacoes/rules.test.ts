@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatNumber, parseScan, planQuantities, transitionError } from "./rules";
+import { cancelarItemError, formatNumber, parseScan, planQuantities, transitionError } from "./rules";
 
 describe("transitionError (S4)", () => {
   it("segue o fluxo", () => {
@@ -54,5 +54,16 @@ describe("planQuantities", () => {
     expect(() => planQuantities(linhas, { a: 11 }, { etapa: "separado" })).toThrow(/máximo é 10/);
     expect(() => planQuantities(linhas, { a: 0, b: 0 }, { etapa: "separado" })).toThrow(/ao menos um/);
     expect(() => planQuantities(linhas, { a: -1 }, { etapa: "separado" })).toThrow(/inválida/);
+  });
+});
+
+describe("cancelarItemError (S17)", () => {
+  it("só enquanto aguarda aprovação", () => {
+    expect(cancelarItemError("PENDENTE", "SOL-000001", 2)).toBeNull();
+    for (const st of ["APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA", "RECEBIDA", "RECUSADA", "CANCELADA"] as const)
+      expect(cancelarItemError(st, "SOL-000001", 2)).toMatch(/aguarda aprovação/);
+  });
+  it("não deixa tirar o único item que sobrou", () => {
+    expect(cancelarItemError("PENDENTE", "SOL-000001", 1)).toMatch(/único item/);
   });
 });
