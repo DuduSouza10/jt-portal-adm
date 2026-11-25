@@ -218,6 +218,8 @@ export const zhCN: Messages = {
     regional: "大区",
     escolhaRegional: "选择大区",
     franquia: "加盟店",
+    faltaFranquia: "请选择您的加盟店后再继续。",
+    faltaNomeFranquia: "请填写您的加盟店名称后再继续。",
     franquiaDica: "请先选择大区：这里只显示该大区的加盟店。",
     escolhaFranquia: "选择加盟店",
     naoEstaNaLista: "我的加盟店不在列表中",

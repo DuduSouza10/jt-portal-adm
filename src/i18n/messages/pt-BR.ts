@@ -215,6 +215,8 @@ export const ptBR = {
     regional: "Regional",
     escolhaRegional: "Escolha a regional",
     franquia: "Franquia",
+    faltaFranquia: "Escolha a sua franquia para continuar.",
+    faltaNomeFranquia: "Escreva o nome da sua franquia para continuar.",
     franquiaDica: "Escolha a regional primeiro: aparecem só as franquias dela.",
     escolhaFranquia: "Escolha a franquia",
     naoEstaNaLista: "Minha franquia não está na lista",
