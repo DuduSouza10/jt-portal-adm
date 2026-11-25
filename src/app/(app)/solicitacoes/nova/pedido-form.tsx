@@ -30,7 +30,8 @@ export function PedidoForm({
 }: {
   bases: Base[];
   produtos: Produto[];
-  disponivel: Record<string, Record<string, number>>;
+  /** Ids dos produtos que têm saldo, por regional. Só isso: a quantidade em estoque não vai para a base nem para a franquia. */
+  disponivel: Record<string, string[]>;
   /** Códigos dos almoxarifados ativos de cada regional (só para explicar quando não há nada). */
   almoxes: Record<string, string[]>;
 }) {
@@ -40,23 +41,23 @@ export function PedidoForm({
   const nextKey = useRef(1);
   const [baseId, setBaseId] = useState(bases.length === 1 ? bases[0].id : "");
   const base = bases.find((b) => b.id === baseId);
-  const disp = useMemo(() => (base ? (disponivel[base.regionalId] ?? {}) : {}), [base, disponivel]);
-  const produtos = useMemo(() => todos.filter((p) => (disp[p.id] ?? 0) > 0), [todos, disp]);
+  const temSaldo = useMemo(() => new Set(base ? (disponivel[base.regionalId] ?? []) : []), [base, disponivel]);
+  const produtos = useMemo(() => todos.filter((p) => temSaldo.has(p.id)), [todos, temSaldo]);
   const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", livre: "", quantity: "" }]);
 
   // Sugestões do campo "Insumos": busca por código ou nome, mostrando o saldo da regional da base.
   const opcoes = useMemo<ComboOption[]>(
-    () => produtos.map((p) => ({ value: p.id, label: p.name, hint: p.code, description: p.unit, meta: t("solicitacoes.nova.disponivel", { n: disp[p.id] }) })),
-    [produtos, disp, t],
+    () => produtos.map((p) => ({ value: p.id, label: p.name, hint: p.code, description: p.unit })),
+    [produtos],
   );
   const byId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos]);
 
   // Trocou de base: o saldo muda, então tira da lista o que não existe mais na nova regional.
   const trocarBase = (id: string) => {
     const novo = bases.find((b) => b.id === id);
-    const dispNovo = novo ? (disponivel[novo.regionalId] ?? {}) : {};
+    const dispNovo = new Set(novo ? (disponivel[novo.regionalId] ?? []) : []);
     setBaseId(id);
-    setLinhas((ls) => ls.map((l) => ((dispNovo[l.produtoId] ?? 0) > 0 ? l : { ...l, produtoId: "" })));
+    setLinhas((ls) => ls.map((l) => (dispNovo.has(l.produtoId) ? l : { ...l, produtoId: "" })));
   };
   const update = (key: number, patch: Partial<Linha>) => setLinhas((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   const addLinha = () => setLinhas((ls) => [...ls, { key: nextKey.current++, produtoId: "", livre: "", quantity: "" }]);
@@ -64,9 +65,8 @@ export function PedidoForm({
   const itens = linhas.filter((l) => l.produtoId).map((l) => ({ produtoId: l.produtoId, quantity: Number(l.quantity) }));
   const outros = linhas.filter((l) => !l.produtoId && l.livre).map((l) => ({ nome: l.livre, quantity: Number(l.quantity) }));
   const soQtd = linhas.some((l) => !l.produtoId && !l.livre && l.quantity); // quantidade sem insumo
-  const acima = itens.some((i) => i.quantity > (disp[i.produtoId] ?? 0));
   const invalid =
-    itens.length + outros.length === 0 || [...itens, ...outros].some((i) => !(i.quantity > 0)) || soQtd || !!base?.cicloAte || acima;
+    itens.length + outros.length === 0 || [...itens, ...outros].some((i) => !(i.quantity > 0)) || soQtd || !!base?.cicloAte;
 
   return (
     <form {...formProps} className="space-y-4">
@@ -146,7 +146,6 @@ export function PedidoForm({
               <Input
                 type="number"
                 min={1}
-                max={p ? disp[p.id] : undefined}
                 step={1}
                 inputMode="numeric"
                 value={l.quantity}
@@ -163,11 +162,6 @@ export function PedidoForm({
               />
               <span className="w-24 pt-1 text-xs text-muted-foreground">
                 {p?.unit}
-                {p && (
-                  <span className={`block ${Number(l.quantity) > (disp[p.id] ?? 0) ? "font-medium text-destructive" : ""}`}>
-                    {t("solicitacoes.nova.disponivel", { n: disp[p.id] ?? 0 })}
-                  </span>
-                )}
               </span>
               <Button
                 type="button"

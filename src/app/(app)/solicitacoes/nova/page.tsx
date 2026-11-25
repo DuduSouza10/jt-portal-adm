@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { getT } from "@/i18n/server";
-import { comSaldo, basesParaPedir, disponivelPorRegional, produtosParaPedir, almoxarifadosPorRegional } from "@/modules/solicitacoes/queries";
+import { comSaldo, idsComSaldo, basesParaPedir, disponivelPorRegional, produtosParaPedir, almoxarifadosPorRegional } from "@/modules/solicitacoes/queries";
 import { db } from "@/lib/db";
 import { activeCycle, isExempt } from "@/modules/solicitacoes/limites.service";
 import { getPedidoSettings } from "@/lib/settings";
@@ -42,7 +42,7 @@ export default async function NovaSolicitacaoPage() {
       ) : (
         <Card className="max-w-4xl">
           <CardContent>
-            <PedidoForm bases={bases} produtos={comSaldo(produtos, disponivel)} disponivel={disponivel} almoxes={almoxes} />
+            <PedidoForm bases={bases} produtos={comSaldo(produtos, disponivel)} disponivel={idsComSaldo(disponivel)} almoxes={almoxes} />
           </CardContent>
         </Card>
       )}

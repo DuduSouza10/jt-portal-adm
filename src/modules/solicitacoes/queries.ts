@@ -38,6 +38,11 @@ export async function disponivelPorRegional(produtoIds?: string[]) {
   return out;
 }
 
+/** Só o que há, sem quantidade: ids dos produtos com saldo em cada regional (é o que vai para a tela de pedido). */
+export function idsComSaldo(disponivel: Record<string, Record<string, number>>) {
+  return Object.fromEntries(Object.entries(disponivel).map(([regional, m]) => [regional, Object.keys(m).filter((id) => m[id] > 0)]));
+}
+
 /** Só o que tem saldo em algum almoxarifado: produto sem estoque não aparece na busca nem vai para o navegador. */
 export function comSaldo<T extends { id: string }>(produtos: T[], disponivel: Record<string, Record<string, number>>) {
   return produtos.filter((p) => Object.values(disponivel).some((r) => (r[p.id] ?? 0) > 0));

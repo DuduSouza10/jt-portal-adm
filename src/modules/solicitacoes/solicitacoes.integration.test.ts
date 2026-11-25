@@ -157,7 +157,7 @@ describe("fluxo completo", () => {
 
   it("aprovação sem estoque falha inteira e o pedido continua pendente", async () => {
     // S11: a base só pede o que tem (50 > 5 é recusado já ao pedir).
-    await expect(criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p2, quantity: 50 }] })).rejects.toThrow(/só há 5/);
+    await expect(criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p2, quantity: 50 }] })).rejects.toThrow(/quantidade acima do disponível/);
     const s = await criar(basePerfil(), { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p2, quantity: 5 }] });
     // O saldo acabou entre o pedido e a aprovação: a aprovação falha inteira.
     await db.stockBalance.update({ where: { baseId_produtoId: { baseId: almox, produtoId: p2 } }, data: { quantity: 1 } });
