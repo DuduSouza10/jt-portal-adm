@@ -65,7 +65,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       user: {
         include: {
           profile: true,
-          bases: { include: { base: { select: { id: true, code: true, name: true } } } },
+          bases: { include: { base: { select: { id: true, code: true, name: true, regionalId: true } } } },
           regionals: { select: { regionalId: true } },
         },
       },
@@ -82,8 +82,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     profile: { id: u.profile.id, key: u.profile.key, name: u.profile.name },
     permissions: u.profile.permissions,
     scope: u.profile.scope,
-    bases: u.bases.map((b) => b.base),
+    bases: u.bases.map((b) => ({ id: b.base.id, code: b.base.code, name: b.base.name })),
     baseIds: u.bases.map((b) => b.base.id),
+    baseRegionalIds: [...new Set(u.bases.map((b) => b.base.regionalId))],
     regionalIds: u.regionals.map((r) => r.regionalId),
   };
 });

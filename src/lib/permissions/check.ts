@@ -9,6 +9,8 @@ export type Actor = {
   baseIds: readonly string[];
   /** Regionais vinculadas ao usuário (usadas no alcance REGIONAL). */
   regionalIds: readonly string[];
+  /** Regionais das bases vinculadas ao usuário (valem só para a expedição/separação, E22). */
+  baseRegionalIds?: readonly string[];
 };
 
 /**
@@ -60,4 +62,20 @@ export function canAccessBase(actor: Actor, base: { id: string; regionalId: stri
     case "FRANQUIA":
       return actor.baseIds.includes(base.id);
   }
+}
+
+/**
+ * Expedição e separação são **da regional** (E22): além do alcance normal, o usuário atende os almoxarifados da
+ * regional de cada base vinculada a ele (e das regionais vinculadas). Assim quem foi cadastrado só com a base
+ * própria também recebe e envia os pedidos da regional. Usar só onde a permissão `expedicao.*` já foi conferida.
+ */
+export function canAccessAlmoxarifado(actor: Actor, almox: { id: string; regionalId: string; type?: string }): boolean {
+  return canAccessBase(actor, almox) || (actor.baseRegionalIds ?? []).includes(almox.regionalId);
+}
+
+/** Filtro de almoxarifados da expedição/separação: o alcance normal ou a regional das bases vinculadas (E22). */
+export function almoxarifadosExpedicaoWhere(actor: Actor) {
+  const scope = baseScopeWhere(actor);
+  if (!scope) return { type: "ALMOXARIFADO" as const };
+  return { type: "ALMOXARIFADO" as const, OR: [scope, { regionalId: { in: [...(actor.baseRegionalIds ?? [])] } }] };
 }
