@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, Printer, Truck } from "lucide-react";
+import { Check, Printer, Truck, TriangleAlert } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -166,27 +166,40 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
           </Card>
 
           {outros.length > 0 && (
-            <Card className="border-warning/40 bg-warning/5">
-              <CardHeader>
-                <CardTitle className="text-base">{t("solicitacoes.detalhe.outrosTitulo")}</CardTitle>
+            <Card className="gap-0 overflow-hidden border-warning/40 py-0">
+              <CardHeader className="gap-1 border-b border-warning/30 bg-warning/5 py-4">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TriangleAlert className="size-4 text-warning" aria-hidden />
+                  {t("solicitacoes.detalhe.outrosTitulo")}
+                  <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning tabular-nums">{outros.length}</span>
+                </CardTitle>
                 <p className="text-sm text-muted-foreground">{t("solicitacoes.detalhe.outrosAjuda")}</p>
               </CardHeader>
-              <CardContent>
-                <ul className="divide-y text-sm">
+              {/* Mesma tabela dos insumos acima: nome à esquerda, quantidade alinhada à direita, "Cancelar item" abaixo do nome. */}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("solicitacoes.detalhe.col.insumo")}</TableHead>
+                    <TableHead className="w-28 text-right">{t("solicitacoes.detalhe.col.pedido")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {outros.map((o, i) => (
-                    <li key={i} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-1.5">
-                      <span className={cn("min-w-0 truncate font-medium", o.cancelado && "text-muted-foreground line-through")}>{o.nome}</span>
-                      <span className={cn("shrink-0 tabular-nums", o.cancelado && "text-muted-foreground line-through")}>{o.quantity}</span>
-                      {o.cancelado && (
-                        <p className="w-full text-xs text-destructive">
-                          {t("solicitacoes.detalhe.itemCancelado")}: {o.cancelado.motivo}
-                        </p>
-                      )}
-                      {podeTirarItem && !o.cancelado && <CancelarItemForm id={s.id} action={cancelarItemAction} outro={i} />}
-                    </li>
+                    <TableRow key={i}>
+                      <TableCell className="whitespace-normal">
+                        <div className={cn("font-medium", o.cancelado && "text-muted-foreground line-through")}>{o.nome}</div>
+                        {o.cancelado && (
+                          <p className="text-xs text-destructive">
+                            {t("solicitacoes.detalhe.itemCancelado")}: {o.cancelado.motivo}
+                          </p>
+                        )}
+                        {podeTirarItem && !o.cancelado && <CancelarItemForm id={s.id} action={cancelarItemAction} outro={i} />}
+                      </TableCell>
+                      <TableCell className={cn("text-right align-top tabular-nums", o.cancelado && "text-muted-foreground line-through")}>{o.quantity}</TableCell>
+                    </TableRow>
                   ))}
-                </ul>
-              </CardContent>
+                </TableBody>
+              </Table>
             </Card>
           )}
 
