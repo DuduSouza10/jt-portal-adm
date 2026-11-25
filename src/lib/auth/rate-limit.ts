@@ -57,3 +57,27 @@ export async function cleanupAuthTables() {
 }
 
 export const LOGIN_BLOCK_MINUTES = WINDOW_MIN;
+
+// ---------------------------------------------------------------- Criar conta (franquias)
+// A tela é pública: o limite segura quem tentar criar contas em massa. Usa a mesma tabela do login,
+// com um "login" que nenhum usuário real pode ter (o cadastro só aceita [a-z0-9._-]) e success=true,
+// para não se misturar com as tentativas de login (que contam só as que falharam).
+const SIGNUP_KEY = "#cadastro";
+const SIGNUP_WINDOW_MIN = 60;
+/** Por IP: uma base inteira (mesmo IP por NAT) consegue cadastrar várias pessoas, mas não centenas. */
+const SIGNUP_MAX_PER_IP = 10;
+/** IP desconhecido (hospedagem sem cabeçalho confiável): teto único para todo mundo. */
+const SIGNUP_MAX_UNKNOWN = 60;
+
+export const SIGNUP_BLOCK_MINUTES = SIGNUP_WINDOW_MIN;
+
+export async function isSignupBlocked(ip: string) {
+  const since = new Date(Date.now() - SIGNUP_WINDOW_MIN * 60_000);
+  const unknown = ip === UNKNOWN_IP;
+  const n = await db.loginAttempt.count({ where: { login: SIGNUP_KEY, success: true, createdAt: { gte: since }, ...(unknown ? {} : { ip }) } });
+  return n >= (unknown ? SIGNUP_MAX_UNKNOWN : SIGNUP_MAX_PER_IP);
+}
+
+export async function recordSignupAttempt(ip: string) {
+  await db.loginAttempt.create({ data: { login: SIGNUP_KEY, ip, success: true } });
+}
