@@ -6,6 +6,7 @@ import type { CurrentUser } from "@/lib/auth/session";
 import { generateTempPassword, hashTempPassword } from "@/lib/auth/password";
 import { ALL, sanitizePermissions } from "@/lib/permissions/catalog";
 import type { Scope } from "@/lib/permissions/check";
+import { SUPERVISOR_KEY } from "@/lib/permissions/default-profiles";
 import { isSubsetOf, linksOutsideScopeError, ownProfileEditError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
 import type { ProfileInput, UserInput } from "./schemas";
 
@@ -284,6 +285,15 @@ export async function aprovarAcesso(actor: CurrentUser, id: string) {
  * bases"): só com `bases.escolher` e alcance de "só vinculadas" (BASE/FRANQUIA). Almoxarifado não entra.
  * Troca a lista inteira e fica na auditoria.
  */
+/** Ids das bases que já são de outro supervisor (some da lista de quem é supervisor; o RM vê todas). */
+export async function basesDeOutrosSupervisores(userId: string) {
+  const rows = await db.userBase.findMany({
+    where: { userId: { not: userId }, user: { active: true, profile: { key: SUPERVISOR_KEY } } },
+    select: { baseId: true },
+  });
+  return new Set(rows.map((r) => r.baseId));
+}
+
 export async function escolherMinhasBases(actor: CurrentUser, baseIds: string[]) {
   if (!actor.permissions.includes("bases.escolher") && !actor.permissions.includes(ALL)) throw new DomainError("Sem permissão.");
   if (actor.scope !== "BASE" && actor.scope !== "FRANQUIA") throw new DomainError("Seu tipo de acesso já vê as bases pelo alcance.");
@@ -292,6 +302,15 @@ export async function escolherMinhasBases(actor: CurrentUser, baseIds: string[])
   const bases = await db.base.findMany({ where: { id: { in: ids }, active: true, type: { not: "ALMOXARIFADO" } }, select: { id: true, code: true } });
   if (bases.length !== ids.length) throw new DomainError("Base não encontrada.");
   await db.$transaction(async (tx) => {
+    // E19: supervisor não pega a base de outro supervisor. A trava evita dois supervisores salvarem a mesma base ao mesmo tempo.
+    if (actor.profile.key === SUPERVISOR_KEY) {
+      await tx.$executeRaw`select pg_advisory_xact_lock(1125001)`;
+      const ocupadas = await tx.userBase.findMany({
+        where: { baseId: { in: ids }, userId: { not: actor.id }, user: { active: true, profile: { key: SUPERVISOR_KEY } } },
+        select: { base: { select: { code: true } } },
+      });
+      if (ocupadas.length) throw new DomainError(`Já estão com outro supervisor: ${[...new Set(ocupadas.map((o) => o.base.code))].sort().join(", ")}.`);
+    }
     await tx.userBase.deleteMany({ where: { userId: actor.id } });
     await tx.userBase.createMany({ data: ids.map((baseId) => ({ userId: actor.id, baseId })) });
     await audit(

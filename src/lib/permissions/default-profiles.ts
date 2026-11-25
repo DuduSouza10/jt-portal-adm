@@ -7,6 +7,9 @@ import type { Scope } from "./check";
  * O teste default-profiles.test.ts garante que o Administrador consegue conceder todos os outros (exceto Dev)
  * e que os perfis operacionais (Base, Franquia, Expedição) ficam só na sua parte (regra E9).
  */
+/** Chave do tipo de acesso "Supervisor": base escolhida por ele fica exclusiva (E19). */
+export const SUPERVISOR_KEY = "supervisor";
+
 export type DefaultProfile = {
   key: string;
   name: string;
@@ -70,11 +73,21 @@ export const DEFAULT_PROFILES: DefaultProfile[] = [
     permissions: [],
   },
   {
-    // RM / supervisor (decisão do Diogo, 2026-11-24): ele mesmo escolhe em "Minhas bases" as bases e
-    // franquias que acompanha; vê os relatórios e as solicitações delas e aprova os pedidos.
-    key: "rm-supervisor",
-    name: "RM / Supervisor",
-    description: "Escolhe as próprias bases e franquias, vê os relatórios delas e aprova os pedidos.",
+    // RM (decisão do Diogo, 2026-11-24; separado do supervisor a pedido do Eduardo, 2026-11-25): ele mesmo escolhe
+    // em "Minhas bases" as bases e franquias que acompanha; vê os relatórios e as solicitações delas e aprova os pedidos.
+    // A escolha do RM não tira a base de ninguém: todas aparecem para ele.
+    key: "rm",
+    name: "RM",
+    description: "Escolhe as próprias bases e franquias (todas aparecem), vê os relatórios delas e aprova os pedidos.",
+    scope: "BASE",
+    permissions: ["bases.escolher", "solicitacoes.ver", "solicitacoes.aprovar", "relatorios.ver", "franquias.ver", "produtos.precos"],
+  },
+  {
+    // Supervisor: igual ao RM, mas a base que um supervisor salva em "Minhas bases" some para os outros
+    // supervisores (cada base tem um supervisor só). Ver `escolherMinhasBases`.
+    key: SUPERVISOR_KEY,
+    name: "Supervisor",
+    description: "Escolhe as próprias bases e franquias (cada uma só com um supervisor), vê os relatórios delas e aprova os pedidos.",
     scope: "BASE",
     permissions: ["bases.escolher", "solicitacoes.ver", "solicitacoes.aprovar", "relatorios.ver", "franquias.ver", "produtos.precos"],
   },
