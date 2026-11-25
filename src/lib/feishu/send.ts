@@ -59,7 +59,8 @@ export async function deliver(channel: Channel, target: string | null, card: Car
     return sendWebhookCard(card, url, process.env.FEISHU_SHIPPING_WEBHOOK_SECRET);
   }
   // Webhook do grupo de uma regional (link cadastrado na regional). Só aceita o domínio do Feishu/Lark.
-  if (channel === "webhook" && target && FEISHU_WEBHOOK_RE.test(target)) return sendWebhookCard(card, target, undefined);
+  // Segredo "" (e não undefined): undefined cairia no segredo do webhook geral e assinaria o grupo da regional com a chave errada.
+  if (channel === "webhook" && target && FEISHU_WEBHOOK_RE.test(target)) return sendWebhookCard(card, target, "");
   if (channel === "webhook") return sendWebhookCard(card);
   if (!target) throw new FeishuError("Destino vazio.");
   return sendAppCard(channel === "chat" ? "chat_id" : "open_id", target, card);

@@ -5,12 +5,12 @@ import { fmtDateTime } from "@/lib/format";
 import { getT } from "@/i18n/server";
 import { cardTitle, type Card as FeishuCard } from "@/lib/feishu/cards";
 import { messagingConfig } from "@/lib/feishu/send";
-import { BACKOFF_MINUTES } from "@/lib/feishu/outbox";
+import { BACKOFF_MINUTES, origemDoGrupo } from "@/lib/feishu/outbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { retryAction } from "./actions";
-import { TestButtons } from "./test-buttons";
+import { RegionalTestButtons, TestButtons } from "./test-buttons";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -23,10 +23,28 @@ export default async function FeishuPage() {
   await requirePermission("integracoes.gerenciar");
   const t = await getT();
   const cfg = messagingConfig();
-  const [rows, counts] = await Promise.all([
+  const [rows, counts, regionais] = await Promise.all([
     db.feishuOutbox.findMany({ orderBy: { createdAt: "desc" }, take: 40 }),
     db.feishuOutbox.groupBy({ by: ["status"], _count: true }),
+    db.regional.findMany({ where: { active: true }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, feishuStaffChatId: true, feishuShippingChatId: true } }),
   ]);
+  // Para onde cada regional manda hoje (grupo dela ou cai no geral) e rótulo do grupo de cada mensagem da lista.
+  const origens = await Promise.all(
+    regionais.map(async (r) => ({
+      r,
+      insumos: await origemDoGrupo(db, "equipe", r),
+      expedicao: await origemDoGrupo(db, "expedicao", r),
+    })),
+  );
+  const rotuloDestino = (channel: string, target: string | null) => {
+    if (channel === "user") return t("feishu.canal.user");
+    for (const r of regionais) {
+      if (target && target === r.feishuStaffChatId) return t("feishu.destino.insumos", { r: r.code });
+      if (target && target === r.feishuShippingChatId) return t("feishu.destino.expedicao", { r: r.code });
+    }
+    if (channel === "webhook") return target === "expedicao" ? t("feishu.destino.geralExpedicao") : t("feishu.destino.geralEquipe");
+    return target && target === cfg.staffChatId ? t("feishu.destino.geralEquipe") : t("feishu.canal.chat");
+  };
   const count = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
   const equipeVia =
     cfg.app && cfg.staffChatId
@@ -69,6 +87,35 @@ export default async function FeishuPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>{t("feishu.regionaisTitulo")}</CardTitle>
+          <CardDescription>{t("feishu.regionaisDesc")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!origens.length ? (
+            <EmptyState>{t("feishu.regionaisVazio")}</EmptyState>
+          ) : (
+            <ul className="divide-y text-sm">
+              {origens.map(({ r, insumos, expedicao }) => (
+                <li key={r.id} className="space-y-1 py-2">
+                  <p className="font-medium">
+                    {r.code} · {r.name}
+                  </p>
+                  <p className={insumos === "regional" ? "" : "text-warning"}>
+                    {t("feishu.colInsumos")}: {t(`feishu.origem.${insumos}`)}
+                  </p>
+                  <p className={expedicao === "regional" ? "" : "text-warning"}>
+                    {t("feishu.colExpedicao")}: {t(`feishu.origem.${expedicao}`)}
+                  </p>
+                  <RegionalTestButtons regionalId={r.id} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>{t("feishu.ultimas")}</CardTitle>
           <CardDescription>
             {t("feishu.resumo", {
@@ -88,7 +135,7 @@ export default async function FeishuPage() {
                 <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
                   <span className={`w-20 font-medium ${STATUS_CLASS[r.status]}`}>{t(`feishu.status.${r.status}`)}</span>
                   <span className="min-w-0 flex-1 truncate">{cardTitle(r.payload as FeishuCard) ?? r.event}</span>
-                  <span className="text-xs text-muted-foreground">{t.maybe(`feishu.canal.${r.channel}`) ?? r.channel}</span>
+                  <span className="text-xs text-muted-foreground">{rotuloDestino(r.channel, r.target)}</span>
                   <span className="text-xs text-muted-foreground">{fmtDateTime(r.sentAt ?? r.createdAt, t.locale)}</span>
                   {r.status !== "SENT" && (
                     <form action={retryAction.bind(null, r.id)}>

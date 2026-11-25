@@ -65,6 +65,26 @@ export async function destinations(
   return dms();
 }
 
+/**
+ * De onde sai o aviso de uma regional (para a tela do Feishu mostrar, sem adivinhar):
+ * - "regional": o grupo dela; "regionalInsumos": expedição sem grupo próprio, vai no grupo de insumos da regional;
+ * - "geral": a regional não tem esse grupo e cai no grupo geral (por isso duas regionais podem cair no mesmo);
+ * - "semApp": tem o chat_id (oc_...) cadastrado, mas sem o app do Feishu ele não é usado (cai no geral, se houver);
+ * - "nenhum": nada configurado.
+ */
+export type OrigemGrupo = "regional" | "regionalInsumos" | "geral" | "semApp" | "nenhum";
+export async function origemDoGrupo(tx: Tx, route: "equipe" | "expedicao", regional: RegionalChats): Promise<OrigemGrupo> {
+  const cfg = messagingConfig();
+  const valor = route === "expedicao" ? regional?.feishuShippingChatId : regional?.feishuStaffChatId;
+  if (grupoRegional(valor, cfg.app)) return "regional";
+  if (valor) return "semApp"; // cadastrado, mas não usável (chat_id sem o app)
+  const dest = await destinations(tx, route, [], null, regional);
+  if (!dest.length) return "nenhum";
+  const staff = grupoRegional(regional?.feishuStaffChatId, cfg.app);
+  if (route === "expedicao" && staff && dest[0].target === staff.target) return "regionalInsumos";
+  return "geral";
+}
+
 /** Grava na fila de saída dentro da transação do evento: se o evento salvou, o aviso sai (cedo ou tarde). */
 export async function enqueue(tx: Tx, event: string, dest: Destination[], card: Card) {
   // Mesmo destino de grupo para dois públicos (ex.: grupo da equipe) recebe o cartão uma vez só.

@@ -43,3 +43,24 @@ export function TestButtons() {
     </div>
   );
 }
+
+/** Teste do caminho de uma regional: manda o cartão para o grupo que os avisos dela realmente usam. */
+export function RegionalTestButtons({ regionalId }: { regionalId: string }) {
+  const t = useT();
+  const tm = useServerMessage();
+  const [state, setState] = useState<TestState>({});
+  const [pending, start] = useTransition();
+  const run = (alvo: "equipe" | "expedicao") => start(async () => setState(await sendTestAction(alvo, regionalId)));
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <Button size="sm" variant="outline" disabled={pending} onClick={() => run("equipe")}>
+        <Send /> {t("feishu.testarInsumos")}
+      </Button>
+      <Button size="sm" variant="outline" disabled={pending} onClick={() => run("expedicao")}>
+        <Send /> {t("feishu.testarExpedicaoCurto")}
+      </Button>
+      {state.error && <span className="text-xs text-destructive">{tm(state.error)}</span>}
+      {state.message && <span className="text-xs text-success">{tm(state.message)}</span>}
+    </span>
+  );
+}
