@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AppSidebar, AppSidebarSkeleton, AppTopbar } from "@/components/app-header";
+import { AutoAtualizarAguardando } from "@/components/auto-atualizar-aguardando";
 import { DuvidasBalao } from "@/components/duvidas-balao";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -22,6 +23,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       </div>
       <Suspense>
         <DuvidasBalao />
+        <AutoAtualizarAguardando />
       </Suspense>
     </div>
   );

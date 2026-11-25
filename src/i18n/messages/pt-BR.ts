@@ -258,9 +258,20 @@ export const ptBR = {
   },
   usuarios: {
     aprovar: "Aprovar",
-    aguardandoN: "{n} pessoa(s) aguardando liberação.",
-    aguardandoDica: "Entraram pelo Feishu e já estão na base delas; aprove para liberar o pedido de insumos.",
-    verAguardando: "Ver e aprovar",
+    aprovado: "Acesso liberado",
+    abas: { usuarios: "Usuários", pendentes: "Solicitações pendentes" },
+    pendentes: {
+      descricao: "Quem entrou pelo Feishu e espera liberação. Aprove para liberar o pedido de insumos na base que já está vinculada.",
+      vazio: "Nenhuma solicitação pendente.",
+      vazioDica: "Quando alguém entrar pelo Feishu e precisar de liberação, aparece aqui sozinho.",
+      baseFeishu: "Base pelo Feishu",
+      semBase: "Sem base: abra o cadastro",
+      entrouEm: "Entrou em",
+    },
+    status: { todos: "Todas as situações", ativos: "Ativos", inativos: "Inativos" },
+    situacaoAtivo: "Ativo",
+    nuncaEntrou: "Nunca entrou",
+    colSituacao: "Situação",
     cardAprovar: {
       titulo: "Liberar acesso",
       texto: "Entrou pelo Feishu em {data} e está aguardando liberação.",
