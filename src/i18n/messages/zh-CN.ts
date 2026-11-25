@@ -738,6 +738,7 @@ export const zhCN: Messages = {
       imprimir: "打印",
     },
     emAberto: "进行中",
+    todasRegionais: "所有大区",
     todasBases: "所有网点",
     numPh: "编号（例：SOL-000123）",
     incluirFinalizadas: "包含已结束的",
