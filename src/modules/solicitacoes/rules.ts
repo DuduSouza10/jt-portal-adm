@@ -101,3 +101,15 @@ export function planQuantities(linhas: Linha[], informado: Record<string, number
   if (!opts.permitirVazio && [...out.values()].every((q) => q === 0)) throw new Error(`Informe ao menos um item com quantidade maior que zero.`);
   return { quantities: out, partial };
 }
+
+// ------------------------------------------------------------------ Cancelar item (S17)
+
+/** Item digitado fora do cadastro (texto livre); `cancelado` aparece quando quem aprova o tirou do pedido. */
+export type OutroItem = { nome: string; quantity: number; cancelado?: { motivo: string; em: string } };
+
+/** Mensagem de erro se não dá para tirar um item agora, ou null. `ativos` = itens ainda valendo, contando este. */
+export function cancelarItemError(status: SolicitacaoStatus, number: string, ativos: number): string | null {
+  if (status !== "PENDENTE") return `Só dá para tirar um item enquanto ${number} aguarda aprovação.`;
+  if (ativos <= 1) return "Este é o único item que sobrou. Para encerrar o pedido, use Recusar ou Cancelar pedido.";
+  return null;
+}

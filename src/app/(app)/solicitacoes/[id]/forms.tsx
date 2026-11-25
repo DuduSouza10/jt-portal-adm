@@ -186,3 +186,46 @@ export function BotaoForm({
     </form>
   );
 }
+
+/**
+ * S17: tira UM item do pedido (quem aprova, enquanto aguarda aprovação). Começa como link discreto;
+ * abre o motivo (obrigatório) e confirma. Quem pediu é avisado pelo servidor.
+ */
+export function CancelarItemForm({
+  id,
+  action,
+  produtoId,
+  outro,
+}: {
+  id: string;
+  action: (s: FormState, f: FormData) => Promise<FormState>;
+  produtoId?: string;
+  outro?: number;
+}) {
+  const t = useT();
+  const [aberto, setAberto] = useState(false);
+  const { state, pending, formProps } = useKeepForm(action, {});
+  if (!aberto)
+    return (
+      <button type="button" onClick={() => setAberto(true)} className="text-xs font-medium text-destructive underline-offset-4 hover:underline">
+        {t("solicitacoes.detalhe.cancelarItem")}
+      </button>
+    );
+  return (
+    <form {...formProps} className="mt-1 w-full space-y-2">
+      <input type="hidden" name="id" value={id} />
+      {produtoId && <input type="hidden" name="produtoId" value={produtoId} />}
+      {outro !== undefined && <input type="hidden" name="outro" value={outro} />}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input name="reason" required minLength={3} maxLength={300} autoFocus aria-label={t("solicitacoes.detalhe.cancelarItemMotivo")} placeholder={t("solicitacoes.detalhe.cancelarItemMotivo")} className="h-8 min-w-48 flex-1" />
+        <Button type="submit" size="sm" variant="destructive" disabled={pending}>
+          {pending ? t("comum.salvando") : t("solicitacoes.detalhe.cancelarItemConfirmar")}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setAberto(false)}>
+          {t("solicitacoes.detalhe.cancelarItemVoltar")}
+        </Button>
+      </div>
+      <Feedback state={state} />
+    </form>
+  );
+}

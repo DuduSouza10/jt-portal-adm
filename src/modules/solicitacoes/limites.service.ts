@@ -50,7 +50,7 @@ export async function pedidoEmAndamento(tx: Pick<Tx, "solicitacao">, baseId: str
 async function usedInPeriod(tx: Tx, baseId: string, p: Produto, revokedAt: Date | null, now: Date) {
   const r = await tx.solicitacaoItem.aggregate({
     _sum: { requested: true },
-    where: { produtoId: p.id, solicitacao: { baseId, status: { in: COUNTED }, createdAt: { gte: periodStart(now, p.limitBlockDays, revokedAt) } } },
+    where: { produtoId: p.id, cancelledAt: null, solicitacao: { baseId, status: { in: COUNTED }, createdAt: { gte: periodStart(now, p.limitBlockDays, revokedAt) } } },
   });
   return r._sum.requested ?? 0;
 }

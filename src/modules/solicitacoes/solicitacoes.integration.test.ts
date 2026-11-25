@@ -7,7 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/session";
 import { lancarEntrada } from "@/modules/estoque/service";
-import { aprovar, cancelar, criar, enviarLote, iniciarSeparacao, lookupParaEnvio, receber, recusar, separar } from "./service";
+import { aprovar, cancelar, cancelarItem, criar, enviarLote, iniciarSeparacao, lookupParaEnvio, receber, recusar, separar } from "./service";
 
 const tag = `S${Date.now().toString(36).toUpperCase()}`;
 let regionalId: string;
@@ -76,7 +76,8 @@ afterAll(async () => {
   await db.stockReservation.deleteMany({ where: { baseId: { in: baseIds } } });
   await db.stockBalance.deleteMany({ where: { baseId: { in: baseIds } } });
   await db.auditLog.deleteMany({ where: { actorId: userId } });
-  await db.user.deleteMany({ where: { login: tag.toLowerCase() } });
+  await db.auditLog.deleteMany({ where: { actor: { login: { startsWith: tag.toLowerCase() } } } });
+  await db.user.deleteMany({ where: { login: { startsWith: tag.toLowerCase() } } });
   await db.accessProfile.deleteMany({ where: { key: tag.toLowerCase() } });
   await db.produto.deleteMany({ where: { code: { startsWith: tag } } });
   await db.base.deleteMany({ where: { id: { in: baseIds } } });
@@ -176,5 +177,52 @@ describe("fluxo completo", () => {
     await expect(
       criar(basePerfil(), { baseId: outraBase, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p1, quantity: 1 }] }),
     ).rejects.toThrow(/não encontrada/);
+  });
+});
+
+describe("S17: cancelar item do pedido", () => {
+  it("quem aprova tira um item (do cadastro ou digitado) com motivo; quem pediu é avisado; o último não sai; depois de aprovado não", async () => {
+    // Quem pediu é outra pessoa (o aviso não vai para quem fez a ação).
+    const perfil = await db.accessProfile.findUniqueOrThrow({ where: { key: tag.toLowerCase() } });
+    const req = await db.user.create({ data: { name: "Quem pediu", login: `${tag.toLowerCase()}req`, profileId: perfil.id } });
+    const pediu = actor({ id: req.id, scope: "BASE", baseIds: [base], permissions: ["produtos.ver", "solicitacoes.criar", "solicitacoes.ver"] });
+    await db.solicitacao.updateMany({ where: { baseId: base, status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA"] } }, data: { status: "RECEBIDA" } });
+    // Produto próprio e com saldo: os outros testes já gastaram o estoque do p2.
+    const p3 = (await db.produto.create({ data: { code: `${tag}-P3`, name: "Produto 3" } })).id;
+    await lancarEntrada(actor({}), { baseId: almox, document: "NF3", reason: null, itens: [{ produtoId: p3, quantity: 50 }] });
+
+    const s = await criar(pediu, { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p1, quantity: 10 }, { produtoId: p3, quantity: 2 }], outros: [{ nome: "caneta preta", quantity: 3 }] });
+
+    // Item do cadastro.
+    await cancelarItem(gestor(), { id: s.id, produtoId: p3, reason: "sem estoque" });
+    const item = await db.solicitacaoItem.findFirstOrThrow({ where: { solicitacaoId: s.id, produtoId: p3 } });
+    expect(item).toMatchObject({ cancelNote: "sem estoque", approved: 0 });
+    expect(item.cancelledAt).not.toBeNull();
+    // Item digitado.
+    await cancelarItem(gestor(), { id: s.id, outro: 0, reason: "não compramos" });
+    const outros = (await db.solicitacao.findUniqueOrThrow({ where: { id: s.id } })).outrosItens as { nome: string; cancelado?: { motivo: string } }[];
+    expect(outros[0].cancelado?.motivo).toBe("não compramos");
+
+    // Linha do tempo e aviso para quem pediu (e só para quem pediu, não para quem cancelou).
+    const eventos = await db.solicitacaoEvento.findMany({ where: { solicitacaoId: s.id, type: "ITEM_CANCELADO" } });
+    expect(eventos).toHaveLength(2);
+    expect(eventos.map((e) => e.note).join("|")).toContain("sem estoque");
+    const avisos = await db.notification.findMany({ where: { refType: "solicitacao", refId: s.id, title: { contains: "item cancelado" } } });
+    expect(avisos.map((a) => a.userId)).toEqual([req.id, req.id]);
+    expect(avisos.map((a) => a.body).join("|")).toContain("Motivo: sem estoque");
+
+    // Repetir, tirar o único que sobrou, e quem não aprova.
+    await expect(cancelarItem(gestor(), { id: s.id, produtoId: p3, reason: "de novo" })).rejects.toThrow(/já foi cancelado/);
+    await expect(cancelarItem(gestor(), { id: s.id, produtoId: p1, reason: "último" })).rejects.toThrow(/único item/);
+    await expect(cancelarItem(pediu, { id: s.id, produtoId: p1, reason: "eu mesmo" })).rejects.toThrow(/permissão/);
+
+    // Aprovar: só o item que sobrou é aprovado e reservado; o cancelado fica com 0.
+    const antes = await bal(p3);
+    await aprovar(gestor(), { id: s.id, almoxarifadoId: almox, quantidades: {}, note: null });
+    const itens = await db.solicitacaoItem.findMany({ where: { solicitacaoId: s.id } });
+    expect(Object.fromEntries(itens.map((i) => [i.produtoId, i.approved]))).toEqual({ [p1]: 10, [p3]: 0 });
+    expect((await bal(p3)).reserved).toBe(antes.reserved);
+    // Depois de aprovado não dá mais para tirar item.
+    await expect(cancelarItem(gestor(), { id: s.id, produtoId: p1, reason: "tarde" })).rejects.toThrow(/aguarda aprovação/);
   });
 });

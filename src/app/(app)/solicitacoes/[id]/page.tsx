@@ -7,7 +7,7 @@ import { fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getT } from "@/i18n/server";
 import { prioridadeText, statusText } from "@/i18n/labels";
-import { ETAPAS, formatNumber, transitionError, type Acao } from "@/modules/solicitacoes/rules";
+import { ETAPAS, formatNumber, transitionError, type Acao, type OutroItem } from "@/modules/solicitacoes/rules";
 import { almoxarifadosAtivos, disponivelPorAlmox, getSolicitacao } from "@/modules/solicitacoes/queries";
 import { allowed, canSee } from "@/modules/solicitacoes/service";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,13 +19,14 @@ import { PriorityBadge, StatusBadge } from "../badges";
 import {
   aprovarAction,
   cancelarAction,
+  cancelarItemAction,
   comentarAction,
   iniciarSeparacaoAction,
   receberAction,
   recusarAction,
   separarAction,
 } from "../actions";
-import { BotaoForm, QuantidadesForm, TextoForm } from "./forms";
+import { BotaoForm, CancelarItemForm, QuantidadesForm, TextoForm } from "./forms";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -43,11 +44,15 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
   const number = formatNumber(s.number);
   const pode = (a: Acao) => allowed(user, a, s) && !transitionError(a, s.status, number);
   // Itens digitados que não estão no cadastro (texto livre).
-  const outros = Array.isArray(s.outrosItens) ? (s.outrosItens as { nome: string; quantity: number }[]) : [];
+  const outros = Array.isArray(s.outrosItens) ? (s.outrosItens as OutroItem[]) : [];
   const itensAprovados = s.itens.filter((i) => (i.approved ?? 0) > 0);
+  // S17: itens cancelados ficam à mostra (riscados, com o motivo) mas não entram na aprovação.
+  const itensValem = s.itens.filter((i) => !i.cancelledAt);
+  const valem = itensValem.length + outros.filter((o) => !o.cancelado).length;
+  const podeTirarItem = pode("aprovar") && valem > 1;
 
   const [almoxarifados, disponivel] = pode("aprovar")
-    ? await Promise.all([almoxarifadosAtivos(), disponivelPorAlmox(s.itens.map((i) => i.produtoId))])
+    ? await Promise.all([almoxarifadosAtivos(), disponivelPorAlmox(s.itens.filter((i) => !i.cancelledAt).map((i) => i.produtoId))])
     : [[], {}];
   // Almoxarifado da mesma regional da base vem primeiro e já escolhido.
   const almoxOrdenados = [...almoxarifados].sort((a, b) => Number(b.regionalId === s.base.regionalId) - Number(a.regionalId === s.base.regionalId));
@@ -140,12 +145,20 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                 {s.itens.map((i) => (
                   <TableRow key={i.id}>
                     <TableCell>
-                      <span className="font-medium">{i.produto.code}</span> {i.produto.name}
-                      <span className="ml-1 text-xs text-muted-foreground">({i.produto.unit})</span>
+                      <div className={cn(i.cancelledAt && "text-muted-foreground line-through")}>
+                        <span className="font-medium">{i.produto.code}</span> {i.produto.name}
+                        <span className="ml-1 text-xs text-muted-foreground">({i.produto.unit})</span>
+                      </div>
+                      {i.cancelledAt && (
+                        <p className="text-xs text-destructive">
+                          {t("solicitacoes.detalhe.itemCancelado")}: {i.cancelNote}
+                        </p>
+                      )}
+                      {podeTirarItem && !i.cancelledAt && <CancelarItemForm id={s.id} action={cancelarItemAction} produtoId={i.produtoId} />}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{i.requested}</TableCell>
-                    <TableCell className="text-right tabular-nums">{i.approved ?? "—"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{i.separated ?? "—"}</TableCell>
+                    <TableCell className={cn("text-right tabular-nums", i.cancelledAt && "text-muted-foreground line-through")}>{i.requested}</TableCell>
+                    <TableCell className="text-right tabular-nums">{i.cancelledAt ? "—" : (i.approved ?? "—")}</TableCell>
+                    <TableCell className="text-right tabular-nums">{i.cancelledAt ? "—" : (i.separated ?? "—")}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -161,9 +174,15 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
               <CardContent>
                 <ul className="divide-y text-sm">
                   {outros.map((o, i) => (
-                    <li key={i} className="flex items-center justify-between gap-3 py-1.5">
-                      <span className="min-w-0 truncate font-medium">{o.nome}</span>
-                      <span className="shrink-0 tabular-nums">{o.quantity}</span>
+                    <li key={i} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-1.5">
+                      <span className={cn("min-w-0 truncate font-medium", o.cancelado && "text-muted-foreground line-through")}>{o.nome}</span>
+                      <span className={cn("shrink-0 tabular-nums", o.cancelado && "text-muted-foreground line-through")}>{o.quantity}</span>
+                      {o.cancelado && (
+                        <p className="w-full text-xs text-destructive">
+                          {t("solicitacoes.detalhe.itemCancelado")}: {o.cancelado.motivo}
+                        </p>
+                      )}
+                      {podeTirarItem && !o.cancelado && <CancelarItemForm id={s.id} action={cancelarItemAction} outro={i} />}
                     </li>
                   ))}
                 </ul>
@@ -246,7 +265,13 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                   <li key={e.id} className="border-l-2 pl-3">
                     <p>
                       <span className="font-medium">
-                        {e.type === "CRIADA" ? t("solicitacoes.detalhe.criada") : e.type === "COMENTARIO" ? t("solicitacoes.detalhe.comentario") : statusText(t, e.toStatus!)}
+                        {e.type === "CRIADA"
+                          ? t("solicitacoes.detalhe.criada")
+                          : e.type === "COMENTARIO"
+                            ? t("solicitacoes.detalhe.comentario")
+                            : e.type === "ITEM_CANCELADO"
+                              ? t("solicitacoes.detalhe.itemCanceladoEvento")
+                              : statusText(t, e.toStatus!)}
                       </span>
                       <span className="text-muted-foreground">
                         {" "}
@@ -273,7 +298,7 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                   action={aprovarAction}
                   submitLabel={t("solicitacoes.detalhe.aprovarReservar")}
                   colLabel={t("solicitacoes.detalhe.aprovar")}
-                  itens={s.itens.map((i) => ({ produtoId: i.produtoId, code: i.produto.code, name: i.produto.name, unit: i.produto.unit, max: i.requested }))}
+                  itens={itensValem.map((i) => ({ produtoId: i.produtoId, code: i.produto.code, name: i.produto.name, unit: i.produto.unit, max: i.requested }))}
                   almoxarifados={almoxOrdenados}
                   almoxDefault={almoxDefault}
                   disponivel={disponivel}

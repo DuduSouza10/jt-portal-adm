@@ -76,3 +76,14 @@ export const envioSchema = z.object({
   shippingNotes: optionalText,
 });
 export type EnvioInput = z.infer<typeof envioSchema>;
+
+/** S17: tira um item do pedido. `produtoId` para item do cadastro; `outro` (posição na lista) para item digitado. */
+export const cancelarItemSchema = z
+  .object({
+    id: z.string().min(1),
+    produtoId: z.string().min(1).optional(),
+    outro: z.preprocess((v) => (v === "" || v === undefined ? undefined : v), z.coerce.number().int().min(0).optional()),
+    reason: z.string().trim().min(3, "Informe o motivo.").max(300),
+  })
+  .refine((v) => (v.produtoId ? 1 : 0) + (v.outro !== undefined ? 1 : 0) === 1, { message: "Item inválido.", path: ["produtoId"] });
+export type CancelarItemInput = z.infer<typeof cancelarItemSchema>;

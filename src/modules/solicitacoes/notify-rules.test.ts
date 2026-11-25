@@ -57,3 +57,12 @@ describe("quem é avisado", () => {
     expect(a.corpo.length).toBe(300);
   });
 });
+
+describe("item cancelado (S17)", () => {
+  it("avisa só a base, com o item e o motivo", () => {
+    const a = avisos({ tipo: "itemCancelado", item: "caneta preta (10)", motivo: "não temos" }, ctx());
+    expect(publicos(a)).toEqual(["base"]);
+    expect(a[0]).toMatchObject({ titulo: "SOL-000001: item cancelado", link: "pedido" });
+    expect(a[0].corpo).toBe("caneta preta (10). Motivo: não temos");
+  });
+});
