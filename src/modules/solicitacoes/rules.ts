@@ -113,3 +113,28 @@ export function cancelarItemError(status: SolicitacaoStatus, number: string, ati
   if (ativos <= 1) return "Este é o único item que sobrou. Para encerrar o pedido, use Recusar ou Cancelar pedido.";
   return null;
 }
+
+// ------------------------------------------------------------------ Abas da lista
+
+export type AbaKey = "abertas" | "PENDENTE" | "APROVADA" | "EM_SEPARACAO" | "SEPARADA" | "ENVIADA" | "RECEBIDA" | "ENCERRADAS";
+
+/** Abas da lista de solicitações, na ordem do fluxo. A primeira é a padrão. */
+export const ABAS: { key: AbaKey; statuses: SolicitacaoStatus[]; final: boolean }[] = [
+  { key: "abertas", statuses: ABERTOS, final: false },
+  { key: "PENDENTE", statuses: ["PENDENTE"], final: false },
+  { key: "APROVADA", statuses: ["APROVADA"], final: false },
+  { key: "EM_SEPARACAO", statuses: ["EM_SEPARACAO"], final: false },
+  { key: "SEPARADA", statuses: ["SEPARADA"], final: false },
+  { key: "ENVIADA", statuses: ["ENVIADA"], final: false },
+  { key: "RECEBIDA", statuses: ["RECEBIDA"], final: true },
+  { key: "ENCERRADAS", statuses: ["RECUSADA", "CANCELADA"], final: true },
+];
+
+/** Aba pedida na URL (?status=...). Vale um status ou "ENCERRADAS"; qualquer outra coisa é "abertas". */
+export function abaDe(param: string | undefined) {
+  return ABAS.find((a) => a.key === param && a.key !== "abertas") ?? ABAS[0]!;
+}
+
+/** Soma da aba a partir da contagem por status. */
+export const totalDaAba = (aba: { statuses: SolicitacaoStatus[] }, porStatus: Partial<Record<SolicitacaoStatus, number>>) =>
+  aba.statuses.reduce((n, st) => n + (porStatus[st] ?? 0), 0);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cancelarItemError, formatNumber, parseScan, planQuantities, transitionError } from "./rules";
+import { abaDe, ABAS, cancelarItemError, formatNumber, parseScan, planQuantities, totalDaAba, transitionError } from "./rules";
 
 describe("transitionError (S4)", () => {
   it("segue o fluxo", () => {
@@ -65,5 +65,27 @@ describe("cancelarItemError (S17)", () => {
   });
   it("não deixa tirar o único item que sobrou", () => {
     expect(cancelarItemError("PENDENTE", "SOL-000001", 1)).toMatch(/único item/);
+  });
+});
+
+describe("abas da lista", () => {
+  it("?status vale como aba; o que não é aba cai em 'abertas'", () => {
+    expect(abaDe(undefined).key).toBe("abertas");
+    expect(abaDe("abertas").key).toBe("abertas");
+    expect(abaDe("PENDENTE").key).toBe("PENDENTE");
+    expect(abaDe("ENCERRADAS").statuses).toEqual(["RECUSADA", "CANCELADA"]);
+    expect(abaDe("RECUSADA").key).toBe("abertas");
+    expect(abaDe("lixo").key).toBe("abertas");
+  });
+  it("cada status aparece numa aba só (além de 'abertas'), e nenhum fica de fora", () => {
+    const todos = ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA", "RECEBIDA", "RECUSADA", "CANCELADA"];
+    const uma = ABAS.filter((a) => a.key !== "abertas").flatMap((a) => a.statuses);
+    expect([...uma].sort()).toEqual([...todos].sort());
+  });
+  it("totalDaAba soma só os status da aba", () => {
+    const n = { PENDENTE: 3, APROVADA: 2, ENVIADA: 4, RECUSADA: 1, CANCELADA: 5, RECEBIDA: 9 };
+    expect(totalDaAba(abaDe("abertas"), n)).toBe(9);
+    expect(totalDaAba(abaDe("ENCERRADAS"), n)).toBe(6);
+    expect(totalDaAba(abaDe("EM_SEPARACAO"), n)).toBe(0);
   });
 });

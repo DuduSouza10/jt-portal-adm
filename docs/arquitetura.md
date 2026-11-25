@@ -227,6 +227,7 @@ Trazido do sistema antigo de insumos. Regras S7 e S8 em `regras-de-negocio.md`.
 | 2026-11-12 | Senha temporária com bcrypt custo 8 (a escolhida pela pessoa segue com 11) | Senha aleatória de ~69 bits não depende do custo; importar em massa ficou 5× mais rápido |
 | 2026-11-13 | Avisos iguais ao sistema antigo (sino + Feishu com fila de saída), destinatários por permissão e alcance | Já validado na operação; permissão/alcance substituem os cargos fixos do sistema antigo |
 | 2026-11-13 | Horário comercial e prazos dos lembretes como constantes no código (sem tela de configuração) | Menos coisa para manter agora; dá para virar configuração depois |
+| 2026-11-25 | Abas da lista de solicitações são links (`?status=<aba>`) com contagem por `groupBy` de status, e `AbasNav` rola até a aba ativa | Cada aba tem URL própria (compartilhável, funciona com os atalhos da home); uma consulta só conta todas as abas |
 | 2026-11-12 | Construir do zero usando os 3 projetos como referência | Evita herdar o monolito Flask e o escopo financeiro do sistema-estoque |
 | 2026-11-12 | Model `Produto` mínimo criado pelo Diogo; o resto é do Eduardo (Issue #3) | Estoque precisava de produto; Eduardo acrescenta campos em migrations novas |
 | 2026-11-12 | Reserva na aprovação, baixa no envio (Issue #4) | Físico sempre certo e duas aprovações não prometem o mesmo item |

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { AbasNav } from "@/components/abas-nav";
 
 export type Aba = {
   href: string;
@@ -15,15 +16,15 @@ export type Aba = {
 /** Abas de uma tela (links, cada uma com a sua URL): sublinhado na ativa, número opcional ao lado. */
 export function Abas({ items, label }: { items: Aba[]; label?: string }) {
   return (
-    <nav aria-label={label} className="flex gap-1 overflow-x-auto border-b">
+    <AbasNav label={label}>
       {items.map((i) => (
         <Link
           key={i.href}
           href={i.href}
           aria-current={i.ativa ? "page" : undefined}
           className={cn(
-            "relative flex h-10 items-center gap-2 px-3 font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
-            i.ativa && "text-foreground after:absolute after:inset-x-2.5 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
+            "relative flex h-10 items-center gap-1.5 px-2.5 font-medium whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground",
+            i.ativa && "text-foreground after:absolute after:inset-x-2 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
           )}
         >
           {i.icon && <i.icon className="size-4" aria-hidden />}
@@ -40,6 +41,6 @@ export function Abas({ items, label }: { items: Aba[]; label?: string }) {
           )}
         </Link>
       ))}
-    </nav>
+    </AbasNav>
   );
 }
