@@ -56,7 +56,22 @@ export function CadastroForm({ regionais, franquias }: { regionais: Regional[]; 
       </Field>
       <Field label={t("cadastro.franquia")} htmlFor="baseId" hint={regionalId ? undefined : t("cadastro.franquiaDica")}>
         {nova ? (
-          <Input id="baseId" name="novaFranquia" required minLength={2} maxLength={60} placeholder={t("cadastro.novaFranquiaPh")} className={campo} />
+          <Input
+            id="baseId"
+            name="novaFranquia"
+            required
+            minLength={2}
+            maxLength={60}
+            placeholder={t("cadastro.novaFranquiaPh")}
+            autoCapitalize="characters"
+            onChange={(e) => {
+              // Sempre em maiúsculo, como está no Feishu (ex.: F BDB SP).
+              const pos = e.target.selectionStart;
+              e.target.value = e.target.value.toUpperCase();
+              e.target.setSelectionRange(pos, pos);
+            }}
+            className={`${campo} uppercase placeholder:normal-case`}
+          />
         ) : (
           <SelectBox
             id="baseId"
