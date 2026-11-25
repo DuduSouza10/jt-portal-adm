@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { getT } from "@/i18n/server";
@@ -19,10 +20,14 @@ export default async function NovaSolicitacaoPage() {
   const user = await requirePermission("solicitacoes.criar");
   const t = await getT();
   const [lista, produtos, cfg, disponivel, almoxes] = await Promise.all([basesParaPedir(user), produtosParaPedir(), getPedidoSettings(), disponivelPorRegional(), almoxarifadosPorRegional()]);
+  // S13: insumos são só das bases; franquia pede lacres (em Solicitar lacres).
+  const soFranquia = lista.length > 0 && lista.every((b) => b.type === "FRANQUIA");
+  if (soFranquia) redirect("/solicitacoes/lacres");
+  const listaBases = lista.filter((b) => b.type !== "FRANQUIA");
   // S1: mostra antes de montar o pedido se a base está no ciclo (quem aprova não entra no ciclo).
   const isento = isExempt(user);
   const bases = await Promise.all(
-    lista.map(async (b) => {
+    listaBases.map(async (b) => {
       const c = !isento && cfg.cicloAtivo && b.type === "BASE" ? await activeCycle(db, b.id) : null;
       return { ...b, pedePessoas: b.type === "BASE" && !isento, cicloAte: c ? fmtDateTime(c.blockedUntil, t.locale) : null, emAndamento: isento ? null : await pedidoEmAndamento(db, b.id) };
     }),

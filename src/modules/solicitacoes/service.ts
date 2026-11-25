@@ -123,6 +123,8 @@ export async function criar(user: CurrentUser, dados: Omit<CriarInput, "outros">
     if (produtos.length !== ids.length) throw new DomainError("Produto não encontrado.");
     const inativo = produtos.find((p) => !p.active);
     if (inativo) throw new DomainError(`${inativo.code} não está mais disponível para pedido.`);
+    // S13 (decisão do Diogo, 2026-11-25): franquia só pede lacres; insumos são só das bases.
+    if (base.type === "FRANQUIA" && produtos.some((p) => !p.lacre)) throw new DomainError("Franquia só pode pedir lacres. Use Solicitar lacres.");
     // S11: só pede o que o almoxarifado da regional da base tem disponível agora.
     const disp = await tx.stockBalance.findMany({
       where: { produtoId: { in: ids }, base: { type: "ALMOXARIFADO", active: true, regionalId: base.regionalId } },
