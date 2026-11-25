@@ -20,7 +20,7 @@ export const cadastroSchema = z
     novaFranquia: z
       .string()
       .optional()
-      .transform((v) => v?.trim().replace(/\s+/g, " ") || undefined)
+      .transform((v) => v?.trim().replace(/\s+/g, " ").toUpperCase() || undefined)
       .refine((v) => !v || (v.length >= 2 && v.length <= 60), "Nome da franquia: de 2 a 60 caracteres."),
     login: z
       .string()
