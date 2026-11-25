@@ -14,7 +14,7 @@ import { alternar, alternarVarios, BarraAcao, Ferramentas, ListaPorRegional } fr
 
 /**
  * Aba "Minhas bases": o que a pessoa tem hoje. Marcar e liberar tira da lista dela; para o supervisor, a base volta
- * a ficar disponível para os outros (E20). Salvar o que sobrou é o mesmo `escolherMinhasBases`.
+ * a ficar disponível para os outros (E23). Salvar o que sobrou é o mesmo `escolherMinhasBases`.
  */
 export function MinhasBasesLista({ regionais, exclusivo }: { regionais: RegionalItem[]; exclusivo: boolean }) {
   const t = useT();

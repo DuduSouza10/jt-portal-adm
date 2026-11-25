@@ -11,9 +11,9 @@ type Tx = Prisma.TransactionClient;
 
 /**
  * Usuários ativos que têm a permissão (explícita: o curinga do Dev não entra, para o Dev não receber tudo)
- * e cujo alcance cobre a base: GLOBAL, ou vinculado à base, ou à regional dela.
+ * e cujo alcance cobre a base: GLOBAL, ou vinculado à base, ou à regional dela (e, na expedição/separação, a uma base da regional).
  */
-async function usuariosCom(tx: Tx, permission: Permission, base: { id: string; regionalId: string; type?: string }) {
+async function usuariosCom(tx: Tx, permission: Permission, base: { id: string; regionalId: string; type?: string }, { viaBaseDaRegional = false } = {}) {
   const rows = await tx.user.findMany({
     where: {
       active: true,
@@ -23,6 +23,8 @@ async function usuariosCom(tx: Tx, permission: Permission, base: { id: string; r
         { bases: { some: { baseId: base.id } } },
         { profile: { scope: "REGIONAL" }, regionals: { some: { regionalId: base.regionalId } } },
         ...(base.type === "FRANQUIA" ? [{ profile: { scope: "FRANQUIAS" as const } }] : []),
+        // Expedição/separação são da regional (E22): quem tem uma base vinculada na regional do almoxarifado também recebe.
+        ...(viaBaseDaRegional ? [{ bases: { some: { base: { regionalId: base.regionalId } } } }] : []),
       ],
     },
     select: { id: true },
@@ -55,9 +57,9 @@ async function publico(tx: Tx, p: Publico, s: Solic): Promise<string[]> {
       return [s.createdById, ...rows.map((r) => r.id)];
     }
     case "separacao":
-      return s.almoxarifado ? usuariosCom(tx, "expedicao.separar", s.almoxarifado) : [];
+      return s.almoxarifado ? usuariosCom(tx, "expedicao.separar", s.almoxarifado, { viaBaseDaRegional: true }) : [];
     case "expedicao":
-      return s.almoxarifado ? usuariosCom(tx, "expedicao.enviar", s.almoxarifado) : [];
+      return s.almoxarifado ? usuariosCom(tx, "expedicao.enviar", s.almoxarifado, { viaBaseDaRegional: true }) : [];
   }
 }
 

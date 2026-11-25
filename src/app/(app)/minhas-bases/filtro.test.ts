@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agruparPorRegional, filtrarRegionais, filtrarSupervisores, podarSelecao, type RegionalItem, type SupervisorItem } from "./filtro";
+import { agruparPorRegional, agruparSupervisoresPorRegional, filtrarRegionais, filtrarSupervisores, nomeBonito, podarSelecao, type RegionalItem, type SupervisorItem } from "./filtro";
 
 const regionais: RegionalItem[] = [
   { id: "r1", code: "MG", name: "Minas Gerais", bases: [
@@ -54,5 +54,34 @@ describe("agruparPorRegional", () => {
   it("agrupa e ordena pelo código da regional", () => {
     const g = agruparPorRegional([{ regionalCode: "SP", n: 1 }, { regionalCode: "MG", n: 2 }, { regionalCode: "SP", n: 3 }]);
     expect(g.map((x) => [x.regionalCode, x.bases.length])).toEqual([["MG", 1], ["SP", 2]]);
+  });
+});
+
+describe("nomeBonito", () => {
+  it("nome em caixa alta vira Nome Sobrenome, com da/de/do em minúsculas", () => {
+    expect(nomeBonito("AMANDA BRUNA DE ALMEIDA")).toBe("Amanda Bruna de Almeida");
+    expect(nomeBonito("  FABIO AGEFLIO MARQUES DOS SANTOS ")).toBe("Fabio Ageflio Marques dos Santos");
+  });
+  it("nome já bem escrito não muda", () => {
+    expect(nomeBonito("Icaro Lopes de Aquino")).toBe("Icaro Lopes de Aquino");
+  });
+});
+
+describe("agruparSupervisoresPorRegional", () => {
+  const b = (id: string, regionalCode: string) => ({ id, code: id, name: id, type: "BASE", regionalCode });
+  const lista: SupervisorItem[] = [
+    { id: "1", name: "ZULEIDE", bases: [b("a", "SPN")] },
+    { id: "2", name: "ANA", bases: [b("c", "MG"), b("d", "SPN")] },
+    { id: "3", name: "BRUNO", bases: [b("e", "MG")] },
+    { id: "4", name: "CARLA", bases: [] },
+  ];
+  it("separa por regional, com cada supervisor só com as bases daquela regional", () => {
+    const { grupos, semBases } = agruparSupervisoresPorRegional(lista);
+    expect(grupos.map((g) => [g.regionalCode, g.supervisores.map((s) => s.name), g.totalBases])).toEqual([
+      ["MG", ["ANA", "BRUNO"], 2],
+      ["SPN", ["ANA", "ZULEIDE"], 2],
+    ]);
+    expect(grupos[0]!.supervisores[0]!.bases.map((x) => x.id)).toEqual(["c"]);
+    expect(semBases.map((s) => s.name)).toEqual(["CARLA"]);
   });
 });

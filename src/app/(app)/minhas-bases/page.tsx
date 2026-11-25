@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const ABAS = ["escolher", "minhas", "supervisores"] as const;
 
 /**
- * Minhas bases (E17, E19, E20): o RM/supervisor escolhe as bases e franquias que acompanha, vê e libera as que já tem,
+ * Minhas bases (E17, E19, E23): o RM/supervisor escolhe as bases e franquias que acompanha, vê e libera as que já tem,
  * e vê quais supervisores detêm quais bases. A tela se atualiza sozinha (outro supervisor pega ou libera uma base).
  */
 export default async function MinhasBasesPage(props: PageProps<"/minhas-bases">) {
@@ -77,6 +77,7 @@ export default async function MinhasBasesPage(props: PageProps<"/minhas-bases">)
           supervisores={supervisores}
           meuId={user.id}
           totais={{ ocupadas: comSupervisor, livres: totalBases - comSupervisor }}
+          nomesRegionais={Object.fromEntries(regionais.map((r) => [r.code, r.name]))}
         />
       )}
     </>

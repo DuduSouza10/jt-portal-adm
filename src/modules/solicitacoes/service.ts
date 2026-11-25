@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
-import { can, canAccessBase, canAny } from "@/lib/permissions/check";
+import { can, canAccessAlmoxarifado, canAccessBase, canAny } from "@/lib/permissions/check";
 import { baixarReserva, entradaFranquia, liberarReserva, reservar, STOCK_TX } from "@/modules/estoque/api";
 import { cancelarItemError, formatNumber, planQuantities, TO, transitionError, type Acao, type OutroItem } from "./rules";
 import type { AprovarInput, CancelarItemInput, CriarInput, EnvioInput, SepararInput } from "./schemas";
@@ -25,13 +25,13 @@ type Loaded = Prisma.SolicitacaoGetPayload<{ include: typeof withBases }>;
 /** Pode ver a solicitação? Pela base (quem pede/aprova) ou pelo almoxarifado que atende (separação/expedição). */
 export function canSee(user: CurrentUser, s: { base: BaseRef; almoxarifado: BaseRef | null }) {
   if (can(user, "solicitacoes.ver") && canAccessBase(user, s.base)) return true;
-  return !!s.almoxarifado && canAny(user, ["expedicao.separar", "expedicao.enviar"]) && canAccessBase(user, s.almoxarifado);
+  return !!s.almoxarifado && canAny(user, ["expedicao.separar", "expedicao.enviar"]) && canAccessAlmoxarifado(user, s.almoxarifado);
 }
 
 /** Quem pode executar cada ação (além de o status permitir). */
 export function allowed(user: CurrentUser, acao: Acao, s: { base: BaseRef; almoxarifado: BaseRef | null; createdById: string }) {
   const naBase = canAccessBase(user, s.base);
-  const noAlmox = !!s.almoxarifado && canAccessBase(user, s.almoxarifado);
+  const noAlmox = !!s.almoxarifado && canAccessAlmoxarifado(user, s.almoxarifado);
   switch (acao) {
     case "aprovar":
     case "recusar":
@@ -327,7 +327,7 @@ export async function lookupParaEnvio(user: CurrentUser, code: { id: string } | 
     include: { base: true, almoxarifado: true },
   });
   if (!s || !canSee(user, s)) throw new DomainError("Pedido não encontrado.");
-  if (!s.almoxarifado || !canAccessBase(user, s.almoxarifado)) throw new DomainError(`${formatNumber(s.number)} é de outro almoxarifado.`);
+  if (!s.almoxarifado || !canAccessAlmoxarifado(user, s.almoxarifado)) throw new DomainError(`${formatNumber(s.number)} é de outro almoxarifado.`);
   const err = transitionError("enviar", s.status, formatNumber(s.number));
   if (err) throw new DomainError(err);
   return s.id;

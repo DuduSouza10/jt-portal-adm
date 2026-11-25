@@ -65,7 +65,7 @@ describe("minhas bases do supervisor e do RM", () => {
     expect((await basesDeOutrosSupervisores((sup2 as { id: string }).id)).has(baseA)).toBe(false);
   });
 
-  it("liberar: salvar sem nenhuma base solta as do supervisor para os outros (E20)", async () => {
+  it("liberar: salvar sem nenhuma base solta as do supervisor para os outros (E23)", async () => {
     await escolherMinhasBases(sup1, [baseA]);
     expect((await basesDeOutrosSupervisores((sup2 as { id: string }).id)).has(baseA)).toBe(true);
     await escolherMinhasBases(sup1, []);

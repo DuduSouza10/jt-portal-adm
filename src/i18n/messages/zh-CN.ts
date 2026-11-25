@@ -146,8 +146,7 @@ export const zhCN: Messages = {
       semBases: "暂无网点",
       voce: "你",
       nBases: "{n} 个网点",
-      verTodas: "查看全部（{n}）",
-      verMenos: "收起",
+      nRegionais: "{n} 个区域",
     },
   },
   duvidas: {
