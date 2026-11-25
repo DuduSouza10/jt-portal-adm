@@ -15,6 +15,25 @@ export function feishuConfig() {
   };
 }
 
+/**
+ * App/bot da J&T que manda as mensagens (grupos e pessoas). É OUTRO app do Feishu, diferente do app do login
+ * ("Entrar com Feishu"): FEISHU_BOT_APP_ID / FEISHU_BOT_APP_SECRET. O bot precisa estar nos grupos e ter as permissões
+ * de mensagem (im:message:send_as_bot e im:message:update).
+ */
+export function botConfig() {
+  return {
+    baseUrl: feishuConfig().baseUrl,
+    appId: process.env.FEISHU_BOT_APP_ID || "",
+    appSecret: process.env.FEISHU_BOT_APP_SECRET || "",
+    staffChatId: process.env.FEISHU_STAFF_CHAT_ID || "",
+  };
+}
+
+export function isBotEnabled() {
+  const c = botConfig();
+  return !!(c.appId && c.appSecret);
+}
+
 /** O botão "Entrar com Feishu" só aparece com o app configurado. */
 export function isFeishuLoginEnabled() {
   const c = feishuConfig();

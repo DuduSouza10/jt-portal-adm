@@ -29,8 +29,8 @@ export default async function StructurePage() {
     code: r.code,
     name: r.name,
     active: r.active,
-    hasStaffChat: !!r.feishuStaffChatId,
-    hasShippingChat: !!r.feishuShippingChatId,
+    hasStaffChat: !!r.feishuStaffChatId?.startsWith("oc_"),
+    hasShippingChat: !!r.feishuShippingChatId?.startsWith("oc_"),
     bases: r.bases.map((b) => ({ id: b.id, code: b.code, name: b.name, type: b.type, city: b.city, state: b.state, active: b.active, hasChat: !!b.feishuChatId })),
   }));
 
