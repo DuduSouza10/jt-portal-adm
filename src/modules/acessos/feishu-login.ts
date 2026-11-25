@@ -14,9 +14,9 @@ type Tx = Prisma.TransactionClient;
 /**
  * Login pelo Feishu (E11): acha ou cria o usuário e a base dele, pela cadeia de departamentos.
  *
- * 1. Já tem usuário → entra. Se ele for de base (alcance BASE), ganha também a base do departamento atual
- *    (quem mudou de unidade passa a ver a nova; a base antiga não é tirada, o admin tira se quiser).
- *    Achado pelo open_id: qualquer conta. Achado pela matrícula ou pelo e-mail CORPORATIVO: só conta de base
+ * 1. Já tem usuário → entra. As bases dele NÃO são mexidas pelo Feishu: o que o Dev/admin colocou em Usuários
+ *    é o que vale (decisão do Eduardo, 2026-11-25). A base do departamento só entra para quem ainda não tem
+ *    nenhuma base (conta de base criada sem base, ou que só ganhou o Feishu agora). Achado pelo open_id: qualquer conta. Achado pela matrícula ou pelo e-mail CORPORATIVO: só conta de base
  *    (alcance BASE). Conta da equipe (admin, gestor, almoxarifado…) só entra pelo Feishu depois que o admin
  *    preenche o open_id no cadastro dela: assim ninguém entra na conta de um admin trocando o e-mail no Feishu.
  * 2. Não tem usuário e está numa unidade → cria já na base dela. Se ninguém da base usa o portal ainda, entra
@@ -131,8 +131,9 @@ function entrar(profile: FeishuProfile, deteccoes: Deteccao[], onde: string): Pr
           tx,
         );
       }
-      // Só quem é de base ganha a base do departamento; a equipe (regional/global) não é mexida.
-      if (isOwnScope(existing.profile.scope) && bases.length) {
+      // Só quem é de base E ainda não tem nenhuma base ganha a do departamento. Quem já tem base (a que o Dev
+      // colocou ou a de antes) fica como está: o Feishu não troca nem acrescenta. A equipe não é mexida.
+      if (isOwnScope(existing.profile.scope) && bases.length && (await tx.userBase.count({ where: { userId: existing.id } })) === 0) {
         await tx.userBase.createMany({ data: bases.map((b) => ({ userId: existing.id, baseId: b.id })), skipDuplicates: true });
       }
       await audit({ actorId: existing.id, action: "usuario.feishu", entity: "User", entityId: existing.id, summary: `${existing.login} entrou pelo Feishu` }, tx);
