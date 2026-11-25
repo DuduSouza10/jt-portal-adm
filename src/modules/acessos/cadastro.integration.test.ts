@@ -12,10 +12,11 @@ let fr2: string;
 let baseComum: string;
 let franquiaInativa: string;
 
-const dados = (over: Record<string, string> = {}) => ({
+const dados = (over: Record<string, string | undefined> = {}) => ({
   name: "Maria da Silva",
   regionalId: r1,
-  baseId: fr1,
+  baseId: fr1 as string | undefined,
+  novaFranquia: undefined as string | undefined,
   login: `${tag}maria`,
   password: "senha1234",
   confirm: "senha1234",
@@ -69,6 +70,17 @@ describe("criar conta da franquia", () => {
     await expect(criarContaFranquia(dados({ login: `${tag}x2`, baseId: baseComum }), `${tag}ip2`)).rejects.toThrow("Franquia não encontrada");
     await expect(criarContaFranquia(dados({ login: `${tag}x3`, baseId: franquiaInativa }), `${tag}ip2`)).rejects.toThrow("Franquia não encontrada");
     expect(await db.user.count({ where: { login: { in: [`${tag}x1`, `${tag}x2`, `${tag}x3`] } } })).toBe(0);
+  });
+
+  it("franquia que não está na lista: é criada na regional e reaproveitada por quem vier depois", async () => {
+    const a = await criarContaFranquia(dados({ login: `${tag}nova1`, baseId: undefined, novaFranquia: `F ${tag} SP` }), `${tag}ip9`);
+    const b = await criarContaFranquia(dados({ login: `${tag}nova2`, baseId: undefined, novaFranquia: `f ${tag} sp` }), `${tag}ip9`);
+    const ua = await db.user.findUniqueOrThrow({ where: { id: a.id }, include: { bases: { include: { base: true } } } });
+    const ub = await db.user.findUniqueOrThrow({ where: { id: b.id }, include: { bases: true } });
+    expect(ua.bases[0].base).toMatchObject({ type: "FRANQUIA", regionalId: r1, autoCreated: true });
+    expect(ub.bases[0].baseId).toBe(ua.bases[0].baseId);
+    await db.user.deleteMany({ where: { id: { in: [a.id, b.id] } } });
+    await db.base.delete({ where: { id: ua.bases[0].baseId } });
   });
 
   it("login repetido não cria outra conta", async () => {

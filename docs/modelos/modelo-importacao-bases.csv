@@ -1,0 +1,5 @@
+﻿sigla;nome;tipo;regional;nome_regional;cnpj;cidade;uf;endereco;ativo
+RAO-SP;RAO SP;base;SPN;São Paulo Norte;;Ribeirão Preto;SP;;sim
+F-ORLN-SP;F ORLN SP;franquia;SPN;;12.345.678/0001-90;Orlândia;SP;;sim
+CD-CTG-001;CD CTG 001;base;MG;Minas Gerais;;Contagem;MG;;sim
+ALM-SPN;Almoxarifado SPN;almoxarifado;SPN;;;Ribeirão Preto;SP;Rua Exemplo, 100;sim

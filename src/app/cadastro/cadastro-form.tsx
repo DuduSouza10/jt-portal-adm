@@ -24,6 +24,7 @@ export function CadastroForm({ regionais, franquias }: { regionais: Regional[]; 
   const { state, pending, formProps } = useKeepForm<FormState>(cadastroAction, {});
   const [regionalId, setRegionalId] = useState("");
   const [baseId, setBaseId] = useState("");
+  const [nova, setNova] = useState(false);
   const [verSenha, setVerSenha] = useState(false);
 
   // Só as franquias da regional escolhida; ao trocar de regional, a franquia escolhida antes sai.
@@ -46,6 +47,7 @@ export function CadastroForm({ regionais, franquias }: { regionais: Regional[]; 
           onValueChange={(v) => {
             setRegionalId(v);
             setBaseId("");
+            setNova(false);
           }}
           options={regionais.map((r) => ({ value: r.id, hint: r.code, label: r.name }))}
           placeholder={t("cadastro.escolhaRegional")}
@@ -53,17 +55,31 @@ export function CadastroForm({ regionais, franquias }: { regionais: Regional[]; 
         />
       </Field>
       <Field label={t("cadastro.franquia")} htmlFor="baseId" hint={regionalId ? undefined : t("cadastro.franquiaDica")}>
-        <SelectBox
-          id="baseId"
-          name="baseId"
-          required
-          disabled={!regionalId}
-          value={baseId}
-          onValueChange={setBaseId}
-          options={opcoes}
-          placeholder={t("cadastro.escolhaFranquia")}
-          className="h-11 rounded-xl"
-        />
+        {nova ? (
+          <Input id="baseId" name="novaFranquia" required minLength={2} maxLength={60} placeholder={t("cadastro.novaFranquiaPh")} className={campo} />
+        ) : (
+          <SelectBox
+            id="baseId"
+            name="baseId"
+            required
+            disabled={!regionalId}
+            value={baseId}
+            onValueChange={setBaseId}
+            options={opcoes}
+            placeholder={t("cadastro.escolhaFranquia")}
+            className="h-11 rounded-xl"
+          />
+        )}
+        {regionalId && (
+          <button
+            type="button"
+            onClick={() => (setNova((v) => !v), setBaseId(""))}
+            className="mt-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {nova ? t("cadastro.voltarLista") : t("cadastro.naoEstaNaLista")}
+          </button>
+        )}
+        {nova && <p className="text-xs text-muted-foreground">{t("cadastro.novaFranquiaDica")}</p>}
       </Field>
       <Field label={t("cadastro.usuario")} htmlFor="login" hint={t("cadastro.usuarioDica")}>
         <Input id="login" name="login" autoComplete="username" autoCapitalize="none" spellCheck={false} required minLength={3} maxLength={40} className={campo} />
