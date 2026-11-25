@@ -299,6 +299,7 @@ const ZH: [string, string][] = [
   ["Informe o número de pessoas na base.", "请填写网点人数。"],
   ["Informe um número de pessoas válido.", "请填写有效的人数。"],
   ["Esta base está no ciclo de {m} meses e poderá fazer uma nova solicitação após {data}.", "该网点处于 {m} 个月周期内，{data} 之后才能再次申领。"],
+  ["A solicitação {s} de {b} ainda está em andamento. Só dá para fazer outra depois que ela for recebida, recusada ou cancelada.", "{b} 的申领单 {s} 仍在处理中，须等其已签收、被拒绝或取消后才能再次申领。"],
   ["{p} está bloqueado para nova solicitação até {data}.", "{p} 在 {data} 之前不能再次申领。"],
   ["Limite de insumos excedido para {p}. Limite permitido: {n} {u}.", "{p} 超出申领限额。允许上限：{n} {u}。"],
   ["Você já atingiu o limite de {n} {u} para {p}.", "你已达到 {p} 的限额 {n} {u}。"],

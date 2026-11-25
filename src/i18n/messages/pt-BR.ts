@@ -735,6 +735,7 @@ export const ptBR = {
     nova: {
     pessoas: "Pessoas na base",
     pessoasAjuda: "Quantas pessoas trabalham na base hoje.",
+    emAndamento: "A solicitação {n} ainda está em andamento. Só dá para fazer outra depois que ela for recebida, recusada ou cancelada.",
     noCiclo: "Esta base está no ciclo de 3 meses e poderá fazer uma nova solicitação após {data}.",
       descricao: "Monte o pedido. Depois de aprovado, você acompanha a separação, a expedição e o envio.",
       semBase: "Seu usuário não está vinculado a nenhuma base. Fale com o administrador.",

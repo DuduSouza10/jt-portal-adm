@@ -6,6 +6,7 @@ import type { CurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
 import { getPedidoSettings, type PedidoSettings } from "@/lib/settings";
 import { addMonths, COUNTED, holdActive, limitError, limitFor, periodStart } from "./limites";
+import { ABERTOS, formatNumber } from "./rules";
 
 /**
  * S1–S3 com banco (regras do portal do Eduardo, ver limites.ts). Chamado DENTRO da transação do service
@@ -36,6 +37,15 @@ export async function activeCycle(tx: Tx, baseId: string, now = new Date()) {
   return holdActive({ ...c, sourceStatus: await sourceStatus(tx, c.sourceSolicitacaoId) }, now) ? c : null;
 }
 
+/**
+ * S16: pedido ainda em andamento (aguardando aprovação até enviado, antes de recebido/recusado/cancelado) da base
+ * ou franquia, ou null. Enquanto existir, não abre outro: vale para base e franquia, com ou sem o ciclo ligado.
+ */
+export async function pedidoEmAndamento(tx: Pick<Tx, "solicitacao">, baseId: string) {
+  const s = await tx.solicitacao.findFirst({ where: { baseId, status: { in: ABERTOS } }, orderBy: { createdAt: "desc" }, select: { number: true } });
+  return s ? formatNumber(s.number) : null;
+}
+
 /** Quanto a base já pediu do produto no período do limite. */
 async function usedInPeriod(tx: Tx, baseId: string, p: Produto, revokedAt: Date | null, now: Date) {
   const r = await tx.solicitacaoItem.aggregate({
@@ -62,6 +72,9 @@ export async function checkBeforeCreate(
     const c = cfg.cicloAtivo ? await activeCycle(tx, base.id, now) : null;
     if (c) throw new DomainError(`Esta base está no ciclo de ${cfg.cicloMeses} meses e poderá fazer uma nova solicitação após ${fmtDateTime(c.blockedUntil)}.`);
   }
+  // S16: um pedido por vez. A base já travada em criar() garante que dois envios ao mesmo tempo não passam.
+  const aberto = await pedidoEmAndamento(tx, base.id);
+  if (aberto) throw new DomainError(`A solicitação ${aberto} de ${base.code} ainda está em andamento. Só dá para fazer outra depois que ela for recebida, recusada ou cancelada.`);
   if (!cfg.limitesAtivos) return;
   const blocks = new Map((await tx.bloqueioProduto.findMany({ where: { baseId: base.id, produtoId: { in: produtos.map((p) => p.id) } } })).map((b) => [b.produtoId, b]));
   for (const it of itens) {

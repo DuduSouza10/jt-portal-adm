@@ -738,6 +738,7 @@ export const zhCN: Messages = {
     nova: {
     pessoas: "网点人数",
     pessoasAjuda: "目前在该网点工作的人数。",
+    emAndamento: "申领单 {n} 仍在处理中，须等其已签收、被拒绝或取消后才能再次申领。",
     noCiclo: "该网点处于 3 个月周期内，{data} 之后才能再次申领。",
       descricao: "填写申领单。批准后，你可以跟踪拣货、发货和运输。",
       semBase: "你的账号未绑定任何网点，请联系管理员。",

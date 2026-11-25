@@ -35,6 +35,9 @@ const admin = () => actor({});
 const pedir = (baseId: string, produtoId: string, quantity: number, peopleCount: number | null = 8) =>
   criar(basePerfil(), { baseId, priority: "NORMAL", notes: null, peopleCount: peopleCount ?? undefined, itens: [{ produtoId, quantity }] });
 
+/** Fecha os pedidos em andamento da base, para os testes de ciclo/limite pedirem de novo (S16). */
+const fechar = (baseId: string) => db.solicitacao.updateMany({ where: { baseId, status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA"] } }, data: { status: "RECEBIDA" } });
+
 beforeAll(async () => {
   const r = await db.regional.create({ data: { code: `${tag}R`, name: "R" } });
   almox = (await db.base.create({ data: { code: `${tag}-A`, name: "A", type: "ALMOXARIFADO", regionalId: r.id } })).id;
@@ -89,21 +92,63 @@ describe("S1 e S2: ciclo de 3 meses e número de pessoas", () => {
     // Quem aprova não entra no ciclo; franquia não tem ciclo e não precisa informar pessoas.
     await criar(admin(), { baseId: base, priority: "NORMAL", notes: null, itens: [{ produtoId: fita, quantity: 1 }] });
     await pedir(franquia, fita, 1, null);
+    await fechar(franquia);
     await pedir(franquia, fita, 1, null);
+    await fechar(franquia);
+  });
+});
+
+describe("S16: um pedido por vez", () => {
+  it("base e franquia não abrem outro enquanto o anterior está em andamento; liberam ao receber, recusar ou cancelar; quem aprova não entra", async () => {
+    await fechar(base);
+    await fechar(franquia);
+    await db.cicloBase.deleteMany({ where: { baseId: base } });
+    await db.setting.upsert({ where: { key: "pedidos" }, update: { value: { cicloAtivo: false, cicloMeses: 3 } }, create: { key: "pedidos", value: { cicloAtivo: false, cicloMeses: 3 } } });
+    try {
+      // Franquia (sem ciclo) e base com o ciclo desligado: o segundo pedido é barrado na hora.
+      const f1 = await pedir(franquia, fita, 1, null);
+      await expect(pedir(franquia, fita, 1, null)).rejects.toThrow(/ainda está em andamento/);
+      const b1 = await pedir(base, fita, 1);
+      await expect(pedir(base, fita, 1)).rejects.toThrow(/ainda está em andamento/);
+      expect(await db.solicitacao.count({ where: { baseId: { in: [base, franquia] }, status: "PENDENTE" } })).toBe(2);
+
+      // Uma base não trava a outra, e quem aprova pode abrir pedido mesmo assim.
+      await criar(admin(), { baseId: franquia, priority: "NORMAL", notes: null, itens: [{ produtoId: fita, quantity: 1 }] });
+
+      // Recusado ou cancelado libera.
+      await recusar(admin(), f1.id, "teste");
+      await db.solicitacao.updateMany({ where: { baseId: franquia, status: "PENDENTE" }, data: { status: "CANCELADA" } });
+      await pedir(franquia, fita, 1, null);
+
+      // Ainda em andamento depois de aprovado.
+      await aprovar(admin(), { id: b1.id, almoxarifadoId: almox, quantidades: {}, note: null });
+      await expect(pedir(base, fita, 1)).rejects.toThrow(/ainda está em andamento/);
+      await db.solicitacao.update({ where: { id: b1.id }, data: { status: "RECEBIDA" } });
+      await pedir(base, fita, 1);
+    } finally {
+      await db.setting.deleteMany({ where: { key: "pedidos" } });
+      await fechar(base);
+      await fechar(franquia);
+      await db.cicloBase.deleteMany({ where: { baseId: base } });
+    }
   });
 });
 
 describe("S3: limite por produto", () => {
   it("franquia: limite de 4 no período, bloqueio automático ao atingir e recusa desfaz", async () => {
     await expect(pedir(franquia, luva, 5, null)).rejects.toThrow("Limite permitido: 4 cx");
+    await fechar(franquia);
     const a = await pedir(franquia, luva, 3, null);
+    await fechar(franquia);
     await expect(pedir(franquia, luva, 2, null)).rejects.toThrow("Restam 1 cx no período de bloqueio");
     const b = await pedir(franquia, luva, 1, null);
+    await fechar(franquia);
     const bloqueio = await db.bloqueioProduto.findUniqueOrThrow({ where: { baseId_produtoId: { baseId: franquia, produtoId: luva } } });
     expect(bloqueio.sourceSolicitacaoId).toBe(b.id);
     await expect(pedir(franquia, luva, 1, null)).rejects.toThrow(/bloqueado para nova solicitação/);
 
     // Recusar o pedido que atingiu o limite desfaz o bloqueio e devolve o saldo do período.
+    await db.solicitacao.update({ where: { id: b.id }, data: { status: "PENDENTE" } });
     await recusar(admin(), b.id, "teste");
     expect((await db.bloqueioProduto.findUniqueOrThrow({ where: { id: bloqueio.id } })).revokedAt).not.toBeNull();
     await pedir(franquia, luva, 1, null);
@@ -116,9 +161,12 @@ describe("S1 desligado em Configurações", () => {
     await db.cicloBase.deleteMany({ where: { baseId: base } });
     await db.setting.upsert({ where: { key: "pedidos" }, update: { value: { cicloAtivo: false, cicloMeses: 3 } }, create: { key: "pedidos", value: { cicloAtivo: false, cicloMeses: 3 } } });
     try {
+      await fechar(base);
       await pedir(base, fita, 1);
+      await fechar(base);
       await pedir(base, fita, 1);
       expect(await db.cicloBase.count({ where: { baseId: base } })).toBe(0);
+      await fechar(base);
       await expect(pedir(base, luva, 11)).rejects.toThrow("Limite permitido: 10 cx");
     } finally {
       await db.setting.deleteMany({ where: { key: "pedidos" } });
@@ -131,7 +179,9 @@ describe("S3 desligado em Configurações", () => {
     await db.bloqueioProduto.deleteMany({ where: { baseId: franquia } });
     await db.setting.upsert({ where: { key: "pedidos" }, update: { value: { cicloAtivo: true, cicloMeses: 3, limitesAtivos: false } }, create: { key: "pedidos", value: { cicloAtivo: true, cicloMeses: 3, limitesAtivos: false } } });
     try {
+      await fechar(franquia);
       await pedir(franquia, luva, 50, null);
+      await fechar(franquia);
       expect(await db.bloqueioProduto.count({ where: { baseId: franquia } })).toBe(0);
     } finally {
       await db.setting.deleteMany({ where: { key: "pedidos" } });
