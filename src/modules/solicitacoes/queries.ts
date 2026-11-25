@@ -4,8 +4,7 @@ import { startOfDay } from "date-fns";
 import type { Prisma, SolicitacaoStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { TZ } from "@/lib/format";
-import { baseScopeWhere, can, type Actor } from "@/lib/permissions/check";
-import { almoxarifadosWhere } from "@/modules/estoque/queries";
+import { almoxarifadosExpedicaoWhere, baseScopeWhere, can, type Actor } from "@/lib/permissions/check";
 
 /** Consultas de leitura de solicitações, separação e expedição. Sempre dentro do alcance do usuário. */
 
@@ -155,7 +154,7 @@ export async function disponivelPorAlmox(produtoIds: string[]) {
 
 /** Almoxarifados do alcance de quem separa/envia (o filtro das filas). */
 function almoxScope(actor: Actor): Prisma.BaseWhereInput {
-  return almoxarifadosWhere(actor);
+  return almoxarifadosExpedicaoWhere(actor);
 }
 
 /** Fila do almoxarifado: aprovadas e em separação. Urgentes primeiro, depois as mais antigas. */
