@@ -17,6 +17,8 @@ export const zhCN: Messages = {
     salvar: "保存",
     salvando: "保存中...",
     filtrar: "筛选",
+    limparFiltros: "清除筛选",
+    filtrosMantidos: "已保留上次的筛选条件",
     buscar: "搜索",
     abrir: "打开",
     anterior: "上一页",

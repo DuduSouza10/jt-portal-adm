@@ -14,6 +14,8 @@ export const ptBR = {
     salvar: "Salvar",
     salvando: "Salvando...",
     filtrar: "Filtrar",
+    limparFiltros: "Limpar filtros",
+    filtrosMantidos: "Mantive os filtros da última vez",
     buscar: "Buscar",
     abrir: "Abrir",
     anterior: "Anterior",
