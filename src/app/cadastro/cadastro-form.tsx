@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CircleAlert, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,6 +26,20 @@ export function CadastroForm({ regionais, franquias }: { regionais: Regional[]; 
   const [baseId, setBaseId] = useState("");
   const [nova, setNova] = useState(false);
   const [verSenha, setVerSenha] = useState(false);
+  // Franquia é obrigatória: sem escolher uma (ou escrever o nome dela), o formulário não é enviado.
+  const [faltaFranquia, setFaltaFranquia] = useState(false);
+  const franquiaRef = useRef<HTMLDivElement>(null);
+
+  function enviar(e: React.FormEvent<HTMLFormElement>) {
+    const nomeNova = (new FormData(e.currentTarget).get("novaFranquia") as string | null)?.trim();
+    if (nova ? !nomeNova : !baseId) {
+      e.preventDefault();
+      setFaltaFranquia(true);
+      franquiaRef.current?.querySelector<HTMLElement>("button, input")?.focus();
+      return;
+    }
+    formProps.onSubmit(e);
+  }
 
   // Só as franquias da regional escolhida; ao trocar de regional, a franquia escolhida antes sai.
   const opcoes = useMemo(
@@ -34,7 +48,7 @@ export function CadastroForm({ regionais, franquias }: { regionais: Regional[]; 
   );
 
   return (
-    <form {...formProps} className="space-y-4">
+    <form {...formProps} onSubmit={enviar} className="space-y-4">
       <Field label={t("cadastro.nome")} htmlFor="name">
         <Input id="name" name="name" autoComplete="name" required minLength={5} className={campo} />
       </Field>
@@ -48,42 +62,50 @@ export function CadastroForm({ regionais, franquias }: { regionais: Regional[]; 
             setRegionalId(v);
             setBaseId("");
             setNova(false);
+            setFaltaFranquia(false);
           }}
           options={regionais.map((r) => ({ value: r.id, hint: r.code, label: r.name }))}
           placeholder={t("cadastro.escolhaRegional")}
           className="h-11 rounded-xl"
         />
       </Field>
-      <Field label={t("cadastro.franquia")} htmlFor="baseId" hint={regionalId ? undefined : t("cadastro.franquiaDica")}>
-        {nova ? (
-          <Input
-            id="baseId"
-            name="novaFranquia"
-            required
-            minLength={2}
-            maxLength={60}
-            placeholder={t("cadastro.novaFranquiaPh")}
-            autoCapitalize="characters"
-            onChange={(e) => {
-              // Sempre em maiúsculo, como está no Feishu (ex.: F BDB SP).
-              const pos = e.target.selectionStart;
-              e.target.value = e.target.value.toUpperCase();
-              e.target.setSelectionRange(pos, pos);
-            }}
-            className={`${campo} uppercase placeholder:normal-case`}
-          />
-        ) : (
-          <SelectBox
-            id="baseId"
-            name="baseId"
-            required
-            disabled={!regionalId}
-            value={baseId}
-            onValueChange={setBaseId}
-            options={opcoes}
-            placeholder={t("cadastro.escolhaFranquia")}
-            className="h-11 rounded-xl"
-          />
+      <Field label={`${t("cadastro.franquia")} *`} htmlFor="baseId" hint={regionalId || faltaFranquia ? undefined : t("cadastro.franquiaDica")}>
+        <div ref={franquiaRef}>
+          {nova ? (
+            <Input
+              id="baseId"
+              name="novaFranquia"
+              minLength={2}
+              maxLength={60}
+              aria-invalid={faltaFranquia || undefined}
+              autoCapitalize="characters"
+              onChange={(e) => {
+                setFaltaFranquia(false);
+                // Sempre em maiúsculo, como está no Feishu (ex.: F BDB SP).
+                const pos = e.target.selectionStart;
+                e.target.value = e.target.value.toUpperCase();
+                e.target.setSelectionRange(pos, pos);
+              }}
+              className={`${campo} uppercase placeholder:normal-case`}
+            />
+          ) : (
+            <SelectBox
+              id="baseId"
+              name="baseId"
+              disabled={!regionalId}
+              value={baseId}
+              onValueChange={(v) => (setBaseId(v), setFaltaFranquia(false))}
+              invalid={faltaFranquia}
+              options={opcoes}
+              placeholder={t("cadastro.escolhaFranquia")}
+              className="h-11 rounded-xl"
+            />
+          )}
+        </div>
+        {faltaFranquia && (
+          <p role="alert" className="text-sm font-medium text-destructive">
+            {t(nova ? "cadastro.faltaNomeFranquia" : "cadastro.faltaFranquia")}
+          </p>
         )}
         {regionalId && (
           <button

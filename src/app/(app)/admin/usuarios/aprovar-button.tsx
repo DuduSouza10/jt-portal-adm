@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, ExternalLink, Trash2 } from "lucide-react";
 import { useKeepForm } from "@/components/use-keep-form";
 import { Button } from "@/components/ui/button";
@@ -22,17 +23,29 @@ export function AprovarButton({ pessoa, podeExcluir }: { pessoa: Pessoa; podeExc
   const [confirmaExcluir, setConfirmaExcluir] = useState(false);
   const aprovar = useKeepForm(aprovarAcessoAction.bind(null, pessoa.id), {});
   const excluir = useKeepForm(deleteUserAction.bind(null, pessoa.id), {});
+  const router = useRouter();
   const erro = aprovar.state.error ?? excluir.state.error;
+  // Aprovou: atualiza a tela na hora (a pessoa sai de "Pendentes" e entra em "Usuários"), sem recarregar a página.
+  useEffect(() => {
+    if (aprovar.state.ok) router.refresh();
+  }, [aprovar.state.ok, router]);
   const semBase = pessoa.bases.length === 0;
 
+
+  if (aprovar.state.ok)
+    return (
+      <p className="flex items-center gap-1.5 text-sm font-medium text-success">
+        <Check className="size-4" aria-hidden /> {t("usuarios.aprovado")}
+      </p>
+    );
 
   return (
     <>
       <Button size="sm" onClick={() => (setConfirmaExcluir(false), setAberto(true))}>
         <Check /> {t("usuarios.aprovar")}
       </Button>
-      {/* Aprovou: o card fecha (a lista recarrega sem a pessoa em "aguardando"). */}
-      <Dialog open={aberto && !aprovar.state.ok} onOpenChange={setAberto}>
+      {/* Aprovou: o botão vira "Acesso liberado" e a tela atualiza sozinha. */}
+      <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent overlayClassName="bg-black/40 backdrop-blur-md" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("usuarios.cardAprovar.titulo")}</DialogTitle>
