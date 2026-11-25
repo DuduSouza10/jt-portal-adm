@@ -102,6 +102,7 @@ export const ptBR = {
     descricao: "Marque as bases e franquias que você acompanha. Os relatórios, as solicitações e as aprovações passam a mostrar só elas.",
     busca: "Buscar base ou franquia",
     franquia: "franquia",
+    dicaSupervisor: "As que outro supervisor já escolheu não aparecem aqui.",
     salvar: "Salvar minhas bases",
     salvo: "Bases salvas.",
     marcadas: "{n} marcada(s)",
@@ -221,7 +222,8 @@ export const ptBR = {
     almoxarifado: { nome: "Almoxarifado", descricao: "Separa, envia e controla o estoque." },
     base: { nome: "Base", descricao: "Solicita insumos para a própria base (sujeita ao ciclo de 3 meses)." },
     franquia: { nome: "Franquia", descricao: "Solicita insumos e vê os valores." },
-    "rm-supervisor": { nome: "RM / Supervisor", descricao: "Escolhe as próprias bases e franquias, vê os relatórios delas e aprova os pedidos." },
+    rm: { nome: "RM", descricao: "Escolhe as próprias bases e franquias (todas aparecem), vê os relatórios delas e aprova os pedidos." },
+    supervisor: { nome: "Supervisor", descricao: "Escolhe as próprias bases e franquias (cada uma só com um supervisor), vê os relatórios delas e aprova os pedidos." },
   },
   alcanceUsuario: {
     GLOBAL: "vê todas as bases e franquias",

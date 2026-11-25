@@ -105,6 +105,7 @@ export const zhCN: Messages = {
     descricao: "勾选你负责的网点和加盟网点。报表、申领单和审批将只显示这些网点。",
     busca: "搜索网点或加盟网点",
     franquia: "加盟",
+    dicaSupervisor: "其他主管已选择的网点不会显示在这里。",
     salvar: "保存我的网点",
     salvo: "已保存。",
     marcadas: "已选 {n} 个",
@@ -224,7 +225,8 @@ export const zhCN: Messages = {
     almoxarifado: { nome: "仓库管理员", descricao: "负责拣货、发货和库存管理。" },
     base: { nome: "网点", descricao: "为本网点申领物料（受 3 个月周期限制）。" },
     franquia: { nome: "加盟商", descricao: "申领物料并可查看价格。" },
-    "rm-supervisor": { nome: "RM / 主管", descricao: "自行选择负责的网点和加盟网点，查看其报表并审批申领单。" },
+    rm: { nome: "RM", descricao: "自行选择负责的网点和加盟网点（显示全部），查看其报表并审批申领单。" },
+    supervisor: { nome: "主管", descricao: "自行选择负责的网点和加盟网点（每个网点只能有一位主管），查看其报表并审批申领单。" },
   },
   alcanceUsuario: {
     GLOBAL: "可查看全部网点",

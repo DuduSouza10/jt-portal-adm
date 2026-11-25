@@ -93,6 +93,7 @@ const ZH: [string, string][] = [
   ["Sem permissão.", "没有权限。"],
   ["Selecione ao menos uma base.", "请至少选择一个网点。"],
   ["Seu tipo de acesso já vê as bases pelo alcance.", "你的权限角色已按范围查看网点。"],
+  ["Já estão com outro supervisor: {x}.", "以下网点已由其他主管负责：{x}。"],
   ["Marque ao menos uma base ou franquia.", "请至少选择一个网点或加盟网点。"],
   ["Bases salvas.", "已保存。"],
   ["Este tipo de acesso exige ao menos uma franquia.", "此权限角色至少需要一个加盟网点。"],
