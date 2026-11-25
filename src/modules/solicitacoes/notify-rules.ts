@@ -172,3 +172,50 @@ export function resumoPedido(
     todas.length ? `**Itens pedidos (${todas.length}):**\n${mostradas.join("\n")}` : "",
   ];
 }
+
+/** Uma linha do andamento do pedido (criação e mudanças de status), do mais antigo ao mais novo. */
+export type EntradaHistorico = { status: SolicitacaoStatus | null; quando: Date; quem: string | null; nota: string | null };
+
+/** Quantas entradas do andamento cabem no cartão (as mais recentes). */
+export const MAX_ANDAMENTO_NO_CARTAO = 8;
+
+/**
+ * O cartão inteiro de uma solicitação no Feishu. É sempre o retrato do pedido AGORA: o mesmo cartão é editado a cada
+ * mudança de status (cabeçalho, cor, status, itens e andamento), em vez de mandar um cartão por evento.
+ * `ultima` = o aviso deste evento para quem o recebe ("Nova para separar: SOL-000123"); fica de fora nas edições silenciosas.
+ */
+export function cartaoPedido(
+  p: {
+    numero: string;
+    urgente: boolean;
+    status: SolicitacaoStatus;
+    baseCode: string;
+    baseName: string;
+    criadaEm: Date;
+    itens: ItemResumo[];
+    outros?: OutroItemResumo[];
+    historico: EntradaHistorico[];
+    ultima?: { titulo: string; corpo: string } | null;
+  },
+  escape: (s: string) => string,
+): { titulo: string; cor: Template; linhas: string[] } {
+  const aberta = p.status === "PENDENTE";
+  const [cabecalho, itens] = resumoPedido({ criadaEm: p.criadaEm, status: p.status, itens: p.itens, outros: p.outros }, escape);
+  const recentes = p.historico.slice(-MAX_ANDAMENTO_NO_CARTAO);
+  const andamento = recentes.map((h) => {
+    const que = h.status ? STATUS_LABEL[h.status] : "Solicitada";
+    const nota = h.nota ? ` — ${escape(cut(h.nota, 80))}` : "";
+    return `• ${fmtDateTime(h.quando)} · **${que}**${h.quem ? ` · ${escape(h.quem)}` : ""}${nota}`;
+  });
+  return {
+    titulo: `${p.urgente ? "🔥 " : ""}${p.numero} · ${STATUS_LABEL[p.status]}`,
+    cor: p.urgente && aberta ? "red" : COR[p.status],
+    linhas: [
+      `**Base:** ${escape(p.baseCode)} — ${escape(p.baseName)}`,
+      p.ultima ? `🔔 **${escape(p.ultima.titulo)}**${p.ultima.corpo ? ` — ${escape(p.ultima.corpo)}` : ""}` : "",
+      cabecalho,
+      itens,
+      andamento.length ? `**Andamento:**\n${andamento.join("\n")}` : "",
+    ],
+  };
+}

@@ -9,8 +9,9 @@ import { lancarEntrada } from "@/modules/estoque/service";
 import { aprovar, criar, separar } from "./service";
 
 const tag = `N${Date.now().toString(36).toUpperCase()}`;
-const hook = (n: string) => `https://open.feishu.cn/open-apis/bot/v2/hook/${tag.toLowerCase()}-${n}-0000000000`;
-const R = { MG: { ins: hook("mg-ins"), exp: hook("mg-exp") }, SPN: { ins: hook("spn-ins"), exp: hook("spn-exp") } } as const;
+// Quatro grupos diferentes (Insumos e Expedição de MG e de SPN), todos com o mesmo bot da J&T.
+const hook = (n: string) => `oc_${tag.toLowerCase()}_${n}`;
+const R = { MG: { ins: hook("mg_ins"), exp: hook("mg_exp") }, SPN: { ins: hook("spn_ins"), exp: hook("spn_exp") } } as const;
 let userId = "";
 const ids: Record<string, { regional: string; almox: string; base: string }> = {};
 let produto = "";
@@ -23,6 +24,8 @@ const targets = async (like: string) =>
   (await db.feishuOutbox.findMany({ where: { event: { contains: like }, target: { contains: tag.toLowerCase() } }, select: { target: true } })).map((r) => r.target);
 
 beforeAll(async () => {
+  process.env.FEISHU_BOT_APP_ID = "cli_bot_teste";
+  process.env.FEISHU_BOT_APP_SECRET = "segredo";
   for (const k of ["MG", "SPN"] as const) {
     const r = await db.regional.create({ data: { code: `${tag}${k}`, name: k, feishuStaffChatId: R[k].ins, feishuShippingChatId: R[k].exp } });
     const almox = await db.base.create({ data: { code: `${tag}-A-${k}`, name: `Almox ${k}`, type: "ALMOXARIFADO", regionalId: r.id } });
@@ -36,6 +39,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  delete process.env.FEISHU_BOT_APP_ID;
+  delete process.env.FEISHU_BOT_APP_SECRET;
   const bases = Object.values(ids).flatMap((i) => [i.almox, i.base]);
   const sol = await db.solicitacao.findMany({ where: { baseId: { in: bases } }, select: { id: true } });
   await db.notification.deleteMany({ where: { refId: { in: sol.map((s) => s.id) } } });
@@ -71,5 +76,8 @@ describe("avisos do Feishu por regional", () => {
       expect(exp[0]).toContain(`${tag}-B-${k}`);
     }
     expect(await targets("separada.expedicao")).toHaveLength(2);
+    // Nada de insumos cai no grupo de expedição, nem o contrário: os 4 grupos são diferentes.
+    expect(new Set([R.MG.ins, R.MG.exp, R.SPN.ins, R.SPN.exp]).size).toBe(4);
+    for (const k of ["MG", "SPN"] as const) expect(doGrupo(R[k].exp).every((x) => x.event.endsWith(".expedicao"))).toBe(true);
   });
 });

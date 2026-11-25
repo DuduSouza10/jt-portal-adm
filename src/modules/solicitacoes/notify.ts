@@ -4,7 +4,7 @@ import { card, escapeMd } from "@/lib/feishu/cards";
 import { feishuConfig } from "@/lib/feishu/config";
 import { destinations, enqueue } from "@/lib/feishu/outbox";
 import type { Permission } from "@/lib/permissions/catalog";
-import { avisos, resumoPedido, ROTA, type Evento, type Publico } from "./notify-rules";
+import { avisos, cartaoPedido, ROTA, type EntradaHistorico, type Evento, type Publico } from "./notify-rules";
 import { formatNumber, type OutroItem } from "./rules";
 
 type Tx = Prisma.TransactionClient;
@@ -105,20 +105,37 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
   });
 
   const outros = (Array.isArray(s.outrosItens) ? (s.outrosItens as OutroItem[]) : []).filter((o) => !o.cancelado);
-  // O que foi pedido, as quantidades, quando e o status de agora: vai em todo cartão do Feishu (o sino continua curto).
-  const resumo = resumoPedido(
-    {
-      criadaEm: s.createdAt,
-      status: s.status,
-      itens: s.itens.map((i) => ({ codigo: i.produto.code, nome: i.produto.name, unidade: i.produto.unit, pedido: i.requested, aprovado: i.approved, separado: i.separated, cancelado: !!i.cancelledAt })),
-      outros: outros.map((o) => ({ nome: o.nome, quantity: o.quantity })),
-    },
-    escapeMd,
-  );
+  // Andamento do pedido (criação e mudanças de status) para o cartão. O evento atual já está gravado.
+  const eventos = await tx.solicitacaoEvento.findMany({
+    where: { solicitacaoId: s.id, type: { in: ["CRIADA", "STATUS"] } },
+    orderBy: { createdAt: "asc" },
+    select: { type: true, toStatus: true, note: true, createdAt: true, actor: { select: { name: true } } },
+  });
+  const historico: EntradaHistorico[] = eventos.map((e) => ({ status: e.type === "STATUS" ? e.toStatus : null, quando: e.createdAt, quem: e.actor?.name ?? null, nota: e.note }));
+  // O cartão mostra o pedido AGORA: o que foi pedido, as quantidades, quando, o status de agora e o andamento.
+  const cartao = (ultima: { titulo: string; corpo: string } | null) =>
+    cartaoPedido(
+      {
+        numero: number,
+        urgente: s.priority === "URGENTE",
+        status: s.status,
+        baseCode: s.base.code,
+        baseName: s.base.name,
+        criadaEm: s.createdAt,
+        itens: s.itens.map((i) => ({ codigo: i.produto.code, nome: i.produto.name, unidade: i.produto.unit, pedido: i.requested, aprovado: i.approved, separado: i.separated, cancelado: !!i.cancelledAt })),
+        outros: outros.map((o) => ({ nome: o.nome, quantity: o.quantity })),
+        historico,
+        ultima,
+      },
+      escapeMd,
+    );
+  // Comentário não muda o pedido: vai como aviso à parte, sem mexer no cartão do pedido.
+  const mudaOCartao = evento.tipo !== "comentario";
 
   const { appUrl } = feishuConfig();
   const avisados = new Set<string>([ator.id]); // cada pessoa recebe um aviso por evento
   const gruposAvisados = new Set<string>();
+  const comCartaoNovo = new Set<string>(); // destinos que já recebem o cartão atualizado neste evento
   for (const a of lista) {
     const ids = (await publico(tx, a.publico, s)).filter((id) => !avisados.has(id));
     ids.forEach((id) => avisados.add(id));
@@ -136,8 +153,26 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
       gruposAvisados.add(key);
       return true;
     });
-    const linhas = [`**Base:** ${escapeMd(s.base.code)} — ${escapeMd(s.base.name)}`, a.corpo ? escapeMd(a.corpo) : "", ...resumo];
     const botao = a.link === "pedido" ? "Abrir solicitação" : a.link === "expedicao" ? "Abrir expedição" : "Abrir separação";
-    await enqueue(tx, `solicitacao.${evento.tipo === "status" ? evento.to.toLowerCase() : evento.tipo}.${a.publico}`, dest, card(a.titulo, a.cor, linhas, `${appUrl}${link}`, botao));
+    const evt = `solicitacao.${evento.tipo === "status" ? evento.to.toLowerCase() : evento.tipo}.${a.publico}`;
+    if (mudaOCartao) {
+      // Mesmo cartão por destino: se este destino já tem o cartão do pedido, ele é editado em vez de chegar outro.
+      const c = cartao({ titulo: a.titulo, corpo: a.corpo });
+      await enqueue(tx, evt, dest, card(c.titulo, c.cor, c.linhas, `${appUrl}${link}`, botao), { refId: s.id });
+      for (const d of dest) comCartaoNovo.add(`${d.channel}:${d.target}`);
+    } else {
+      await enqueue(tx, evt, dest, card(a.titulo, a.cor, [`**Base:** ${escapeMd(s.base.code)} — ${escapeMd(s.base.name)}`, a.corpo ? escapeMd(a.corpo) : ""], `${appUrl}${link}`, botao));
+    }
+  }
+
+  // Quem já tem o cartão deste pedido e não é avisado deste evento (ex.: a equipe depois do envio) também vê o status
+  // novo: o cartão é editado em silêncio (não gera aviso nem cria cartão onde não havia).
+  if (mudaOCartao) {
+    const existentes = await tx.feishuCartao.findMany({ where: { solicitacaoId: s.id }, select: { channel: true, target: true } });
+    const restantes = existentes.filter((c) => !comCartaoNovo.has(`${c.channel}:${c.target}`));
+    if (restantes.length) {
+      const c = cartao(null);
+      await enqueue(tx, `solicitacao.${evento.tipo === "status" ? evento.to.toLowerCase() : evento.tipo}.atualiza`, restantes.map((r) => ({ channel: r.channel as "chat" | "user", target: r.target })), card(c.titulo, c.cor, c.linhas, `${appUrl}/solicitacoes/${s.id}`, "Abrir solicitação"), { refId: s.id, soAtualiza: true });
+    }
   }
 }
