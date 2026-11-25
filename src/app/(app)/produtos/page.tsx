@@ -1,3 +1,4 @@
+import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -56,17 +57,14 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
           )
         }
       />
-      <form className="flex flex-wrap gap-2">
+      <FiltroForm className="flex flex-wrap gap-2">
         <Input name="q" defaultValue={q} placeholder={t("produtos.buscar")} className="max-w-xs" />
         <SelectBox name="status" defaultValue={status} className="max-w-40" aria-label={t("produtos.todos")}>
           <option value="">{t("produtos.todos")}</option>
           <option value="ativos">{t("produtos.ativos")}</option>
           <option value="inativos">{t("produtos.inativos")}</option>
         </SelectBox>
-        <Button type="submit" variant="outline">
-          {t("comum.filtrar")}
-        </Button>
-      </form>
+      </FiltroForm>
       {produtos.length === 0 ? (
         <EmptyState>{t("produtos.vazio")}</EmptyState>
       ) : (

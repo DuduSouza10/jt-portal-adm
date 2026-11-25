@@ -1,8 +1,8 @@
+import { FiltroForm } from "@/components/filtro-form";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { fmtDateTime } from "@/lib/format";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -47,12 +47,9 @@ export default async function AuditPage(props: PageProps<"/admin/auditoria">) {
   return (
     <>
       <PageHeader title={t("auditoria.titulo")} description={t("auditoria.descricao", { n: total })} />
-      <form className="flex gap-2">
+      <FiltroForm className="flex gap-2">
         <Input name="q" defaultValue={q} placeholder={t("auditoria.buscar")} className="max-w-sm" />
-        <Button type="submit" variant="outline">
-          {t("comum.buscar")}
-        </Button>
-      </form>
+      </FiltroForm>
       {t.locale !== "pt-BR" && <p className="text-xs text-muted-foreground">{t("auditoria.aviso")}</p>}
       {logs.length === 0 ? (
         <EmptyState>{t("auditoria.vazio")}</EmptyState>

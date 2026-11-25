@@ -1,10 +1,10 @@
+import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
 import { listAlmoxarifados, listSaldos, PAGE_SIZE } from "@/modules/estoque/queries";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -40,7 +40,7 @@ export default async function SaldosPage(props: PageProps<"/estoque">) {
         <EmptyState>{t("estoque.semAlmox")}</EmptyState>
       ) : (
         <>
-          <form className="flex flex-wrap items-center gap-2">
+          <FiltroForm className="flex flex-wrap items-center gap-2">
             <SelectBox name="base" defaultValue={base} className="max-w-64">
               <option value="">{t("estoque.todosAlmox", { n: almox.length })}</option>
               {almox.map((a) => (
@@ -54,10 +54,7 @@ export default async function SaldosPage(props: PageProps<"/estoque">) {
               <input type="checkbox" name="min" value="1" defaultChecked={min} className="size-4" />
               {t("estoque.soAbaixo")}
             </label>
-            <Button type="submit" variant="outline">
-              {t("comum.filtrar")}
-            </Button>
-          </form>
+          </FiltroForm>
           {rows.length === 0 ? (
             <EmptyState>
               {q || min ? t("estoque.nadaFiltros") : t("estoque.vazio")}

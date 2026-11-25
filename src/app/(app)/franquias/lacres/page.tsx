@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/session";
 import { getT } from "@/i18n/server";
-import { comSaldo, basesParaPedir, disponivelPorRegional, produtosParaPedir } from "@/modules/solicitacoes/queries";
+import { comSaldo, basesParaPedir, disponivelPorRegional, produtosParaPedir, almoxarifadosPorRegional } from "@/modules/solicitacoes/queries";
 import { db } from "@/lib/db";
 import { activeCycle, isExempt } from "@/modules/solicitacoes/limites.service";
 import { getPedidoSettings } from "@/lib/settings";
@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function FranquiasLacresPage() {
   const user = await requirePermission("franquias.ver");
   const t = await getT();
-  const [lista, produtos, cfg, disponivel] = await Promise.all([basesParaPedir(user).then((l) => l.filter((b) => b.type === "FRANQUIA")), produtosParaPedir({ lacres: true }), getPedidoSettings(), disponivelPorRegional()]);
+  const [lista, produtos, cfg, disponivel, almoxes] = await Promise.all([basesParaPedir(user).then((l) => l.filter((b) => b.type === "FRANQUIA")), produtosParaPedir({ lacres: true }), getPedidoSettings(), disponivelPorRegional(), almoxarifadosPorRegional()]);
   // S1: mostra antes de montar o pedido se a base está no ciclo (quem aprova não entra no ciclo).
   const isento = isExempt(user);
   const bases = await Promise.all(
@@ -39,7 +39,7 @@ export default async function FranquiasLacresPage() {
       ) : (
         <Card className="max-w-4xl">
           <CardContent>
-            <PedidoForm bases={bases} produtos={comSaldo(produtos, disponivel)} disponivel={disponivel} />
+            <PedidoForm bases={bases} produtos={comSaldo(produtos, disponivel)} disponivel={disponivel} almoxes={almoxes} />
           </CardContent>
         </Card>
       )}
