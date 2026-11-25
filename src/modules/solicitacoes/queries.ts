@@ -16,7 +16,7 @@ export function basesParaPedir(actor: Actor) {
   const scope = baseScopeWhere(actor);
   return db.base.findMany({
     where: { active: true, type: { not: "ALMOXARIFADO" }, ...(scope && { AND: [scope] }) },
-    select: { id: true, code: true, name: true, type: true, regionalId: true },
+    select: { id: true, code: true, name: true, type: true, regionalId: true, regional: { select: { id: true, code: true, name: true } } },
     orderBy: { code: "asc" },
   });
 }
@@ -82,7 +82,7 @@ export function almoxarifadosAtivos() {
   });
 }
 
-export type ListFilter = { status?: SolicitacaoStatus; abertas?: boolean; baseId?: string; q?: number; page: number; soFranquias?: boolean };
+export type ListFilter = { status?: SolicitacaoStatus; abertas?: boolean; baseId?: string; regionalId?: string; q?: number; page: number; soFranquias?: boolean };
 
 export async function listSolicitacoes(actor: Actor, f: ListFilter) {
   const scope = baseScopeWhere(actor);
@@ -90,6 +90,8 @@ export async function listSolicitacoes(actor: Actor, f: ListFilter) {
     ...((scope || f.soFranquias) && { base: { AND: [...(scope ? [scope] : []), ...(f.soFranquias ? [{ type: "FRANQUIA" as const }] : [])] } }),
     ...(f.status ? { status: f.status } : f.abertas ? { status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA"] } } : {}),
     ...(f.baseId && { baseId: f.baseId }),
+    // Filtro por regional (SP/MG): soma-se ao alcance (o AND do alcance continua valendo).
+    ...(f.regionalId && { AND: [{ base: { regionalId: f.regionalId } }] }),
     ...(f.q && { number: f.q }),
   };
   const [rows, total] = await Promise.all([

@@ -735,6 +735,7 @@ export const ptBR = {
       imprimir: "Imprimir",
     },
     emAberto: "Em aberto",
+    todasRegionais: "Todas as regionais",
     todasBases: "Todas as bases",
     numPh: "Nº (ex.: SOL-000123)",
     incluirFinalizadas: "Incluir finalizadas",

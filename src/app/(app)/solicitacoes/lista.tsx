@@ -42,13 +42,16 @@ export async function SolicitacoesLista({
   const status = STATUSES.includes(statusParam as SolicitacaoStatus) ? (statusParam as SolicitacaoStatus) : undefined;
   const abertas = !status && param(sp, "todas") !== "1";
   const baseId = param(sp, "base");
+  const regionalId = param(sp, "regional");
   const qRaw = param(sp, "q");
   const q = Number(qRaw?.replace(/\D/g, "")) || undefined;
   const page = pageParam(sp);
   const [bases, { rows, total }] = await Promise.all([
     basesParaPedir(user).then((l) => (soFranquias ? l.filter((b) => b.type === "FRANQUIA") : l)),
-    listSolicitacoes(user, { status, abertas, baseId, q, page, soFranquias }),
+    listSolicitacoes(user, { status, abertas, baseId, regionalId, q, page, soFranquias }),
   ]);
+  // Regionais do alcance de quem vê (vêm das bases que ele enxerga).
+  const regionais = [...new Map(bases.map((b) => [b.regional.id, b.regional])).values()].sort((a, b) => a.code.localeCompare(b.code));
 
   return (
     <>
@@ -81,10 +84,20 @@ export async function SolicitacoesLista({
             </option>
           ))}
         </SelectBox>
+        {regionais.length > 1 && (
+          <SelectBox name="regional" defaultValue={regionalId} className="max-w-56">
+            <option value="">{t("solicitacoes.todasRegionais")}</option>
+            {regionais.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.code} · {r.name}
+              </option>
+            ))}
+          </SelectBox>
+        )}
         {bases.length > 1 && (
           <SelectBox name="base" defaultValue={baseId} className="max-w-56">
             <option value="">{t("solicitacoes.todasBases")}</option>
-            {bases.map((b) => (
+            {bases.filter((b) => !regionalId || b.regionalId === regionalId).map((b) => (
               <option key={b.id} value={b.id}>
                 {b.code} · {b.name}
               </option>
@@ -142,7 +155,7 @@ export async function SolicitacoesLista({
         total={total}
         pageSize={PAGE_SIZE}
         basePath={basePath}
-        params={{ status, base: baseId, q: qRaw, todas: abertas ? undefined : "1" }}
+        params={{ status, regional: regionalId, base: baseId, q: qRaw, todas: abertas ? undefined : "1" }}
       />
     </>
   );
