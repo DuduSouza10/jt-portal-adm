@@ -5,16 +5,18 @@ import { useMemo, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Combobox, SelectBox } from "@/components/ui/combobox";
+import type { ComboOption } from "@/components/ui/combobox-rules";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Field, selectClass } from "@/components/form-field";
+import { Field } from "@/components/form-field";
 import { useServerMessage, useT } from "@/i18n/client";
 import type { FormState } from "@/lib/action-result";
 import { criarAction } from "../actions";
 
 type Produto = { id: string; code: string; name: string; unit: string };
 type Base = { id: string; code: string; name: string; regionalId: string; pedePessoas: boolean; cicloAte: string | null };
-type Linha = { key: number; produtoId: string; texto: string; quantity: string };
+type Linha = { key: number; produtoId: string; livre: string; quantity: string };
 
 /**
  * disponivel: por regional, quanto de cada produto há nos almoxarifados dela (S11). A lista só mostra o que
@@ -29,21 +31,36 @@ export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base
   const base = bases.find((b) => b.id === baseId);
   const disp = useMemo(() => (base ? (disponivel[base.regionalId] ?? {}) : {}), [base, disponivel]);
   const produtos = useMemo(() => todos.filter((p) => (disp[p.id] ?? 0) > 0), [todos, disp]);
-  const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", texto: "", quantity: "" }]);
+  const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", livre: "", quantity: "" }]);
 
-  // Busca por "CÓDIGO — nome": o datalist do navegador filtra conforme digita.
-  const byLabel = useMemo(() => new Map(produtos.map((p) => [`${p.code} — ${p.name}`, p])), [produtos]);
+  // Sugestões do campo "Insumos": busca por código ou nome, mostrando o saldo da regional da base.
+  const opcoes = useMemo<ComboOption[]>(
+    () => produtos.map((p) => ({ value: p.id, label: p.name, hint: p.code, description: p.unit, meta: t("solicitacoes.nova.disponivel", { n: disp[p.id] }) })),
+    [produtos, disp, t],
+  );
   const byId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos]);
 
+  // Trocou de base: o saldo muda, então tira da lista o que não existe mais na nova regional.
+  const trocarBase = (id: string) => {
+    const novo = bases.find((b) => b.id === id);
+    const dispNovo = novo ? (disponivel[novo.regionalId] ?? {}) : {};
+    setBaseId(id);
+    setLinhas((ls) => ls.map((l) => ((dispNovo[l.produtoId] ?? 0) > 0 ? l : { ...l, produtoId: "" })));
+  };
   const update = (key: number, patch: Partial<Linha>) => setLinhas((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-  const addLinha = () => setLinhas((ls) => [...ls, { key: nextKey.current++, produtoId: "", texto: "", quantity: "" }]);
-  const itens = linhas.filter((l) => l.produtoId || l.quantity).map((l) => ({ produtoId: l.produtoId, quantity: Number(l.quantity) }));
-  const acima = itens.some((i) => i.produtoId && i.quantity > (disp[i.produtoId] ?? 0));
-  const invalid = itens.length === 0 || itens.some((i) => !i.produtoId || !(i.quantity > 0)) || !!base?.cicloAte || acima;
+  const addLinha = () => setLinhas((ls) => [...ls, { key: nextKey.current++, produtoId: "", livre: "", quantity: "" }]);
+  // Linha com produto do cadastro vira item; linha só com texto digitado vira "fora do cadastro" (segue como texto).
+  const itens = linhas.filter((l) => l.produtoId).map((l) => ({ produtoId: l.produtoId, quantity: Number(l.quantity) }));
+  const outros = linhas.filter((l) => !l.produtoId && l.livre).map((l) => ({ nome: l.livre, quantity: Number(l.quantity) }));
+  const soQtd = linhas.some((l) => !l.produtoId && !l.livre && l.quantity); // quantidade sem insumo
+  const acima = itens.some((i) => i.quantity > (disp[i.produtoId] ?? 0));
+  const invalid =
+    itens.length + outros.length === 0 || [...itens, ...outros].some((i) => !(i.quantity > 0)) || soQtd || !!base?.cicloAte || acima;
 
   return (
     <form {...formProps} className="space-y-4">
       <input type="hidden" name="itens" value={JSON.stringify(itens)} />
+      <input type="hidden" name="outros" value={JSON.stringify(outros)} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("solicitacoes.nova.base")} htmlFor="baseId">
@@ -55,7 +72,7 @@ export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base
               </p>
             </>
           ) : (
-            <select id="baseId" name="baseId" required className={selectClass} value={baseId} onChange={(e) => setBaseId(e.target.value)}>
+            <SelectBox id="baseId" name="baseId" required value={baseId} onValueChange={trocarBase}>
               <option value="" disabled>
                 {t("solicitacoes.nova.escolhaBase")}
               </option>
@@ -64,7 +81,7 @@ export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base
                   {b.code} · {b.name}
                 </option>
               ))}
-            </select>
+            </SelectBox>
           )}
         </Field>
         {base?.pedePessoas && (
@@ -73,10 +90,10 @@ export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base
           </Field>
         )}
         <Field label={t("solicitacoes.nova.prioridade")} htmlFor="priority">
-          <select id="priority" name="priority" className={selectClass} defaultValue="NORMAL">
+          <SelectBox id="priority" name="priority" defaultValue="NORMAL">
             <option value="NORMAL">{t("solicitacoes.prioridade.NORMAL")}</option>
             <option value="URGENTE">{t("solicitacoes.prioridade.URGENTE")}</option>
-          </select>
+          </SelectBox>
         </Field>
       </div>
 
@@ -92,12 +109,6 @@ export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base
         </Alert>
       )}
 
-      <datalist id="produtos-list">
-        {produtos.map((p) => (
-          <option key={p.id} value={`${p.code} — ${p.name}`} label={t("solicitacoes.nova.disponivel", { n: disp[p.id] })} />
-        ))}
-      </datalist>
-
       <div className="space-y-2">
         <p className="text-sm font-medium">{t("solicitacoes.nova.insumos")}</p>
         {linhas.map((l, i) => {
@@ -105,18 +116,17 @@ export function PedidoForm({ bases, produtos: todos, disponivel }: { bases: Base
           return (
             <div key={l.key} className="flex items-start gap-2">
               <div className="flex-1">
-                <Input
-                  list="produtos-list"
-                  value={l.texto}
+                <Combobox
+                  options={opcoes}
+                  value={l.produtoId}
+                  onValueChange={(v) => update(l.key, { produtoId: v, ...(v && { livre: "" }) })}
+                  freeText={l.livre}
+                  onFreeTextChange={(txt) => update(l.key, { livre: txt })}
                   placeholder={t("solicitacoes.nova.buscaPh")}
                   aria-label={t("solicitacoes.nova.produtoN", { n: i + 1 })}
-                  onChange={(e) => {
-                    const found = byLabel.get(e.target.value);
-                    update(l.key, { texto: e.target.value, produtoId: found?.id ?? "" });
-                  }}
-                  className={l.texto && !l.produtoId ? "border-destructive" : ""}
+                  emptyText={base ? t("solicitacoes.nova.semInsumos") : t("solicitacoes.nova.escolhaBaseInsumos")}
                 />
-                {l.texto && !l.produtoId && <p className="mt-1 text-xs text-destructive">{t("solicitacoes.nova.escolhaLista")}</p>}
+                {!l.produtoId && l.livre && <p className="mt-1 text-xs text-muted-foreground">{t("solicitacoes.nova.foraCadastro")}</p>}
               </div>
               <Input
                 type="number"

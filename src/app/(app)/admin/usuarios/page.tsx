@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus, Upload } from "lucide-react";
@@ -11,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam } from "@/components/pagination";
 import { usersScopeWhere } from "@/modules/acessos/queries";
 import type { Prisma } from "@/generated/prisma/client";
@@ -97,14 +97,14 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
       )}
       <form className="flex flex-wrap gap-2">
         <Input name="q" defaultValue={q} placeholder={t("usuarios.buscar")} className="max-w-xs" />
-        <select name="perfil" defaultValue={perfil} className={`${selectClass} max-w-56`}>
+        <SelectBox name="perfil" defaultValue={perfil} className="max-w-56">
           <option value="">{t("usuarios.todosTipos")}</option>
           {profiles.map((p) => (
             <option key={p.id} value={p.id}>
               {profileText(t, p).name}
             </option>
           ))}
-        </select>
+        </SelectBox>
         <Button type="submit" variant="outline">
           {t("comum.filtrar")}
         </Button>

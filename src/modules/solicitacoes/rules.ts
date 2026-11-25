@@ -87,7 +87,7 @@ type Linha = { produtoId: string; label: string; max: number };
  * Valida as quantidades informadas (aprovação ou separação) contra o máximo de cada item.
  * Ausente = máximo. Retorna o mapa produto → quantidade e se ficou parcial.
  */
-export function planQuantities(linhas: Linha[], informado: Record<string, number | undefined>, opts: { etapa: string }) {
+export function planQuantities(linhas: Linha[], informado: Record<string, number | undefined>, opts: { etapa: string; permitirVazio?: boolean }) {
   const out = new Map<string, number>();
   let partial = false;
   for (const l of linhas) {
@@ -97,6 +97,7 @@ export function planQuantities(linhas: Linha[], informado: Record<string, number
     if (q < l.max) partial = true;
     out.set(l.produtoId, q);
   }
-  if ([...out.values()].every((q) => q === 0)) throw new Error(`Informe ao menos um item com quantidade maior que zero.`);
+  // Pedido só com itens digitados (fora do cadastro) não tem nada de estoque para reservar ou separar.
+  if (!opts.permitirVazio && [...out.values()].every((q) => q === 0)) throw new Error(`Informe ao menos um item com quantidade maior que zero.`);
   return { quantities: out, partial };
 }

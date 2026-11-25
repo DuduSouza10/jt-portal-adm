@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
@@ -5,7 +6,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ActionForm } from "@/components/action-form";
-import { CheckField, Field, selectClass } from "@/components/form-field";
+import { CheckField, Field } from "@/components/form-field";
 import { ExcluirBase } from "./excluir-base";
 import { PageHeader } from "@/components/page-header";
 import { getT } from "@/i18n/server";
@@ -48,16 +49,16 @@ export default async function BaseEditPage(props: PageProps<"/admin/estrutura/ba
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={t("estrutura.tipo")} htmlFor="type">
-                  <select id="type" name="type" defaultValue={base?.type ?? "BASE"} className={selectClass}>
+                  <SelectBox id="type" name="type" defaultValue={base?.type ?? "BASE"}>
                     {(["BASE", "FRANQUIA", "ALMOXARIFADO"] as const).map((k) => (
                       <option key={k} value={k}>
                         {t(`tiposBase.${k}`)}
                       </option>
                     ))}
-                  </select>
+                  </SelectBox>
                 </Field>
                 <Field label={t("estrutura.regional")} htmlFor="regionalId">
-                  <select id="regionalId" name="regionalId" defaultValue={base?.regionalId ?? ""} required className={selectClass}>
+                  <SelectBox id="regionalId" name="regionalId" defaultValue={base?.regionalId ?? ""} required>
                     <option value="" disabled>
                       {t("comum.escolha")}
                     </option>
@@ -67,7 +68,7 @@ export default async function BaseEditPage(props: PageProps<"/admin/estrutura/ba
                         {!r.active && ` (${t("comum.inativa")})`}
                       </option>
                     ))}
-                  </select>
+                  </SelectBox>
                 </Field>
               </div>
             </Secao>

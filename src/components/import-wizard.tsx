@@ -1,12 +1,13 @@
 "use client";
 
+import { SelectBox } from "@/components/ui/combobox";
 import { useRef, useState } from "react";
 import { Download, FileUp } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, selectClass } from "@/components/form-field";
+import { Field } from "@/components/form-field";
 import { useServerMessage, useT } from "@/i18n/client";
 import { chunk, type ImportResult, type RowError } from "@/lib/importacao/csv";
 import { ArquivoInvalido, lerArquivoPlanilha, tipoDoArquivo } from "@/lib/importacao/arquivo";
@@ -182,12 +183,11 @@ export function ImportWizard<R extends { line: number }>({
           {visible.map((o) => (
             <Field key={o.name} label={o.label} htmlFor={`opt-${o.name}`} hint={o.hint}>
               {o.kind === "select" ? (
-                <select
+                <SelectBox
                   id={`opt-${o.name}`}
                   value={opts[o.name] ?? ""}
                   disabled={stage !== "arquivo"}
-                  onChange={(e) => setOpts((s) => ({ ...s, [o.name]: e.target.value }))}
-                  className={selectClass}
+                  onValueChange={(v) => setOpts((s) => ({ ...s, [o.name]: v }))}
                 >
                   {!o.required && <option value="">{t("comum.escolha")}</option>}
                   {o.choices.map((c) => (
@@ -195,7 +195,7 @@ export function ImportWizard<R extends { line: number }>({
                       {c.label}
                     </option>
                   ))}
-                </select>
+                </SelectBox>
               ) : (
                 <Input
                   id={`opt-${o.name}`}

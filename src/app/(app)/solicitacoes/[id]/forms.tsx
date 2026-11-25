@@ -1,11 +1,12 @@
 "use client";
 
+import { SelectBox } from "@/components/ui/combobox";
 import { useKeepForm } from "@/components/use-keep-form";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, selectClass } from "@/components/form-field";
+import { Field } from "@/components/form-field";
 import { useServerMessage, useT } from "@/i18n/client";
 import type { FormState } from "@/lib/action-result";
 
@@ -67,7 +68,7 @@ export function QuantidadesForm({
       <input type="hidden" name="quantidades" value={JSON.stringify(quantidades)} />
       {almoxarifados && (
         <Field label={t("solicitacoes.forms.almoxAtende")} htmlFor="almoxarifadoId">
-          <select id="almoxarifadoId" name="almoxarifadoId" required value={almox} onChange={(e) => setAlmox(e.target.value)} className={selectClass}>
+          <SelectBox id="almoxarifadoId" name="almoxarifadoId" required value={almox} onValueChange={setAlmox}>
             <option value="" disabled>
               {t("solicitacoes.forms.escolhaAlmox")}
             </option>
@@ -76,7 +77,7 @@ export function QuantidadesForm({
                 {a.code} · {a.name}
               </option>
             ))}
-          </select>
+          </SelectBox>
         </Field>
       )}
       <div className="divide-y rounded-lg border">

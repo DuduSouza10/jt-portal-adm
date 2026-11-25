@@ -8,6 +8,7 @@ import { ActionForm } from "@/components/action-form";
 import { CheckField, Field } from "@/components/form-field";
 import { PageHeader } from "@/components/page-header";
 import { getT } from "@/i18n/server";
+import { Combobox } from "@/components/ui/combobox";
 import { UNIDADES_COMUNS } from "@/modules/produtos/schemas";
 import { saveProdutoAction } from "../actions";
 
@@ -41,12 +42,15 @@ export default async function ProdutoEditPage(props: PageProps<"/produtos/[id]">
                 <Input id="name" name="name" defaultValue={produto?.name} required maxLength={200} />
               </Field>
               <Field label={t("produtos.unidade")} htmlFor="unit" hint={t("produtos.unidadeDica")}>
-                <Input id="unit" name="unit" defaultValue={produto?.unit ?? "un"} required maxLength={10} list="unidades" />
-                <datalist id="unidades">
-                  {UNIDADES_COMUNS.map((u) => (
-                    <option key={u} value={u} />
-                  ))}
-                </datalist>
+                <Combobox
+                  id="unit"
+                  name="unit"
+                  allowCustom
+                  required
+                  maxLength={10}
+                  defaultValue={produto?.unit ?? "un"}
+                  options={UNIDADES_COMUNS.map((u) => ({ value: u, label: u }))}
+                />
               </Field>
             </div>
             <div className="space-y-3 rounded-lg border p-4">

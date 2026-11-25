@@ -1,11 +1,12 @@
 "use client";
 
+import { SelectBox } from "@/components/ui/combobox";
 import { useRef, useState } from "react";
 import { Download, FileUp, KeyRound } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Field, selectClass } from "@/components/form-field";
+import { Field } from "@/components/form-field";
 import { useServerMessage, useT } from "@/i18n/client";
 import {
   chunk,
@@ -165,12 +166,11 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
         </Button>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("importacao.usuarios.perfilPadrao")} htmlFor="defaultProfile" hint={t("importacao.usuarios.perfilPadraoAjuda")}>
-            <select
+            <SelectBox
               id="defaultProfile"
               value={defaultProfileId}
-              onChange={(e) => setDefaultProfileId(e.target.value)}
+              onValueChange={setDefaultProfileId}
               disabled={stage !== "arquivo"}
-              className={selectClass}
             >
               <option value="">{t("importacao.usuarios.nenhumPerfil")}</option>
               {profiles.map((p) => (
@@ -178,7 +178,7 @@ export function ImportWizard({ profiles }: { profiles: Profile[] }) {
                   {p.name} ({p.key})
                 </option>
               ))}
-            </select>
+            </SelectBox>
           </Field>
           <Field label={t("importacao.arquivo")} htmlFor="file">
             <label className="flex h-9 cursor-pointer items-center gap-2 rounded-md border bg-background px-3 text-sm hover:bg-muted">

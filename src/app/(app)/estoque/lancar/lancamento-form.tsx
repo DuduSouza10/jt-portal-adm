@@ -6,15 +6,17 @@ import Link from "next/link";
 import { CircleAlert, CircleCheck, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Combobox, SelectBox } from "@/components/ui/combobox";
+import type { ComboOption } from "@/components/ui/combobox-rules";
 import { Input } from "@/components/ui/input";
-import { Field, selectClass } from "@/components/form-field";
+import { Field } from "@/components/form-field";
 import { useServerMessage, useT } from "@/i18n/client";
 import { parseMoneyBR } from "@/lib/importacao/csv";
 import { lancarAction, type LancamentoState } from "../actions";
 
 type Produto = { id: string; code: string; name: string; unit: string };
 type Almox = { id: string; code: string; name: string };
-type Linha = { key: number; produtoId: string; texto: string; quantity: string; unitCost: string };
+type Linha = { key: number; produtoId: string; quantity: string; unitCost: string };
 
 export function LancamentoForm({
   tipo,
@@ -31,14 +33,14 @@ export function LancamentoForm({
   const tm = useServerMessage();
   const { state, pending, formProps } = useKeepForm<LancamentoState>(lancarAction, {});
   const nextKey = useRef(1);
-  const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", texto: "", quantity: "", unitCost: "" }]);
+  const [linhas, setLinhas] = useState<Linha[]>([{ key: 0, produtoId: "", quantity: "", unitCost: "" }]);
 
-  // Busca por "CÓDIGO — nome": o datalist do navegador filtra conforme digita.
-  const byLabel = useMemo(() => new Map(produtos.map((p) => [`${p.code} — ${p.name}`, p])), [produtos]);
+  // Sugestões: busca por código ou nome.
+  const opcoes = useMemo<ComboOption[]>(() => produtos.map((p) => ({ value: p.id, label: p.name, hint: p.code, description: p.unit })), [produtos]);
   const byId = useMemo(() => new Map(produtos.map((p) => [p.id, p])), [produtos]);
 
   const update = (key: number, patch: Partial<Linha>) => setLinhas((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-  const addLinha = () => setLinhas((ls) => [...ls, { key: nextKey.current++, produtoId: "", texto: "", quantity: "", unitCost: "" }]);
+  const addLinha = () => setLinhas((ls) => [...ls, { key: nextKey.current++, produtoId: "", quantity: "", unitCost: "" }]);
   // Valor unitário só na entrada (vírgula ou ponto como decimal). Vazio = sem valor.
   const custo = (v: string) => (tipo === "entrada" && v.trim() ? (parseMoneyBR(v) ?? -1) : undefined);
   const itens = linhas
@@ -100,12 +102,6 @@ export function LancamentoForm({
         </Field>
       </div>
 
-      <datalist id="produtos-list">
-        {produtos.map((p) => (
-          <option key={p.id} value={`${p.code} — ${p.name}`} />
-        ))}
-      </datalist>
-
       <div className="space-y-2">
         <p className="text-sm font-medium">{t("lancar.produtos")}</p>
         {linhas.map((l, i) => {
@@ -113,18 +109,13 @@ export function LancamentoForm({
           return (
             <div key={l.key} className="flex items-start gap-2">
               <div className="flex-1">
-                <Input
-                  list="produtos-list"
-                  value={l.texto}
+                <Combobox
+                  options={opcoes}
+                  value={l.produtoId}
+                  onValueChange={(v) => update(l.key, { produtoId: v })}
                   placeholder={t("lancar.produtoBusca")}
                   aria-label={t("lancar.produtoAria", { n: i + 1 })}
-                  onChange={(e) => {
-                    const found = byLabel.get(e.target.value);
-                    update(l.key, { texto: e.target.value, produtoId: found?.id ?? "" });
-                  }}
-                  className={l.texto && !l.produtoId ? "border-destructive" : ""}
                 />
-                {l.texto && !l.produtoId && <p className="mt-1 text-xs text-destructive">{t("lancar.escolhaLista")}</p>}
               </div>
               <Input
                 type="number"
@@ -189,7 +180,7 @@ export function LancamentoForm({
 
 function AlmoxSelect({ id, name, list, placeholder }: { id: string; name: string; list: Almox[]; placeholder: string }) {
   return (
-    <select id={id} name={name} required defaultValue={list.length === 1 ? list[0].id : ""} className={selectClass}>
+    <SelectBox id={id} name={name} required defaultValue={list.length === 1 ? list[0].id : ""}>
       <option value="" disabled>
         {placeholder}
       </option>
@@ -198,6 +189,6 @@ function AlmoxSelect({ id, name, list, placeholder }: { id: string; name: string
           {a.code} · {a.name}
         </option>
       ))}
-    </select>
+    </SelectBox>
   );
 }

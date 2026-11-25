@@ -1,3 +1,4 @@
+import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus, Upload } from "lucide-react";
@@ -10,7 +11,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { selectClass } from "@/components/form-field";
 import { Pagination, pageParam } from "@/components/pagination";
 import { listProdutos, PRODUTOS_PAGE_SIZE, type ProdutoFiltro } from "@/modules/produtos/queries";
 
@@ -58,11 +58,11 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
       />
       <form className="flex flex-wrap gap-2">
         <Input name="q" defaultValue={q} placeholder={t("produtos.buscar")} className="max-w-xs" />
-        <select name="status" defaultValue={status} className={`${selectClass} max-w-40`} aria-label={t("produtos.todos")}>
+        <SelectBox name="status" defaultValue={status} className="max-w-40" aria-label={t("produtos.todos")}>
           <option value="">{t("produtos.todos")}</option>
           <option value="ativos">{t("produtos.ativos")}</option>
           <option value="inativos">{t("produtos.inativos")}</option>
-        </select>
+        </SelectBox>
         <Button type="submit" variant="outline">
           {t("comum.filtrar")}
         </Button>
