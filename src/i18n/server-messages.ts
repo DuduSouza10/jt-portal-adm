@@ -28,6 +28,14 @@ const ZH: [string, string][] = [
   ["A nova senha deve ser diferente da atual.", "新密码不能与当前密码相同。"],
   ["Senha atual incorreta.", "当前密码不正确。"],
 
+  ["Informe o nome completo.", "请输入姓名（全名）。"],
+  ["Escolha a regional.", "请选择大区。"],
+  ["Escolha a franquia.", "请选择加盟店。"],
+  ["Franquia não encontrada nessa regional.", "该大区下未找到此加盟店。"],
+  ["Esse usuário já existe. Escolha outro.", "该用户名已存在，请换一个。"],
+  ["Criar conta indisponível no momento. Fale com o administrador.", "暂时无法创建账号，请联系管理员。"],
+  ["A senha precisa ter ao menos {n} caracteres.", "密码至少需要 {n} 个字符。"],
+
   // ------------------------------------------------------------- Usuários e tipos de acesso
   ["Usuário não encontrado.", "未找到该用户。"],
   ["Tipo de acesso não encontrado.", "未找到该权限角色。"],
