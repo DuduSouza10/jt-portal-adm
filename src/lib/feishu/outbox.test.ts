@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { destinations } from "./outbox";
+import { destinations, origemDoGrupo } from "./outbox";
 
 // destinations() só usa o banco no caminho de mensagem direta; os caminhos de grupo não tocam no tx.
 const tx = { user: { findMany: async () => [{ feishuOpenId: "ou_1" }] } } as never;
@@ -67,5 +67,34 @@ describe("destinations com grupos por regional", () => {
       { channel: "user", target: "ou_1" },
       { channel: "chat", target: "oc_base" },
     ]);
+  });
+});
+
+describe("origemDoGrupo (o que a tela do Feishu mostra)", () => {
+  const hook = (id: string) => `https://open.feishu.cn/open-apis/bot/v2/hook/${id}`;
+
+  it("grupo próprio, expedição só com o de insumos, e cai no geral quando a regional não tem", async () => {
+    process.env.FEISHU_WEBHOOK_URL = "https://exemplo.invalid/equipe";
+    process.env.FEISHU_SHIPPING_WEBHOOK_URL = "https://exemplo.invalid/exp";
+    const inteira = { feishuStaffChatId: hook("aaaaaaaa-1111"), feishuShippingChatId: hook("bbbbbbbb-2222") };
+    expect(await origemDoGrupo(tx, "equipe", inteira)).toBe("regional");
+    expect(await origemDoGrupo(tx, "expedicao", inteira)).toBe("regional");
+    const semGrupos = { feishuStaffChatId: null, feishuShippingChatId: null };
+    expect(await origemDoGrupo(tx, "equipe", semGrupos)).toBe("geral");
+    expect(await origemDoGrupo(tx, "expedicao", semGrupos)).toBe("geral");
+    // Sem webhook geral de expedição, a expedição da regional que só tem insumos usa o grupo de insumos dela.
+    delete process.env.FEISHU_SHIPPING_WEBHOOK_URL;
+    expect(await origemDoGrupo(tx, "expedicao", { feishuStaffChatId: hook("aaaaaaaa-1111"), feishuShippingChatId: null })).toBe("regionalInsumos");
+  });
+
+  it("chat_id (oc_...) sem o app não é usado: avisa em vez de parecer que funciona", async () => {
+    process.env.FEISHU_WEBHOOK_URL = "https://exemplo.invalid/equipe";
+    expect(await origemDoGrupo(tx, "equipe", SPN)).toBe("semApp");
+    comApp();
+    expect(await origemDoGrupo(tx, "equipe", SPN)).toBe("regional");
+  });
+
+  it("nada configurado", async () => {
+    expect(await origemDoGrupo(tx, "equipe", { feishuStaffChatId: null, feishuShippingChatId: null })).toBe("nenhum");
   });
 });

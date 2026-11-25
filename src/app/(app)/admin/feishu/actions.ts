@@ -13,7 +13,7 @@ import { runScheduledJobs } from "@/lib/jobs/run";
 export type TestState = { ok?: boolean; message?: string; error?: string };
 
 /** Envia um cartão de teste agora: para o grupo da equipe, da expedição ou para o próprio usuário. */
-export async function sendTestAction(alvo: "equipe" | "expedicao" | "eu"): Promise<TestState> {
+export async function sendTestAction(alvo: "equipe" | "expedicao" | "eu", regionalId?: string): Promise<TestState> {
   const me = await requirePermission("integracoes.gerenciar");
   const cfg = messagingConfig();
   let dest;
@@ -23,7 +23,9 @@ export async function sendTestAction(alvo: "equipe" | "expedicao" | "eu"): Promi
     if (!u?.feishuOpenId) return { error: "Seu usuário não tem o open_id do Feishu. Preencha em Usuários → seu cadastro." };
     dest = [{ channel: "user" as const, target: u.feishuOpenId }];
   } else {
-    dest = await destinations(db, alvo, []);
+    // Com a regional: testa o caminho que os avisos daquela regional realmente fazem (grupo dela ou o geral).
+    const regional = regionalId ? await db.regional.findUnique({ where: { id: regionalId }, select: { feishuStaffChatId: true, feishuShippingChatId: true } }) : null;
+    dest = await destinations(db, alvo, [], null, regional);
     if (!dest.length)
       return {
         error:
