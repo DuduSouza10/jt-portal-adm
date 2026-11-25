@@ -6,6 +6,7 @@
  */
 import type { SolicitacaoStatus } from "@/generated/prisma/enums";
 import type { Template } from "@/lib/feishu/cards";
+import { fmtDateTime } from "@/lib/format";
 import { STATUS_LABEL } from "./rules";
 
 /**
@@ -138,3 +139,36 @@ export function avisos(e: Evento, c: Contexto): Aviso[] {
 
 /** Rota no Feishu de cada público (ver lib/feishu/outbox.ts). */
 export const ROTA = { aprovadores: "equipe", separacao: "equipe", expedicao: "expedicao", base: "base" } as const;
+
+/** Item do pedido como o cartão do Feishu mostra. */
+export type ItemResumo = { codigo: string; nome: string; unidade: string; pedido: number; aprovado: number | null; separado: number | null; cancelado?: boolean };
+export type OutroItemResumo = { nome: string; quantity: number };
+
+/** Quantos itens aparecem no cartão; o resto vira "e mais N". O cartão do Feishu tem limite de tamanho. */
+export const MAX_ITENS_NO_CARTAO = 15;
+
+/**
+ * Linhas do cartão do Feishu com o pedido em si: quando foi feito, o status de agora e o que foi pedido, com as
+ * quantidades (e o que foi aprovado/separado, se for diferente do pedido). Pura (testada em notify-rules.test.ts).
+ * `escape` é o escapeMd do Feishu (texto digitado pelo usuário não pode virar tag).
+ */
+export function resumoPedido(
+  p: { criadaEm: Date; status: SolicitacaoStatus; itens: ItemResumo[]; outros?: OutroItemResumo[] },
+  escape: (s: string) => string,
+): string[] {
+  const itens = p.itens.filter((i) => !i.cancelado);
+  const linhasItens = itens.map((i) => {
+    const extras: string[] = [];
+    if (i.aprovado !== null && i.aprovado !== i.pedido) extras.push(`aprovado ${i.aprovado}`);
+    if (i.separado !== null && i.separado !== (i.aprovado ?? i.pedido)) extras.push(`separado ${i.separado}`);
+    return `• ${escape(i.nome)} (${escape(i.codigo)}): **${i.pedido} ${escape(i.unidade)}**${extras.length ? ` · ${extras.join(" · ")}` : ""}`;
+  });
+  const linhasOutros = (p.outros ?? []).map((o) => `• ${escape(o.nome)}: **${o.quantity}** · fora do cadastro`);
+  const todas = [...linhasItens, ...linhasOutros];
+  const mostradas = todas.slice(0, MAX_ITENS_NO_CARTAO);
+  if (todas.length > mostradas.length) mostradas.push(`• … e mais ${todas.length - mostradas.length} item(ns). Veja todos na solicitação.`);
+  return [
+    `**Solicitada em:** ${fmtDateTime(p.criadaEm)}   **Status atual:** ${STATUS_LABEL[p.status]}`,
+    todas.length ? `**Itens pedidos (${todas.length}):**\n${mostradas.join("\n")}` : "",
+  ];
+}

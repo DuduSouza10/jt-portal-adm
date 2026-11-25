@@ -4,8 +4,8 @@ import { card, escapeMd } from "@/lib/feishu/cards";
 import { feishuConfig } from "@/lib/feishu/config";
 import { destinations, enqueue } from "@/lib/feishu/outbox";
 import type { Permission } from "@/lib/permissions/catalog";
-import { avisos, ROTA, type Evento, type Publico } from "./notify-rules";
-import { formatNumber } from "./rules";
+import { avisos, resumoPedido, ROTA, type Evento, type Publico } from "./notify-rules";
+import { formatNumber, type OutroItem } from "./rules";
 
 type Tx = Prisma.TransactionClient;
 
@@ -85,6 +85,9 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
       priority: true,
       status: true,
       createdById: true,
+      createdAt: true,
+      outrosItens: true,
+      itens: { select: { requested: true, approved: true, separated: true, cancelledAt: true, produto: { select: { code: true, name: true, unit: true } } }, orderBy: { produto: { name: "asc" } } },
       base: { select: { id: true, code: true, name: true, type: true, regionalId: true, feishuChatId: true, regional: { select: GRUPOS } } },
       almoxarifado: { select: { id: true, regionalId: true, regional: { select: GRUPOS } } },
     },
@@ -100,6 +103,18 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
     atorDaBase: ator.id === s.createdById || ((ator.scope === "BASE" || ator.scope === "FRANQUIA") && ator.baseIds.includes(s.base.id)),
     atorNome: ator.name,
   });
+
+  const outros = (Array.isArray(s.outrosItens) ? (s.outrosItens as OutroItem[]) : []).filter((o) => !o.cancelado);
+  // O que foi pedido, as quantidades, quando e o status de agora: vai em todo cartão do Feishu (o sino continua curto).
+  const resumo = resumoPedido(
+    {
+      criadaEm: s.createdAt,
+      status: s.status,
+      itens: s.itens.map((i) => ({ codigo: i.produto.code, nome: i.produto.name, unidade: i.produto.unit, pedido: i.requested, aprovado: i.approved, separado: i.separated, cancelado: !!i.cancelledAt })),
+      outros: outros.map((o) => ({ nome: o.nome, quantity: o.quantity })),
+    },
+    escapeMd,
+  );
 
   const { appUrl } = feishuConfig();
   const avisados = new Set<string>([ator.id]); // cada pessoa recebe um aviso por evento
@@ -121,7 +136,7 @@ export async function notificar(tx: Tx, solicitacaoId: string, evento: Evento, a
       gruposAvisados.add(key);
       return true;
     });
-    const linhas = [`**Base:** ${escapeMd(s.base.code)} — ${escapeMd(s.base.name)}`, a.corpo ? escapeMd(a.corpo) : ""];
+    const linhas = [`**Base:** ${escapeMd(s.base.code)} — ${escapeMd(s.base.name)}`, a.corpo ? escapeMd(a.corpo) : "", ...resumo];
     const botao = a.link === "pedido" ? "Abrir solicitação" : a.link === "expedicao" ? "Abrir expedição" : "Abrir separação";
     await enqueue(tx, `solicitacao.${evento.tipo === "status" ? evento.to.toLowerCase() : evento.tipo}.${a.publico}`, dest, card(a.titulo, a.cor, linhas, `${appUrl}${link}`, botao));
   }
