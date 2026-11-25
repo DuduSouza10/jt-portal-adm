@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { Pagination, pageParam } from "@/components/pagination";
+import { listAlmoxarifados } from "@/modules/estoque/queries";
 import { listProdutos, PRODUTOS_PAGE_SIZE, type ProdutoFiltro } from "@/modules/produtos/queries";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -26,11 +27,13 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
   const sp = await props.searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const status: ProdutoFiltro["status"] = sp.status === "ativos" || sp.status === "inativos" ? sp.status : "";
+  const almoxLista = await listAlmoxarifados(me);
+  const almox = typeof sp.almox === "string" && almoxLista.some((a) => a.code === sp.almox) ? sp.almox : "";
   const page = pageParam(sp);
   const editavel = can(me, "produtos.editar");
   const comCusto = can(me, "produtos.precos");
 
-  const { produtos, total, custos } = await listProdutos({ q, status, page }, comCusto);
+  const { produtos, total, custos, almoxes } = await listProdutos({ q, status, almox, page }, comCusto, me);
   const money = new Intl.NumberFormat(t.locale, { style: "currency", currency: "BRL" });
   const nf = new Intl.NumberFormat(t.locale);
   const limite = (v: number | null) => (v == null ? <span className="text-muted-foreground">{t("produtos.semLimite")}</span> : nf.format(v));
@@ -64,6 +67,16 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
           <option value="ativos">{t("produtos.ativos")}</option>
           <option value="inativos">{t("produtos.inativos")}</option>
         </SelectBox>
+        {almoxLista.length > 0 && (
+          <SelectBox name="almox" defaultValue={almox} className="max-w-52" aria-label={t("produtos.colAlmox")}>
+            <option value="">{t("produtos.todosAlmox")}</option>
+            {almoxLista.map((a) => (
+              <option key={a.id} value={a.code}>
+                {a.code} · {a.name}
+              </option>
+            ))}
+          </SelectBox>
+        )}
       </FiltroForm>
       {produtos.length === 0 ? (
         <EmptyState>{t("produtos.vazio")}</EmptyState>
@@ -75,6 +88,7 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
                 <TableHead>{t("produtos.colCodigo")}</TableHead>
                 <TableHead>{t("produtos.colNome")}</TableHead>
                 <TableHead>{t("produtos.colUnidade")}</TableHead>
+                <TableHead>{t("produtos.colAlmox")}</TableHead>
                 <TableHead className="text-right">{t("produtos.colLimiteBase")}</TableHead>
                 <TableHead className="text-right">{t("produtos.colLimiteFranquia")}</TableHead>
                 <TableHead className="text-right">{t("produtos.colPeriodo")}</TableHead>
@@ -102,6 +116,20 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{p.unit}</TableCell>
+                  <TableCell>
+                    {almoxes.get(p.id)?.length ? (
+                      // Uma linha por produto: se está em mais de um almoxarifado, os códigos ficam lado a lado.
+                      <div className="flex flex-wrap gap-1">
+                        {almoxes.get(p.id)!.map((a) => (
+                          <Badge key={a.code} variant={a.comSaldo ? "secondary" : "outline"} title={a.comSaldo ? undefined : t("produtos.almoxSemSaldo")} className={a.comSaldo ? "font-mono" : "font-mono text-muted-foreground"}>
+                            {a.code}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums">{limite(p.limitBase)}</TableCell>
                   <TableCell className="text-right tabular-nums">{limite(p.limitFranquia)}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">{t("produtos.dias", { n: p.limitBlockDays })}</TableCell>
@@ -116,7 +144,7 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
           </Table>
         </Card>
       )}
-      <Pagination page={page} total={total} pageSize={PRODUTOS_PAGE_SIZE} basePath="/produtos" params={{ q, status }} />
+      <Pagination page={page} total={total} pageSize={PRODUTOS_PAGE_SIZE} basePath="/produtos" params={{ q, status, almox }} />
     </>
   );
 }

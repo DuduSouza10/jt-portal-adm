@@ -1,21 +1,41 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
+import type { Actor } from "@/lib/permissions/check";
+import { almoxarifadosWhere } from "@/modules/estoque/queries";
 
 export const PRODUTOS_PAGE_SIZE = 50;
 
-export type ProdutoFiltro = { q: string; status: "" | "ativos" | "inativos"; page: number };
+export type ProdutoFiltro = { q: string; status: "" | "ativos" | "inativos"; almox?: string; page: number };
 
-export const produtosWhere = ({ q, status }: Pick<ProdutoFiltro, "q" | "status">): Prisma.ProdutoWhereInput => ({
+export const produtosWhere = ({ q, status, almox }: Pick<ProdutoFiltro, "q" | "status" | "almox">): Prisma.ProdutoWhereInput => ({
   ...(q && { OR: [{ code: { contains: q.toUpperCase() } }, { name: { contains: q, mode: "insensitive" } }] }),
   ...(status && { active: status === "ativos" }),
+  ...(almox && { stockBalances: { some: { base: { type: "ALMOXARIFADO", code: almox } } } }),
 });
+
+/** Em quais almoxarifados cada produto está (tem saldo cadastrado), no alcance do usuário. `comSaldo`: tem quantidade agora. */
+export async function almoxarifadosDosProdutos(actor: Actor, produtoIds: string[]) {
+  const out = new Map<string, { code: string; comSaldo: boolean }[]>();
+  if (produtoIds.length === 0) return out;
+  const rows = await db.stockBalance.findMany({
+    where: { produtoId: { in: produtoIds }, base: { ...almoxarifadosWhere(actor), active: true } },
+    select: { produtoId: true, quantity: true, base: { select: { code: true } } },
+    orderBy: { base: { code: "asc" } },
+  });
+  for (const r of rows) {
+    const list = out.get(r.produtoId) ?? [];
+    list.push({ code: r.base.code, comSaldo: r.quantity > 0 });
+    out.set(r.produtoId, list);
+  }
+  return out;
+}
 
 /**
  * Lista do catálogo. `comCusto` (permissão produtos.precos) acrescenta o custo médio em estoque:
  * média do custo dos saldos com custo conhecido, ponderada pela quantidade física (K5).
  */
-export async function listProdutos(filtro: ProdutoFiltro, comCusto: boolean) {
+export async function listProdutos(filtro: ProdutoFiltro, comCusto: boolean, actor: Actor) {
   const where = produtosWhere(filtro);
   const [produtos, total] = await Promise.all([
     db.produto.findMany({
@@ -26,6 +46,7 @@ export async function listProdutos(filtro: ProdutoFiltro, comCusto: boolean) {
     }),
     db.produto.count({ where }),
   ]);
+  const almoxes = await almoxarifadosDosProdutos(actor, produtos.map((p) => p.id));
   const custos = new Map<string, number>();
   if (comCusto && produtos.length) {
     const saldos = await db.stockBalance.findMany({
@@ -41,5 +62,5 @@ export async function listProdutos(filtro: ProdutoFiltro, comCusto: boolean) {
     }
     for (const [id, a] of acc) custos.set(id, a.valor / a.qtd);
   }
-  return { produtos, total, custos };
+  return { produtos, total, custos, almoxes };
 }
