@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { SUPERVISOR_KEY } from "@/lib/permissions/default-profiles";
-import { basesDeOutrosSupervisores, escolherMinhasBases } from "./service";
+import { basesDeOutrosSupervisores, escolherMinhasBases, supervisoresComBases } from "./service";
 
 const tag = `mb${Date.now().toString(36)}`;
 const PERMS = ["bases.escolher"];
@@ -63,5 +63,23 @@ describe("minhas bases do supervisor e do RM", () => {
   it("RM não é contado como supervisor: a base dele não fica ocupada para supervisor", async () => {
     await db.userBase.deleteMany({ where: { baseId: baseA, userId: (sup1 as { id: string }).id } });
     expect((await basesDeOutrosSupervisores((sup2 as { id: string }).id)).has(baseA)).toBe(false);
+  });
+
+  it("liberar: salvar sem nenhuma base solta as do supervisor para os outros (E20)", async () => {
+    await escolherMinhasBases(sup1, [baseA]);
+    expect((await basesDeOutrosSupervisores((sup2 as { id: string }).id)).has(baseA)).toBe(true);
+    await escolherMinhasBases(sup1, []);
+    expect((await basesDeOutrosSupervisores((sup2 as { id: string }).id)).has(baseA)).toBe(false);
+    expect(await db.userBase.count({ where: { userId: (sup1 as { id: string }).id } })).toBe(0);
+    await escolherMinhasBases(sup2, [baseA, baseB]); // agora o outro pode pegar
+  });
+
+  it("supervisoresComBases lista só supervisores (não o RM), com as bases de cada um", async () => {
+    const id = (a: unknown) => (a as { id: string }).id;
+    const meus = [id(sup1), id(sup2), id(rm)];
+    const lista = (await supervisoresComBases()).filter((s) => meus.includes(s.id));
+    expect(lista.map((s) => s.id).sort()).toEqual([id(sup1), id(sup2)].sort()); // o RM não entra
+    expect(lista.find((s) => s.id === id(sup1))?.bases).toEqual([]);
+    expect(lista.find((s) => s.id === id(sup2))?.bases.map((b) => b.id).sort()).toEqual([baseA, baseB].sort());
   });
 });
