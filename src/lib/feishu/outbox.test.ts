@@ -6,7 +6,7 @@ const tx = { user: { findMany: async () => [{ feishuOpenId: "ou_1" }] } } as nev
 const SPN = { feishuStaffChatId: "oc_staff_spn", feishuShippingChatId: "oc_ship_spn" };
 const MG = { feishuStaffChatId: "oc_staff_mg", feishuShippingChatId: null };
 
-const KEYS = ["FEISHU_APP_ID", "FEISHU_APP_SECRET", "FEISHU_STAFF_CHAT_ID", "FEISHU_WEBHOOK_URL", "FEISHU_SHIPPING_WEBHOOK_URL"];
+const KEYS = ["FEISHU_BOT_APP_ID", "FEISHU_BOT_APP_SECRET", "FEISHU_STAFF_CHAT_ID"];
 beforeEach(() => {
   for (const k of KEYS) delete process.env[k];
 });
@@ -14,8 +14,8 @@ afterEach(() => {
   for (const k of KEYS) delete process.env[k];
 });
 const comApp = () => {
-  process.env.FEISHU_APP_ID = "cli_x";
-  process.env.FEISHU_APP_SECRET = "s";
+  process.env.FEISHU_BOT_APP_ID = "cli_bot";
+  process.env.FEISHU_BOT_APP_SECRET = "s";
 };
 
 describe("destinations com grupos por regional", () => {
@@ -35,29 +35,34 @@ describe("destinations com grupos por regional", () => {
     expect(await destinations(tx, "equipe", [])).toEqual([{ channel: "chat", target: "oc_geral" }]);
   });
 
-  it("expedição: grupo de expedição da regional > webhook geral da expedição > grupo da equipe da regional", async () => {
+  it("4 grupos separados: Insumos e Expedição de SP e de MG nunca se misturam", async () => {
     comApp();
-    process.env.FEISHU_SHIPPING_WEBHOOK_URL = "https://exemplo.invalid/exp";
+    process.env.FEISHU_STAFF_CHAT_ID = "oc_geral";
+    const SPN2 = { feishuStaffChatId: "oc_ins_spn", feishuShippingChatId: "oc_exp_spn" };
+    const MG2 = { feishuStaffChatId: "oc_ins_mg", feishuShippingChatId: "oc_exp_mg" };
+    const alvo = async (rota: "equipe" | "expedicao", r: typeof SPN2) => (await destinations(tx, rota, [], null, r))[0].target;
+    expect([await alvo("equipe", SPN2), await alvo("expedicao", SPN2), await alvo("equipe", MG2), await alvo("expedicao", MG2)]).toEqual(["oc_ins_spn", "oc_exp_spn", "oc_ins_mg", "oc_exp_mg"]);
+  });
+
+  it("expedição sem grupo próprio NÃO cai no grupo de insumos da regional: vai ao geral", async () => {
+    comApp();
+    process.env.FEISHU_STAFF_CHAT_ID = "oc_geral";
     expect(await destinations(tx, "expedicao", [], null, SPN)).toEqual([{ channel: "chat", target: "oc_ship_spn" }]);
-    expect(await destinations(tx, "expedicao", [], null, MG)).toEqual([{ channel: "webhook", target: "expedicao" }]);
-    delete process.env.FEISHU_SHIPPING_WEBHOOK_URL;
-    expect(await destinations(tx, "expedicao", [], null, MG)).toEqual([{ channel: "chat", target: "oc_staff_mg" }]);
+    expect(await destinations(tx, "expedicao", [], null, MG)).toEqual([{ channel: "chat", target: "oc_geral" }]);
+    expect(await destinations(tx, "expedicao", [], null, null)).toEqual([{ channel: "chat", target: "oc_geral" }]);
   });
 
-  it("sem o app configurado, os grupos da regional são ignorados (não dá para enviar)", async () => {
-    process.env.FEISHU_WEBHOOK_URL = "https://exemplo.invalid/equipe";
-    expect(await destinations(tx, "equipe", [], null, SPN)).toEqual([{ channel: "webhook", target: null }]);
+  it("sem o app do bot configurado, nada é enviado (não há destino)", async () => {
+    process.env.FEISHU_STAFF_CHAT_ID = "oc_geral";
+    expect(await destinations(tx, "equipe", [], null, SPN)).toEqual([]);
+    expect(await destinations(tx, "base", ["u1"], "oc_base", SPN)).toEqual([]);
   });
 
-  it("grupo da regional por link de webhook: funciona sem o app e vem antes do geral", async () => {
-    process.env.FEISHU_WEBHOOK_URL = "https://exemplo.invalid/equipe";
-    process.env.FEISHU_SHIPPING_WEBHOOK_URL = "https://exemplo.invalid/exp";
-    const hook = (id: string) => `https://open.feishu.cn/open-apis/bot/v2/hook/${id}`;
-    const SPNhook = { feishuStaffChatId: hook("aaaaaaaa-1111"), feishuShippingChatId: hook("bbbbbbbb-2222") };
-    expect(await destinations(tx, "equipe", [], null, SPNhook)).toEqual([{ channel: "webhook", target: hook("aaaaaaaa-1111") }]);
-    expect(await destinations(tx, "expedicao", [], null, SPNhook)).toEqual([{ channel: "webhook", target: hook("bbbbbbbb-2222") }]);
-    // Outra regional sem grupo: cai no webhook geral.
-    expect(await destinations(tx, "equipe", [], null, { feishuStaffChatId: null, feishuShippingChatId: null })).toEqual([{ channel: "webhook", target: null }]);
+  it("link de webhook antigo cadastrado na regional não vale: cai no grupo geral", async () => {
+    comApp();
+    process.env.FEISHU_STAFF_CHAT_ID = "oc_geral";
+    const antigo = { feishuStaffChatId: "https://open.feishu.cn/open-apis/bot/v2/hook/aaaaaaaa-1111", feishuShippingChatId: null };
+    expect(await destinations(tx, "equipe", [], null, antigo)).toEqual([{ channel: "chat", target: "oc_geral" }]);
   });
 
   it("o grupo da base não muda", async () => {
@@ -71,30 +76,25 @@ describe("destinations com grupos por regional", () => {
 });
 
 describe("origemDoGrupo (o que a tela do Feishu mostra)", () => {
-  const hook = (id: string) => `https://open.feishu.cn/open-apis/bot/v2/hook/${id}`;
-
   it("grupo próprio, expedição só com o de insumos, e cai no geral quando a regional não tem", async () => {
-    process.env.FEISHU_WEBHOOK_URL = "https://exemplo.invalid/equipe";
-    process.env.FEISHU_SHIPPING_WEBHOOK_URL = "https://exemplo.invalid/exp";
-    const inteira = { feishuStaffChatId: hook("aaaaaaaa-1111"), feishuShippingChatId: hook("bbbbbbbb-2222") };
-    expect(await origemDoGrupo(tx, "equipe", inteira)).toBe("regional");
-    expect(await origemDoGrupo(tx, "expedicao", inteira)).toBe("regional");
+    comApp();
+    process.env.FEISHU_STAFF_CHAT_ID = "oc_geral";
+    expect(await origemDoGrupo(tx, "equipe", SPN)).toBe("regional");
+    expect(await origemDoGrupo(tx, "expedicao", SPN)).toBe("regional");
     const semGrupos = { feishuStaffChatId: null, feishuShippingChatId: null };
     expect(await origemDoGrupo(tx, "equipe", semGrupos)).toBe("geral");
     expect(await origemDoGrupo(tx, "expedicao", semGrupos)).toBe("geral");
-    // Sem webhook geral de expedição, a expedição da regional que só tem insumos usa o grupo de insumos dela.
-    delete process.env.FEISHU_SHIPPING_WEBHOOK_URL;
-    expect(await origemDoGrupo(tx, "expedicao", { feishuStaffChatId: hook("aaaaaaaa-1111"), feishuShippingChatId: null })).toBe("regionalInsumos");
+    expect(await origemDoGrupo(tx, "expedicao", MG)).toBe("geral"); // MG sem grupo de expedição: geral, não o de insumos
   });
 
-  it("chat_id (oc_...) sem o app não é usado: avisa em vez de parecer que funciona", async () => {
-    process.env.FEISHU_WEBHOOK_URL = "https://exemplo.invalid/equipe";
+  it("chat_id (oc_...) sem o app do bot não é usado: avisa em vez de parecer que funciona", async () => {
     expect(await origemDoGrupo(tx, "equipe", SPN)).toBe("semApp");
     comApp();
     expect(await origemDoGrupo(tx, "equipe", SPN)).toBe("regional");
   });
 
   it("nada configurado", async () => {
+    comApp();
     expect(await origemDoGrupo(tx, "equipe", { feishuStaffChatId: null, feishuShippingChatId: null })).toBe("nenhum");
   });
 });

@@ -1,5 +1,5 @@
 // Chamadas à Open Platform do Feishu (sem SDK: só fetch, para rodar bem em serverless).
-import { feishuConfig } from "@/lib/feishu/config";
+import { botConfig, feishuConfig } from "@/lib/feishu/config";
 
 export class FeishuError extends Error {
   constructor(
@@ -10,13 +10,16 @@ export class FeishuError extends Error {
   }
 }
 
-// Cache por instância (o token vale ~2h; renovamos 5 min antes).
-let tenantCache: { token: string; expiresAt: number } | null = null;
+// Cache por instância e por app (o token vale ~2h; renovamos 5 min antes).
+export type FeishuApp = "login" | "bot";
+const tenantCache: Partial<Record<FeishuApp, { token: string; expiresAt: number }>> = {};
 
-/** Token do app (tenant_access_token) para mandar mensagens pelo app bot. */
-export async function getTenantAccessToken() {
-  if (tenantCache && tenantCache.expiresAt > Date.now() + 5 * 60_000) return tenantCache.token;
-  const { baseUrl, appId, appSecret } = feishuConfig();
+/** Token do app (tenant_access_token). "login" = app do Entrar com Feishu e do organograma; "bot" = app que manda as mensagens. */
+export async function getTenantAccessToken(app: FeishuApp = "login") {
+  const cached = tenantCache[app];
+  if (cached && cached.expiresAt > Date.now() + 5 * 60_000) return cached.token;
+  const { baseUrl, appId, appSecret } = app === "bot" ? botConfig() : feishuConfig();
+  if (!appId || !appSecret) throw new FeishuError(app === "bot" ? "App do bot não configurado (FEISHU_BOT_APP_ID e FEISHU_BOT_APP_SECRET)." : "App do Feishu não configurado.");
   const res = await fetch(`${baseUrl}/open-apis/auth/v3/tenant_access_token/internal`, {
     method: "POST",
     headers: { "Content-Type": "application/json; charset=utf-8" },
@@ -26,13 +29,14 @@ export async function getTenantAccessToken() {
   const body = (await res.json().catch(() => null)) as { code?: number; msg?: string; tenant_access_token?: string; expire?: number } | null;
   if (!body || body.code !== 0 || !body.tenant_access_token)
     throw new FeishuError(`Feishu token: ${body?.msg ?? `HTTP ${res.status}`} (código ${body?.code})`, body?.code);
-  tenantCache = { token: body.tenant_access_token, expiresAt: Date.now() + (body.expire ?? 7200) * 1000 };
+  tenantCache[app] = { token: body.tenant_access_token, expiresAt: Date.now() + (body.expire ?? 7200) * 1000 };
   return body.tenant_access_token;
 }
 
 /** Só para testes. */
 export function _resetTenantCache() {
-  tenantCache = null;
+  delete tenantCache.login;
+  delete tenantCache.bot;
 }
 
 // ---------------------------------------------------------------- Chamadas genéricas

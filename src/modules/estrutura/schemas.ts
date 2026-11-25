@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { checkbox, codeField, optionalText } from "@/lib/form";
 
-// Grupo da regional no Feishu: link do webhook do bot do grupo (https://open.feishu.cn/open-apis/bot/v2/hook/...) ou chat_id oc_...
+// Grupo da regional no Feishu: o chat_id oc_... do grupo onde o bot da J&T está (webhooks não são mais usados)
 const chatId = optionalText.pipe(
   z
     .string()
-    .regex(/^(oc_[A-Za-z0-9_-]{6,80}|https:\/\/open\.(feishu\.cn|larksuite\.com)\/open-apis\/bot\/v2\/hook\/[A-Za-z0-9-]{8,80})$/, "Cole o link do webhook do bot do grupo (https://open.feishu.cn/open-apis/bot/v2/hook/...) ou o chat_id oc_....")
+    .regex(/^oc_[A-Za-z0-9_-]{6,80}$/, "Informe o chat_id do grupo (oc_...), com o bot da J&T dentro do grupo.")
     .nullable()
     .optional(),
 );

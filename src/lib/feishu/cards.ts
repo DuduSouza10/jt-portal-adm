@@ -24,7 +24,8 @@ export function card(title: string, template: Template, lines: string[], url?: s
     });
   }
   return {
-    config: { wide_screen_mode: true },
+    // update_multi: o cartão é compartilhado, e só assim o Feishu deixa o bot editá-lo depois (mudança de status).
+    config: { wide_screen_mode: true, update_multi: true },
     header: { template, title: { tag: "plain_text", content: title } },
     elements,
   };

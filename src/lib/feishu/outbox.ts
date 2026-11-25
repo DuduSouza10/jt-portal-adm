@@ -2,35 +2,28 @@ import "server-only";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 import type { Card } from "@/lib/feishu/cards";
-import { deliver, FEISHU_WEBHOOK_RE, messagingConfig, SHIPPING_WEBHOOK_TARGET, type Channel } from "@/lib/feishu/send";
+import { deliver, messagingConfig, podeEditar, type Channel } from "@/lib/feishu/send";
 import { errorInfo, logger } from "@/lib/logger";
 
 type Tx = Prisma.TransactionClient;
 export type Destination = { channel: Channel; target: string | null };
 
 /**
- * Para quem vai um aviso no Feishu:
- * - "equipe" (aprovação, separação): grupo da equipe via app (FEISHU_STAFF_CHAT_ID) > webhook do grupo
- *   (FEISHU_WEBHOOK_URL) > mensagem direta a cada destinatário com Feishu ligado.
- * - "expedicao": webhook do grupo da expedição (FEISHU_SHIPPING_WEBHOOK_URL) > mesmo caminho da equipe.
- * - "base": mensagem direta a cada destinatário + grupo da base (Base.feishuChatId). Precisa do app.
- *
- * Com a regional do aviso (grupos da regional, via app), o grupo dela vem antes do geral:
- * - "equipe": grupo da equipe da regional > o caminho geral acima.
- * - "expedicao": grupo da expedição da regional > webhook geral da expedição > o caminho da equipe (com o da regional).
+ * Para quem vai um aviso no Feishu (tudo pelo app/bot da J&T; o bot precisa estar no grupo):
+ * - "equipe" (aprovação, separação): grupo de INSUMOS da regional > grupo geral (FEISHU_STAFF_CHAT_ID) > mensagem direta
+ *   a cada destinatário com Feishu ligado.
+ * - "expedicao": grupo de EXPEDIÇÃO da regional > grupo geral > mensagem direta. Nunca cai no grupo de insumos:
+ *   são grupos diferentes (ex.: Insumos SP, Expedição SP, Insumos MG, Expedição MG, todos com o mesmo bot).
+ * - "base": mensagem direta a cada destinatário + grupo da base (Base.feishuChatId).
  * Regional sem grupo cadastrado cai no geral: nada deixa de ser enviado.
  */
 export type Route = "equipe" | "expedicao" | "base";
 /** Grupos do Feishu de uma regional (Regional.feishuStaffChatId / feishuShippingChatId). */
 export type RegionalChats = { feishuStaffChatId: string | null; feishuShippingChatId: string | null } | null;
 
-/**
- * Grupo de uma regional: pode ser o link do webhook do bot do grupo (não precisa do app) ou o chat_id oc_...
- * (precisa do app). null = a regional não tem esse grupo (ou é chat_id sem o app configurado).
- */
+/** Grupo de uma regional: o chat_id oc_... do grupo onde o bot está. Qualquer outra coisa (link de webhook antigo) não vale. */
 function grupoRegional(v: string | null | undefined, app: boolean): Destination | null {
-  if (!v) return null;
-  if (FEISHU_WEBHOOK_RE.test(v)) return { channel: "webhook", target: v };
+  if (!v || !v.startsWith("oc_")) return null;
   return app ? { channel: "chat", target: v } : null;
 }
 
@@ -42,8 +35,9 @@ export async function destinations(
   regional?: RegionalChats,
 ): Promise<Destination[]> {
   const cfg = messagingConfig();
+  if (!cfg.app) return []; // sem o app do bot não há como enviar
   const dms = async () => {
-    if (!cfg.app || !userIds.length) return [];
+    if (!userIds.length) return [];
     const users = await tx.user.findMany({
       where: { id: { in: userIds }, active: true, feishuOpenId: { not: null } },
       select: { feishuOpenId: true },
@@ -52,46 +46,43 @@ export async function destinations(
   };
   if (route === "base") {
     const out: Destination[] = await dms();
-    if (cfg.app && baseChatId) out.push({ channel: "chat", target: baseChatId });
+    if (baseChatId) out.push({ channel: "chat", target: baseChatId });
     return out;
   }
-  const exp = route === "expedicao" ? grupoRegional(regional?.feishuShippingChatId, cfg.app) : null;
-  if (exp) return [exp];
-  if (route === "expedicao" && cfg.shippingWebhook) return [{ channel: "webhook", target: SHIPPING_WEBHOOK_TARGET }];
-  const eq = grupoRegional(regional?.feishuStaffChatId, cfg.app);
-  if (eq) return [eq];
-  if (cfg.app && cfg.staffChatId) return [{ channel: "chat", target: cfg.staffChatId }];
-  if (cfg.webhook) return [{ channel: "webhook", target: null }];
+  const proprio = grupoRegional(route === "expedicao" ? regional?.feishuShippingChatId : regional?.feishuStaffChatId, cfg.app);
+  if (proprio) return [proprio];
+  if (cfg.staffChatId) return [{ channel: "chat", target: cfg.staffChatId }];
   return dms();
 }
 
 /**
  * De onde sai o aviso de uma regional (para a tela do Feishu mostrar, sem adivinhar):
- * - "regional": o grupo dela; "regionalInsumos": expedição sem grupo próprio, vai no grupo de insumos da regional;
+ * - "regional": o grupo dela (cada regional tem o de insumos e o de expedição, separados);
  * - "geral": a regional não tem esse grupo e cai no grupo geral (por isso duas regionais podem cair no mesmo);
- * - "semApp": tem o chat_id (oc_...) cadastrado, mas sem o app do Feishu ele não é usado (cai no geral, se houver);
+ * - "semApp": tem o chat_id (oc_...) cadastrado, mas o app do bot não está configurado (não é usado);
  * - "nenhum": nada configurado.
  */
-export type OrigemGrupo = "regional" | "regionalInsumos" | "geral" | "semApp" | "nenhum";
+export type OrigemGrupo = "regional" | "geral" | "semApp" | "nenhum";
 export async function origemDoGrupo(tx: Tx, route: "equipe" | "expedicao", regional: RegionalChats): Promise<OrigemGrupo> {
   const cfg = messagingConfig();
   const valor = route === "expedicao" ? regional?.feishuShippingChatId : regional?.feishuStaffChatId;
   if (grupoRegional(valor, cfg.app)) return "regional";
-  if (valor) return "semApp"; // cadastrado, mas não usável (chat_id sem o app)
+  if (valor?.startsWith("oc_")) return "semApp"; // cadastrado, mas sem o app do bot não é usado
   const dest = await destinations(tx, route, [], null, regional);
   if (!dest.length) return "nenhum";
-  const staff = grupoRegional(regional?.feishuStaffChatId, cfg.app);
-  if (route === "expedicao" && staff && dest[0].target === staff.target) return "regionalInsumos";
   return "geral";
 }
 
+/** Opções do aviso: `refId` = solicitação dona do cartão (cada mudança de status edita o mesmo cartão); `soAtualiza` = não envia cartão novo. */
+export type EnqueueOptions = { refId?: string; soAtualiza?: boolean };
+
 /** Grava na fila de saída dentro da transação do evento: se o evento salvou, o aviso sai (cedo ou tarde). */
-export async function enqueue(tx: Tx, event: string, dest: Destination[], card: Card) {
+export async function enqueue(tx: Tx, event: string, dest: Destination[], card: Card, opts: EnqueueOptions = {}) {
   // Mesmo destino de grupo para dois públicos (ex.: grupo da equipe) recebe o cartão uma vez só.
   const unique = [...new Map(dest.map((d) => [`${d.channel}:${d.target}`, d])).values()];
   if (!unique.length) return;
   await tx.feishuOutbox.createMany({
-    data: unique.map((d) => ({ event, channel: d.channel, target: d.target, payload: card as object })),
+    data: unique.map((d) => ({ event, channel: d.channel, target: d.target, payload: card as object, refId: opts.refId ?? null, soAtualiza: opts.soAtualiza ?? false })),
   });
 }
 
@@ -113,13 +104,39 @@ export async function processOutbox(limit = 25) {
   let sent = 0;
   let failed = 0;
   for (const row of due) {
+    // Mudanças da mesma solicitação para o mesmo destino saem em ordem (e uma por vez): a segunda edita o cartão que a primeira criou.
+    if (row.refId && row.target) {
+      const antes = await db.feishuOutbox.count({
+        where: { status: "PENDING", refId: row.refId, channel: row.channel, target: row.target, createdAt: { lt: row.createdAt } },
+      });
+      if (antes) continue;
+    }
     const claimed = await db.feishuOutbox.updateMany({
       where: { id: row.id, status: "PENDING", nextAttemptAt: row.nextAttemptAt },
       data: { nextAttemptAt: new Date(Date.now() + 2 * 60_000) },
     });
     if (claimed.count !== 1) continue;
     try {
-      await deliver(row.channel as Channel, row.target, row.payload as Card);
+      const cartao =
+        row.refId && row.target
+          ? await db.feishuCartao.findUnique({ where: { solicitacaoId_channel_target: { solicitacaoId: row.refId, channel: row.channel, target: row.target } } })
+          : null;
+      if (row.soAtualiza && (!cartao || !podeEditar(cartao.createdAt))) {
+        // Quem nunca recebeu o cartão (ou o cartão é velho demais para editar) não recebe um novo só por uma mudança de status.
+        await db.feishuOutbox.update({ where: { id: row.id }, data: { status: "SENT", sentAt: new Date(), attempts: row.attempts + 1, lastError: "Nada a editar: o cartão não foi enviado a este destino ou tem mais de 13 dias." } });
+        continue;
+      }
+      const ultima = row.attempts + 1 >= MAX_ATTEMPTS;
+      const r = await deliver(row.channel as Channel, row.target, row.payload as Card, cartao ? { messageId: cartao.messageId, enviadoEm: cartao.createdAt } : null, {
+        enviarSeFalharEdicao: ultima && !row.soAtualiza,
+      });
+      if (row.refId && row.target && (!cartao || cartao.messageId !== r.messageId)) {
+        await db.feishuCartao.upsert({
+          where: { solicitacaoId_channel_target: { solicitacaoId: row.refId, channel: row.channel, target: row.target } },
+          create: { solicitacaoId: row.refId, channel: row.channel, target: row.target, messageId: r.messageId },
+          update: { messageId: r.messageId, createdAt: new Date() },
+        });
+      }
       await db.feishuOutbox.update({
         where: { id: row.id },
         data: { status: "SENT", sentAt: new Date(), attempts: row.attempts + 1, lastError: null },

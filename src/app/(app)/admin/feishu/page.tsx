@@ -42,18 +42,15 @@ export default async function FeishuPage() {
       if (target && target === r.feishuStaffChatId) return t("feishu.destino.insumos", { r: r.code });
       if (target && target === r.feishuShippingChatId) return t("feishu.destino.expedicao", { r: r.code });
     }
-    if (channel === "webhook") return target === "expedicao" ? t("feishu.destino.geralExpedicao") : t("feishu.destino.geralEquipe");
     return target && target === cfg.staffChatId ? t("feishu.destino.geralEquipe") : t("feishu.canal.chat");
   };
   const count = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
   const equipeVia =
     cfg.app && cfg.staffChatId
       ? t("feishu.viaGrupoApp")
-      : cfg.webhook
-        ? t("feishu.viaWebhook")
-        : cfg.app
-          ? t("feishu.viaDireta")
-          : t("feishu.viaNenhum");
+      : cfg.app
+        ? t("feishu.viaDireta")
+        : t("feishu.viaNenhum");
   const config = (ok: boolean) => (ok ? t("feishu.configurado") : t("feishu.naoConfigurado"));
 
   return (
@@ -66,12 +63,6 @@ export default async function FeishuPage() {
           <CardDescription>{t("feishu.configuracaoDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-1 text-sm">
-          <p>
-            {t("feishu.webhookEquipe")} <b>{config(!!cfg.webhook)}</b>
-          </p>
-          <p>
-            {t("feishu.webhookExpedicao")} <b>{cfg.shippingWebhook ? t("feishu.configurado") : t("feishu.naoConfiguradoExpedicao")}</b>
-          </p>
           <p>
             {t("feishu.appPlataforma")} <b>{config(!!cfg.app)}</b>
           </p>
@@ -144,7 +135,7 @@ export default async function FeishuPage() {
                       </Button>
                     </form>
                   )}
-                  {r.lastError && <p className="w-full text-xs text-destructive">{r.lastError}</p>}
+                  {r.lastError && <p className={`w-full text-xs ${r.status === "SENT" ? "text-muted-foreground" : "text-destructive"}`}>{r.lastError}</p>}
                 </li>
               ))}
             </ul>

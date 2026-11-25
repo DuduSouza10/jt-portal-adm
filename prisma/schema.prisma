@@ -436,6 +436,7 @@ model Solicitacao {
   shipmentPhoto ShipmentPhoto?      @relation(fields: [shipmentPhotoId], references: [id], onDelete: SetNull)
   itens         SolicitacaoItem[]
   eventos       SolicitacaoEvento[]
+  cartoesFeishu FeishuCartao[]
 
   @@index([baseId, createdAt])
   @@index([status, almoxarifadoId])
@@ -525,9 +526,11 @@ enum OutboxStatus {
 model FeishuOutbox {
   id            String       @id @default(cuid())
   event         String // ex.: solicitacao.criar
-  channel       String // webhook | chat | user
-  target        String? // chat_id / open_id / "expedicao" (webhook da expedição)
+  channel       String // chat | user (os webhooks deixaram de ser usados em 2026-11-25)
+  target        String? // chat_id (oc_...) / open_id (ou_...)
   payload       Json // cartão interativo
+  refId         String? // solicitação a que o cartão pertence: mudanças de status editam o MESMO cartão (FeishuCartao)
+  soAtualiza    Boolean      @default(false) // só edita o cartão que já existe; se não existir (ou for velho demais), não envia outro
   status        OutboxStatus @default(PENDING)
   attempts      Int          @default(0)
   nextAttemptAt DateTime     @default(now())
@@ -537,6 +540,23 @@ model FeishuOutbox {
 
   @@index([status, nextAttemptAt])
   @@index([createdAt])
+  @@index([refId])
+}
+
+/// Cartão de uma solicitação que já está no Feishu, um por destino (grupo ou pessoa). Guarda o message_id para
+/// que cada mudança de status edite o mesmo cartão em vez de mandar outro. O Feishu só deixa editar até 14 dias.
+model FeishuCartao {
+  id            String   @id @default(cuid())
+  solicitacaoId String
+  channel       String // chat | user
+  target        String
+  messageId     String // om_...
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  solicitacao Solicitacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+
+  @@unique([solicitacaoId, channel, target])
 }
 
 /// Lembretes e resumos já enviados, para não repetir.

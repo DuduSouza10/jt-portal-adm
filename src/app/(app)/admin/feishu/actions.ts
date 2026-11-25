@@ -18,7 +18,7 @@ export async function sendTestAction(alvo: "equipe" | "expedicao" | "eu", region
   const cfg = messagingConfig();
   let dest;
   if (alvo === "eu") {
-    if (!cfg.app) return { error: "Falta configurar o app do Feishu (FEISHU_APP_ID e FEISHU_APP_SECRET)." };
+    if (!cfg.app) return { error: "Falta configurar o app/bot da J&T (FEISHU_BOT_APP_ID e FEISHU_BOT_APP_SECRET)." };
     const u = await db.user.findUnique({ where: { id: me.id }, select: { feishuOpenId: true } });
     if (!u?.feishuOpenId) return { error: "Seu usuário não tem o open_id do Feishu. Preencha em Usuários → seu cadastro." };
     dest = [{ channel: "user" as const, target: u.feishuOpenId }];
@@ -30,8 +30,8 @@ export async function sendTestAction(alvo: "equipe" | "expedicao" | "eu", region
       return {
         error:
           alvo === "expedicao"
-            ? "Nenhum destino para a expedição: configure o webhook do grupo da expedição ou o da equipe."
-            : "Nenhum destino para a equipe: configure o webhook do grupo, o chat do grupo ou o app do Feishu.",
+            ? "Nenhum destino para a expedição: configure o app/bot da J&T e o grupo da expedição (ou o da equipe)."
+            : "Nenhum destino para a equipe: configure o app/bot da J&T e o grupo da equipe (FEISHU_STAFF_CHAT_ID ou o da regional).",
       };
   }
   await db.$transaction(async (tx) => {

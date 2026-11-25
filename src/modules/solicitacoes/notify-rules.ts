@@ -6,6 +6,7 @@
  */
 import type { SolicitacaoStatus } from "@/generated/prisma/enums";
 import type { Template } from "@/lib/feishu/cards";
+import { fmtDateTime } from "@/lib/format";
 import { STATUS_LABEL } from "./rules";
 
 /**
@@ -138,3 +139,83 @@ export function avisos(e: Evento, c: Contexto): Aviso[] {
 
 /** Rota no Feishu de cada público (ver lib/feishu/outbox.ts). */
 export const ROTA = { aprovadores: "equipe", separacao: "equipe", expedicao: "expedicao", base: "base" } as const;
+
+/** Item do pedido como o cartão do Feishu mostra. */
+export type ItemResumo = { codigo: string; nome: string; unidade: string; pedido: number; aprovado: number | null; separado: number | null; cancelado?: boolean };
+export type OutroItemResumo = { nome: string; quantity: number };
+
+/** Quantos itens aparecem no cartão; o resto vira "e mais N". O cartão do Feishu tem limite de tamanho. */
+export const MAX_ITENS_NO_CARTAO = 15;
+
+/**
+ * Linhas do cartão do Feishu com o pedido em si: quando foi feito, o status de agora e o que foi pedido, com as
+ * quantidades (e o que foi aprovado/separado, se for diferente do pedido). Pura (testada em notify-rules.test.ts).
+ * `escape` é o escapeMd do Feishu (texto digitado pelo usuário não pode virar tag).
+ */
+export function resumoPedido(
+  p: { criadaEm: Date; status: SolicitacaoStatus; itens: ItemResumo[]; outros?: OutroItemResumo[] },
+  escape: (s: string) => string,
+): string[] {
+  const itens = p.itens.filter((i) => !i.cancelado);
+  const linhasItens = itens.map((i) => {
+    const extras: string[] = [];
+    if (i.aprovado !== null && i.aprovado !== i.pedido) extras.push(`aprovado ${i.aprovado}`);
+    if (i.separado !== null && i.separado !== (i.aprovado ?? i.pedido)) extras.push(`separado ${i.separado}`);
+    return `• ${escape(i.nome)} (${escape(i.codigo)}): **${i.pedido} ${escape(i.unidade)}**${extras.length ? ` · ${extras.join(" · ")}` : ""}`;
+  });
+  const linhasOutros = (p.outros ?? []).map((o) => `• ${escape(o.nome)}: **${o.quantity}** · fora do cadastro`);
+  const todas = [...linhasItens, ...linhasOutros];
+  const mostradas = todas.slice(0, MAX_ITENS_NO_CARTAO);
+  if (todas.length > mostradas.length) mostradas.push(`• … e mais ${todas.length - mostradas.length} item(ns). Veja todos na solicitação.`);
+  return [
+    `**Solicitada em:** ${fmtDateTime(p.criadaEm)}   **Status atual:** ${STATUS_LABEL[p.status]}`,
+    todas.length ? `**Itens pedidos (${todas.length}):**\n${mostradas.join("\n")}` : "",
+  ];
+}
+
+/** Uma linha do andamento do pedido (criação e mudanças de status), do mais antigo ao mais novo. */
+export type EntradaHistorico = { status: SolicitacaoStatus | null; quando: Date; quem: string | null; nota: string | null };
+
+/** Quantas entradas do andamento cabem no cartão (as mais recentes). */
+export const MAX_ANDAMENTO_NO_CARTAO = 8;
+
+/**
+ * O cartão inteiro de uma solicitação no Feishu. É sempre o retrato do pedido AGORA: o mesmo cartão é editado a cada
+ * mudança de status (cabeçalho, cor, status, itens e andamento), em vez de mandar um cartão por evento.
+ * `ultima` = o aviso deste evento para quem o recebe ("Nova para separar: SOL-000123"); fica de fora nas edições silenciosas.
+ */
+export function cartaoPedido(
+  p: {
+    numero: string;
+    urgente: boolean;
+    status: SolicitacaoStatus;
+    baseCode: string;
+    baseName: string;
+    criadaEm: Date;
+    itens: ItemResumo[];
+    outros?: OutroItemResumo[];
+    historico: EntradaHistorico[];
+    ultima?: { titulo: string; corpo: string } | null;
+  },
+  escape: (s: string) => string,
+): { titulo: string; cor: Template; linhas: string[] } {
+  const aberta = p.status === "PENDENTE";
+  const [cabecalho, itens] = resumoPedido({ criadaEm: p.criadaEm, status: p.status, itens: p.itens, outros: p.outros }, escape);
+  const recentes = p.historico.slice(-MAX_ANDAMENTO_NO_CARTAO);
+  const andamento = recentes.map((h) => {
+    const que = h.status ? STATUS_LABEL[h.status] : "Solicitada";
+    const nota = h.nota ? ` — ${escape(cut(h.nota, 80))}` : "";
+    return `• ${fmtDateTime(h.quando)} · **${que}**${h.quem ? ` · ${escape(h.quem)}` : ""}${nota}`;
+  });
+  return {
+    titulo: `${p.urgente ? "🔥 " : ""}${p.numero} · ${STATUS_LABEL[p.status]}`,
+    cor: p.urgente && aberta ? "red" : COR[p.status],
+    linhas: [
+      `**Base:** ${escape(p.baseCode)} — ${escape(p.baseName)}`,
+      p.ultima ? `🔔 **${escape(p.ultima.titulo)}**${p.ultima.corpo ? ` — ${escape(p.ultima.corpo)}` : ""}` : "",
+      cabecalho,
+      itens,
+      andamento.length ? `**Andamento:**\n${andamento.join("\n")}` : "",
+    ],
+  };
+}

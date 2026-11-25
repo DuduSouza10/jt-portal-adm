@@ -49,8 +49,9 @@ const notifs = async (nome: string) =>
   (await db.notification.findMany({ where: { userId: u[nome].id }, orderBy: { createdAt: "asc" } })).map((n) => n.title);
 
 beforeAll(async () => {
-  process.env.FEISHU_WEBHOOK_URL = "https://exemplo.invalid/webhook-equipe";
-  process.env.FEISHU_SHIPPING_WEBHOOK_URL = "https://exemplo.invalid/webhook-expedicao";
+  process.env.FEISHU_BOT_APP_ID = "cli_bot_teste";
+  process.env.FEISHU_BOT_APP_SECRET = "segredo";
+  process.env.FEISHU_STAFF_CHAT_ID = "oc_geral_teste";
   regional = (await db.regional.create({ data: { code: `${tag}R1`, name: "R1" } })).id;
   outraRegional = (await db.regional.create({ data: { code: `${tag}R2`, name: "R2" } })).id;
   almox = (await db.base.create({ data: { code: `${tag}-ALM`, name: "Almox", type: "ALMOXARIFADO", regionalId: regional } })).id;
@@ -74,8 +75,9 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-  delete process.env.FEISHU_WEBHOOK_URL;
-  delete process.env.FEISHU_SHIPPING_WEBHOOK_URL;
+  delete process.env.FEISHU_BOT_APP_ID;
+  delete process.env.FEISHU_BOT_APP_SECRET;
+  delete process.env.FEISHU_STAFF_CHAT_ID;
   const ids = Object.values(u).map((x) => x.id);
   await db.feishuOutbox.deleteMany({ where: { createdAt: { gte: started } } });
   // Avisos dos pedidos de teste também chegam a usuários de verdade do banco (ex.: um admin global).
@@ -102,7 +104,8 @@ describe("avisos das solicitações", () => {
     expect(await notifs("gestor")).toEqual([expect.stringMatching(/URGENTE · Nova solicitação SOL-/)]);
     for (const nome of ["gestorfora", "dev", "base", "almox", "expedicao"]) expect(await notifs(nome), nome).toEqual([]);
     const fila = await db.feishuOutbox.findMany({ where: { createdAt: { gte: started }, event: { startsWith: "solicitacao.criada" } } });
-    expect(fila.map((f) => [f.channel, f.target])).toEqual([["webhook", null]]); // grupo da equipe
+    expect(fila.map((f) => [f.channel, f.target])).toEqual([["chat", "oc_geral_teste"]]); // grupo da equipe
+    expect(fila[0].refId).toBe(id); // o cartão é da solicitação: as próximas mudanças editam este mesmo cartão
   });
 
   it("aprovada: a base (quem pediu e o colega) e o almoxarifado", async () => {
@@ -113,13 +116,13 @@ describe("avisos das solicitações", () => {
     expect(await notifs("expedicao")).toEqual([]);
   });
 
-  it("separada: a base e a expedição (pelo webhook da expedição)", async () => {
+  it("separada: a base e a expedição (pelo grupo)", async () => {
     await iniciarSeparacao(u.almox, id);
     await separar(u.almox, { id, quantidades: {} });
     expect(await notifs("expedicao")).toEqual([expect.stringMatching(/^Pronto para envio/)]);
     expect((await notifs("base")).at(-1)).toMatch(/Separada/);
     const fila = await db.feishuOutbox.findFirstOrThrow({ where: { createdAt: { gte: started }, event: { startsWith: "solicitacao.separada.expedicao" } } });
-    expect([fila.channel, fila.target]).toEqual(["webhook", "expedicao"]);
+    expect([fila.channel, fila.target]).toEqual(["chat", "oc_geral_teste"]);
   });
 
   it("comentário de quem é da base vai para quem aprova e para o almoxarifado", async () => {
@@ -127,8 +130,8 @@ describe("avisos das solicitações", () => {
     await comentar(u.base, id, "Pode mandar hoje?");
     expect((await notifs("gestor")).length).toBe(antes + 1);
     expect((await notifs("almox")).at(-1)).toMatch(/Novo comentário/);
-    // Mesmo grupo (equipe) para aprovação e separação: um cartão só; o pedido já está na expedição (S12): +1 no grupo dela.
-    expect(await db.feishuOutbox.count({ where: { createdAt: { gte: started }, event: { startsWith: "solicitacao.comentario" } } })).toBe(2);
+    // Neste teste só há o grupo geral: aprovação, separação e expedição caem no mesmo grupo e recebem um cartão só.
+    expect(await db.feishuOutbox.count({ where: { createdAt: { gte: started }, event: { startsWith: "solicitacao.comentario" } } })).toBe(1);
   });
 
   it("a página da notificação aponta para a solicitação", async () => {
