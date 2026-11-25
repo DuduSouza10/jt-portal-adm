@@ -77,6 +77,7 @@ export default async function MinhasBasesPage(props: PageProps<"/minhas-bases">)
           supervisores={supervisores}
           meuId={user.id}
           totais={{ ocupadas: comSupervisor, livres: totalBases - comSupervisor }}
+          nomesRegionais={Object.fromEntries(regionais.map((r) => [r.code, r.name]))}
         />
       )}
     </>

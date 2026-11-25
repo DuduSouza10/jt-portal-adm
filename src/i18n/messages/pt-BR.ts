@@ -143,8 +143,7 @@ export const ptBR = {
       semBases: "Ainda sem bases",
       voce: "Você",
       nBases: "{n} base(s)",
-      verTodas: "Ver todas ({n})",
-      verMenos: "Ver menos",
+      nRegionais: "{n} regional(is)",
     },
   },
   duvidas: {
