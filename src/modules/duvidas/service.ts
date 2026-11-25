@@ -82,3 +82,25 @@ export async function conversas() {
   });
   return ultimas.sort((a, b) => Number(!b.daEquipe) - Number(!a.daEquipe) || b.createdAt.getTime() - a.createdAt.getTime());
 }
+
+/** Janela em que o navegador ainda avisa o que chegou enquanto estava parado (aba dormindo, notebook fechado). */
+export const AVISO_JANELA_MIN = 10;
+/** Folga na "última checagem": uma mensagem gravada por uma transação lenta pode aparecer um pouco depois da hora dela. */
+export const AVISO_FOLGA_S = 20;
+
+/**
+ * Avisos de dúvida (E21) ainda não lidos e mais novos que `desde`, para o navegador mostrar como notificação do sistema.
+ * Só a aba de suporte: nada de outros avisos do sino. `desde` vazio = só devolve a hora do servidor (primeira checagem).
+ */
+export async function novosAvisosDuvida(userId: string, desde: Date | null) {
+  const agora = new Date();
+  if (!desde) return { agora, itens: [] };
+  const limite = new Date(agora.getTime() - AVISO_JANELA_MIN * 60_000);
+  const itens = await db.notification.findMany({
+    where: { userId, refType: "duvida", readAt: null, createdAt: { gt: desde > limite ? desde : limite } },
+    orderBy: { createdAt: "asc" },
+    take: 5,
+    select: { id: true, title: true, body: true, link: true },
+  });
+  return { agora, itens };
+}

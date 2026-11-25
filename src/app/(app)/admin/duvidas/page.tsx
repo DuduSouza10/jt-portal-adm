@@ -9,6 +9,7 @@ import { conversa, conversas } from "@/modules/duvidas/service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ActionForm } from "@/components/action-form";
+import { AtivarAvisos } from "@/components/duvidas-avisos";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { param } from "@/components/pagination";
 import { responderDuvidaAction } from "./actions";
@@ -31,7 +32,7 @@ export default async function DuvidasPage(props: PageProps<"/admin/duvidas">) {
 
   return (
     <>
-      <PageHeader title={t("duvidas.tela.titulo")} description={t("duvidas.tela.descricao")} />
+      <PageHeader title={t("duvidas.tela.titulo")} description={t("duvidas.tela.descricao")} actions={<AtivarAvisos />} />
       {lista.length === 0 ? (
         <EmptyState>{t("duvidas.tela.vazio")}</EmptyState>
       ) : (

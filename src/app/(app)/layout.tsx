@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AppSidebar, AppSidebarSkeleton, AppTopbar } from "@/components/app-header";
+import { DuvidasAvisos } from "@/components/duvidas-avisos";
 import { DuvidasBalao } from "@/components/duvidas-balao";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -23,6 +24,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       <Suspense>
         <DuvidasBalao />
       </Suspense>
+      <DuvidasAvisos />
     </div>
   );
 }

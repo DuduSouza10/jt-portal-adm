@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MessageCircleQuestion, Send, X } from "lucide-react";
 import { useKeepForm } from "@/components/use-keep-form";
+import { AtivarAvisos } from "@/components/duvidas-avisos";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useServerMessage, useT } from "@/i18n/client";
@@ -42,6 +43,7 @@ export function DuvidasBalao() {
             <div>
               <p className="font-semibold">{t("duvidas.titulo")}</p>
               <p className="text-xs text-muted-foreground">{t("duvidas.ajuda")}</p>
+              <AtivarAvisos className="mt-2" />
             </div>
             <Button variant="ghost" size="icon-sm" onClick={() => setAberto(false)} aria-label="Fechar">
               <X />
