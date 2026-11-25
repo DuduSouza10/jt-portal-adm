@@ -1,5 +1,5 @@
 /**
- * Regras puras das telas de Minhas bases (E20): busca por código/nome (sem acento, espaço ou hífen),
+ * Regras puras das telas de Minhas bases (E23): busca por código/nome (sem acento, espaço ou hífen),
  * filtro por tipo e a seleção que acompanha o que a tela mostra. Testadas em filtro.test.ts.
  */
 import { normHeader } from "@/lib/importacao/csv";
