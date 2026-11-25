@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
+import { SUPERVISOR_KEY } from "@/lib/permissions/default-profiles";
+import { basesDeOutrosSupervisores } from "@/modules/acessos/service";
 import { EscolhaBases } from "./escolha";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,12 +27,15 @@ export default async function MinhasBasesPage() {
       bases: { where: { active: true, type: { not: "ALMOXARIFADO" } }, orderBy: { code: "asc" }, select: { id: true, code: true, name: true, type: true } },
     },
   });
+  // Supervisor não vê a base que outro supervisor já salvou; o RM vê todas (E19).
+  const ocupadas = user.profile.key === SUPERVISOR_KEY ? await basesDeOutrosSupervisores(user.id) : new Set<string>();
+  const livres = regionais.map((r) => ({ ...r, bases: r.bases.filter((b) => !ocupadas.has(b.id)) })).filter((r) => r.bases.length);
   return (
     <>
-      <PageHeader title={t("minhasBases.titulo")} description={t("minhasBases.descricao")} />
+      <PageHeader title={t("minhasBases.titulo")} description={`${t("minhasBases.descricao")}${ocupadas.size ? ` ${t("minhasBases.dicaSupervisor")}` : ""}`} />
       <Card>
         <CardContent>
-          <EscolhaBases regionais={regionais.filter((r) => r.bases.length)} marcadas={[...user.baseIds]} />
+          <EscolhaBases regionais={livres} marcadas={[...user.baseIds]} />
         </CardContent>
       </Card>
     </>
