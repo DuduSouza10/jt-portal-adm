@@ -116,6 +116,13 @@ export const ptBR = {
     enviar: "Enviar",
     voce: "Você",
     equipe: "Equipe",
+    avisos: {
+      ativar: "Ativar avisos no navegador",
+      ligado: "Avisos no navegador ligados",
+      bloqueado: "Os avisos estão bloqueados neste navegador. Libere nas configurações do site para receber.",
+      ligadoTitulo: "Avisos ligados",
+      ligadoCorpo: "Você vai receber aqui quando chegar uma mensagem do suporte.",
+    },
     tela: {
       titulo: "Dúvidas",
       descricao: "Perguntas que chegaram pelo balão de ajuda. Responda aqui: a pessoa recebe no sino e no Feishu.",
