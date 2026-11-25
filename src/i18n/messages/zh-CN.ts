@@ -119,6 +119,13 @@ export const zhCN: Messages = {
     enviar: "发送",
     voce: "你",
     equipe: "团队",
+    avisos: {
+      ativar: "开启浏览器通知",
+      ligado: "浏览器通知已开启",
+      bloqueado: "此浏览器已屏蔽通知。请在网站设置中允许后才能收到。",
+      ligadoTitulo: "通知已开启",
+      ligadoCorpo: "支持团队有新消息时，您会在这里收到通知。",
+    },
     tela: {
       titulo: "疑问",
       descricao: "通过帮助气泡收到的问题。在这里回复，对方会收到通知和飞书消息。",
