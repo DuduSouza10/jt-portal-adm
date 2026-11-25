@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, CheckCheck } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useT } from "@/i18n/client";
@@ -36,11 +36,12 @@ export function NotificationBell({ unread, items }: { unread: number; items: Avi
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent aria-label={t("notificacoes.titulo")}>
-        <div className="flex items-center gap-2 border-b py-3 pr-3 pl-4">
+      {/* Sem foco automático no primeiro botão: ele aparecia com contorno ao abrir o balão. */}
+      <PopoverContent aria-label={t("notificacoes.titulo")} onOpenAutoFocus={(e) => e.preventDefault()}>
+        <div className="flex items-center gap-2 border-b px-4 py-3">
           <b className="text-sm font-semibold">{t("notificacoes.titulo")}</b>
           {unread > 0 && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums">
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs leading-4 font-semibold whitespace-nowrap text-primary tabular-nums">
               {t("notificacoes.naoLidas", { n: unread })}
             </span>
           )}
@@ -48,9 +49,12 @@ export function NotificationBell({ unread, items }: { unread: number; items: Avi
             type="button"
             disabled={unread === 0 || pending}
             onClick={() => start(() => markAllReadAction())}
-            className="ml-auto rounded-md px-2 py-1 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent"
+            title={t("notificacoes.marcarTodas")}
+            aria-label={t("notificacoes.marcarTodas")}
+            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[13px] font-medium whitespace-nowrap text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
           >
-            {t("notificacoes.marcarTodas")}
+            <CheckCheck className="size-4" aria-hidden />
+            {t("notificacoes.marcarTodasCurto")}
           </button>
         </div>
         {items.length === 0 ? (
@@ -59,7 +63,7 @@ export function NotificationBell({ unread, items }: { unread: number; items: Avi
             <p className="text-sm">{t("notificacoes.vazio")}</p>
           </div>
         ) : (
-          <ul className="max-h-[min(420px,70vh)] overflow-y-auto p-1.5">
+          <ul className="max-h-[min(420px,70vh)] space-y-0.5 overflow-y-auto p-1.5">
             {items.map((n) => (
               <li key={n.id}>
                 <button
