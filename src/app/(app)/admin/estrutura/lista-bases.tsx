@@ -6,6 +6,7 @@ import { Building2, Check, CheckSquare, ChevronDown, MapPin, MessageSquareText, 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/page-header";
+import { useFiltroLembrado } from "@/components/use-filtro-lembrado";
 import { useServerMessage, useT } from "@/i18n/client";
 import { normHeader } from "@/lib/importacao/csv";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,9 @@ const TIPO: Record<Tipo, { icon: LucideIcon; tile: string; dot: string }> = {
 
 const norm = (s: string) => normHeader(s);
 
+/** Filtros da lista, lembrados na sessão (ver use-filtro-lembrado.ts). Constante: o hook compara com o padrão. */
+const FILTROS_PADRAO = { busca: "", tipo: "todos" as Tipo | "todos", ocultarInativas: false, regional: "" };
+
 /**
  * Regionais e bases: busca, filtro por tipo e blocos por regional (recolhíveis). Com "Selecionar", marca uma,
  * várias ou todas as que estão na tela e exclui de uma vez (só as sem histórico; as outras ficam para
@@ -33,17 +37,22 @@ const norm = (s: string) => normHeader(s);
 export function ListaBases({ regionals, editable }: { regionals: RegionalLista[]; editable: boolean }) {
   const t = useT();
   const tm = useServerMessage();
-  const [busca, setBusca] = useState("");
-  const [tipo, setTipo] = useState<Tipo | "todos">("todos");
-  const [ocultarInativas, setOcultarInativas] = useState(false);
-  const [fechadas, setFechadas] = useState<Set<string>>(new Set());
+  const { valor: f, mudar, limpar: limparFiltros, ativos } = useFiltroLembrado(FILTROS_PADRAO);
+  const { busca, tipo, ocultarInativas, regional: regionalSel } = f;
+  const setBusca = (v: string) => mudar({ busca: v });
+  const setTipo = (v: Tipo | "todos") => mudar({ tipo: v });
+  const setOcultarInativas = (v: boolean) => mudar({ ocultarInativas: v });
+  // Sem filtro, as regionais começam fechadas (uma linha cada, tudo numa tela); com filtro, abertas. A pessoa pode
+  // abrir/fechar qualquer uma: `abertas` vale sem filtro, `fechadasManual` vale com filtro.
+  const [abertas, setAbertas] = useState<Set<string>>(new Set());
+  const [fechadasManual, setFechadasManual] = useState<Set<string>>(new Set());
   const [modo, setModo] = useState(false);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [confirma, setConfirma] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
   const [pending, start] = useTransition();
 
-  const filtrando = busca.trim() !== "" || tipo !== "todos" || ocultarInativas;
+  const filtrando = busca.trim() !== "" || tipo !== "todos" || ocultarInativas || regionalSel !== "";
   const q = norm(busca);
   const visiveis = useMemo(
     () =>
@@ -59,7 +68,9 @@ export function ListaBases({ regionals, editable }: { regionals: RegionalLista[]
     [regionals, tipo, ocultarInativas, q],
   );
   // Com filtro, regional sem nenhuma base que combine some da tela; sem filtro, aparecem todas (até as vazias).
-  const blocos = filtrando ? visiveis.filter((r) => r.mostradas.length > 0) : visiveis;
+  const blocos = (filtrando ? visiveis.filter((r) => r.mostradas.length > 0) : visiveis).filter((r) => !regionalSel || r.id === regionalSel);
+  const aberta = (id: string) => (filtrando ? !fechadasManual.has(id) : abertas.has(id));
+  const todasAbertas = blocos.length > 0 && blocos.every((r) => aberta(r.id));
   const idsNaTela = blocos.flatMap((r) => r.mostradas.map((b) => b.id));
   const codigos = new Map(regionals.flatMap((r) => r.bases.map((b) => [b.id, b.code] as const)));
   const contaTipo = (k: Tipo) => regionals.reduce((n, r) => n + r.bases.filter((b) => b.type === k).length, 0);
@@ -68,7 +79,14 @@ export function ListaBases({ regionals, editable }: { regionals: RegionalLista[]
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const marcarVarias = (ids: string[]) => setSel((s) => { const n = new Set(s); const todasJa = ids.every((i) => n.has(i)); for (const i of ids) { if (todasJa) n.delete(i); else n.add(i); } return n; });
   const sair = () => (setModo(false), setSel(new Set()), setConfirma(false));
-  const alternarBloco = (id: string) => setFechadas((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const alternarBloco = (id: string) => {
+    const set = filtrando ? setFechadasManual : setAbertas;
+    set((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  };
+  const abrirTodas = (abrir: boolean) => {
+    if (filtrando) setFechadasManual(abrir ? new Set() : new Set(blocos.map((r) => r.id)));
+    else setAbertas(abrir ? new Set(blocos.map((r) => r.id)) : new Set());
+  };
 
   const excluir = () =>
     start(async () => {
@@ -142,6 +160,33 @@ export function ListaBases({ regionals, editable }: { regionals: RegionalLista[]
           </div>
         )}
       </div>
+      {/* Ir direto para uma regional (sem rolar a página): um clique mostra só ela, aberta. */}
+      {regionals.length > 1 && (
+        <nav className="flex flex-wrap items-center gap-1.5" aria-label={t("estrutura.filtro.regional")}>
+          <Chip ativo={regionalSel === ""} onClick={() => mudar({ regional: "" })}>
+            {t("estrutura.filtro.todas")} <Num>{regionals.length}</Num>
+          </Chip>
+          {visiveis.map((r) => (
+            <Chip key={r.id} ativo={regionalSel === r.id} onClick={() => mudar({ regional: regionalSel === r.id ? "" : r.id })} desligado={filtrando && r.mostradas.length === 0}>
+              <span className="font-semibold">{r.code}</span>
+              <Num>{filtrando ? r.mostradas.length : r.bases.length}</Num>
+            </Chip>
+          ))}
+          <span className="ml-auto flex items-center gap-1">
+            {blocos.length > 1 && (
+              <Button variant="ghost" size="sm" onClick={() => abrirTodas(!todasAbertas)}>
+                <ChevronDown className={cn("transition-transform", todasAbertas && "rotate-180")} />
+                {todasAbertas ? t("estrutura.filtro.recolherTodas") : t("estrutura.filtro.expandirTodas")}
+              </Button>
+            )}
+            {ativos > 0 && (
+              <Button variant="ghost" size="sm" onClick={limparFiltros}>
+                <X /> {t("estrutura.filtro.limpar")}
+              </Button>
+            )}
+          </span>
+        </nav>
+      )}
       {aviso && (
         <p role="status" className={cn("rounded-lg border px-3 py-2 text-sm", aviso.tipo === "ok" ? "border-success/30 bg-success/5 text-success" : "border-warning/30 bg-warning/5 text-warning")}>
           {aviso.texto}
@@ -153,7 +198,7 @@ export function ListaBases({ regionals, editable }: { regionals: RegionalLista[]
       {blocos.map((r) => {
         const ids = r.mostradas.map((b) => b.id);
         const todasDaRegional = ids.length > 0 && ids.every((i) => sel.has(i));
-        const fechada = fechadas.has(r.id);
+        const fechada = !aberta(r.id);
         return (
           <section key={r.id} aria-labelledby={`reg-${r.id}`} className={cn("overflow-hidden rounded-2xl border bg-card shadow-xs", !r.active && "bg-muted/40")}>
             <header className="flex flex-col gap-x-4 gap-y-2.5 p-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:px-5">
@@ -265,7 +310,7 @@ function Num({ children }: { children: React.ReactNode }) {
   return <span className="tabular-nums text-muted-foreground">{children}</span>;
 }
 
-function Chip({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
+function Chip({ ativo, onClick, children, desligado }: { ativo: boolean; onClick: () => void; children: React.ReactNode; desligado?: boolean }) {
   return (
     <button
       type="button"
@@ -274,6 +319,7 @@ function Chip({ ativo, onClick, children }: { ativo: boolean; onClick: () => voi
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         ativo ? "border-primary/40 bg-accent text-accent-foreground" : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+        desligado && !ativo && "opacity-40",
       )}
     >
       {children}

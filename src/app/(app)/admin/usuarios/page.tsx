@@ -2,7 +2,7 @@ import { FiltroForm } from "@/components/filtro-form";
 import { SelectBox } from "@/components/ui/combobox";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ExternalLink, Plus, Upload, UserCheck, Users } from "lucide-react";
+import { ExternalLink, Plus, Search, Upload, UserCheck, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
@@ -24,6 +24,7 @@ import { profileText } from "@/i18n/labels";
 import { AprovarButton } from "./aprovar-button";
 
 const PAGE_SIZE = 50;
+const diasAtras = (n: number) => new Date(Date.now() - n * 86_400_000);
 const MAX_CHIPS = 3;
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -84,6 +85,9 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const perfil = typeof sp.perfil === "string" ? sp.perfil : "";
   const status = sp.status === "ativos" || sp.status === "inativos" ? sp.status : "";
+  const regional = typeof sp.regional === "string" ? sp.regional : "";
+  const baseId = typeof sp.base === "string" ? sp.base : "";
+  const acesso = sp.acesso === "recente" || sp.acesso === "parado" || sp.acesso === "nunca" ? sp.acesso : "";
   const page = pageParam(sp);
 
   const scope = usersScopeWhere(me);
@@ -107,12 +111,18 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
         : []),
       ...(perfil ? [{ profileId: perfil }] : []),
       ...(status ? [{ active: status === "ativos" }] : []),
+      // Regional: quem está vinculado a ela ou a alguma base dela.
+      ...(regional ? [{ OR: [{ regionals: { some: { regionalId: regional } } }, { bases: { some: { base: { regionalId: regional } } } }] }] : []),
+      ...(baseId ? [{ bases: { some: { baseId } } }] : []),
+      ...(acesso === "nunca" ? [{ lastLoginAt: null }] : []),
+      ...(acesso === "recente" ? [{ lastLoginAt: { gte: diasAtras(7) } }] : []),
+      ...(acesso === "parado" ? [{ lastLoginAt: { lt: diasAtras(30) } }] : []),
     ],
   };
   const wherePendentes: Prisma.UserWhereInput = { AND: [...(scope ? [scope] : []), pendente] };
   const include = { profile: true, bases: { include: { base: true } }, regionals: { include: { regional: true } } } as const;
 
-  const [users, total, profiles, nPendentes, pendentes] = await Promise.all([
+  const [users, total, profiles, nPendentes, pendentes, regionais, bases] = await Promise.all([
     aba === "usuarios"
       ? db.user.findMany({ where, include, orderBy: [{ active: "desc" }, { name: "asc" }], skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE })
       : Promise.resolve([]),
@@ -120,7 +130,10 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
     db.accessProfile.findMany({ where: { key: { not: "aguardando" } }, orderBy: { name: "asc" } }),
     db.user.count({ where: wherePendentes }),
     aba === "pendentes" ? db.user.findMany({ where: wherePendentes, include, orderBy: { createdAt: "asc" }, take: 100 }) : Promise.resolve([]),
+    aba === "usuarios" ? db.regional.findMany({ orderBy: { code: "asc" }, select: { id: true, code: true, name: true } }) : Promise.resolve([]),
+    aba === "usuarios" ? db.base.findMany({ orderBy: { code: "asc" }, select: { id: true, code: true, name: true } }) : Promise.resolve([]),
   ]);
+  const filtrando = !!(q || perfil || status || regional || baseId || acesso);
   const totalFiltrado = aba === "usuarios" ? await db.user.count({ where }) : total;
   const podeEditar = can(me, "usuarios.editar");
 
@@ -202,22 +215,59 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
         )
       ) : (
         <>
-          <FiltroForm className="flex flex-wrap gap-2">
-            <Input name="q" defaultValue={q} placeholder={t("usuarios.buscar")} className="w-full sm:max-w-xs" />
-            <SelectBox name="perfil" defaultValue={perfil} className="w-full sm:max-w-56">
+          <FiltroForm className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-2.5 shadow-xs">
+            <label className="relative min-w-60 flex-1">
+              <span className="sr-only">{t("usuarios.buscar")}</span>
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder={t("usuarios.buscar")}
+                autoComplete="off"
+                className="h-10 rounded-xl border-transparent bg-muted pr-3 pl-10 text-sm focus-visible:bg-card"
+              />
+            </label>
+            {/* Os seletores ficam numa grade, numa linha só abaixo da busca (order-last: o botão "Limpar filtros" fica ao lado da busca). */}
+            <div className="order-last grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            <SelectBox name="perfil" defaultValue={perfil} className="w-full">
               <option value="">{t("usuarios.todosTipos")}</option>
               {profiles.map((p) => (
                 <option key={p.id} value={p.id}>
                   {profileText(t, p).name}
                 </option>
               ))}
-            </SelectBox>
-            <SelectBox name="status" defaultValue={status} className="w-full sm:max-w-56">
+              </SelectBox>
+              <SelectBox name="regional" defaultValue={regional} className="w-full">
+              <option value="">{t("usuarios.todasRegionais")}</option>
+              {regionais.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.code} · {r.name}
+                </option>
+              ))}
+              </SelectBox>
+              <SelectBox name="base" defaultValue={baseId} searchable className="w-full">
+              <option value="">{t("usuarios.todasBases")}</option>
+              {bases.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code} · {b.name}
+                </option>
+              ))}
+              </SelectBox>
+              <SelectBox name="status" defaultValue={status} className="w-full">
               <option value="">{t("usuarios.status.todos")}</option>
               <option value="ativos">{t("usuarios.status.ativos")}</option>
               <option value="inativos">{t("usuarios.status.inativos")}</option>
-            </SelectBox>
+              </SelectBox>
+              <SelectBox name="acesso" defaultValue={acesso} className="w-full">
+              <option value="">{t("usuarios.acesso.todos")}</option>
+              <option value="recente">{t("usuarios.acesso.recente")}</option>
+              <option value="parado">{t("usuarios.acesso.parado")}</option>
+              <option value="nunca">{t("usuarios.acesso.nunca")}</option>
+              </SelectBox>
+            </div>
           </FiltroForm>
+          {filtrando && <p className="-mt-1 px-1 text-sm text-muted-foreground">{t("usuarios.resultados", { n: totalFiltrado, total })}</p>}
           {users.length === 0 ? (
             <EmptyState>{t("usuarios.vazio")}</EmptyState>
           ) : (
@@ -278,7 +328,7 @@ export default async function UsersPage(props: PageProps<"/admin/usuarios">) {
               </Table>
             </Card>
           )}
-          <Pagination page={page} total={totalFiltrado} pageSize={PAGE_SIZE} basePath="/admin/usuarios" params={{ q, perfil, status }} />
+          <Pagination page={page} total={totalFiltrado} pageSize={PAGE_SIZE} basePath="/admin/usuarios" params={{ q, perfil, status, regional, base: baseId, acesso }} />
         </>
       )}
     </>
