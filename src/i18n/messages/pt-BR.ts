@@ -984,6 +984,7 @@ export const ptBR = {
     titulo: "Notificações",
     naoLidas: "{n} não lida(s)",
     marcarTodas: "Marcar todas como lidas",
+    marcarTodasCurto: "Marcar todas",
     vazio: "Nenhuma notificação.",
     naoLidaAria: "não lida",
     sinoNaoLidas: "Notificações ({n} não lidas)",

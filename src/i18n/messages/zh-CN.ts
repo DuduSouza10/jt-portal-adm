@@ -987,6 +987,7 @@ export const zhCN: Messages = {
     titulo: "通知",
     naoLidas: "{n} 条未读",
     marcarTodas: "全部标为已读",
+    marcarTodasCurto: "全部已读",
     vazio: "暂无通知。",
     naoLidaAria: "未读",
     sinoNaoLidas: "通知（{n} 条未读）",
