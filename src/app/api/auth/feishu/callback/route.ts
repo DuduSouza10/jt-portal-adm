@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { createSession } from "@/lib/auth/session";
 import { safeNext } from "@/lib/auth/redirect";
 import { exchangeCode, getUserDepartmentChains, getUserInfo } from "@/lib/feishu/client";
-import { FEISHU_CALLBACK_PATH, FEISHU_STATE_COOKIE, feishuConfig, isFeishuLoginEnabled } from "@/lib/feishu/config";
+import { FEISHU_STATE_COOKIE, feishuCallbackUrl, isFeishuLoginEnabled } from "@/lib/feishu/config";
 import { errorInfo, logger } from "@/lib/logger";
 import { resolveFeishuLogin } from "@/modules/acessos/feishu-login";
 
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   let result;
   try {
-    const token = await exchangeCode(code, feishuConfig().appUrl + FEISHU_CALLBACK_PATH);
+    const token = await exchangeCode(code, feishuCallbackUrl(req.nextUrl.origin));
     const profile = await getUserInfo(token);
     result = await resolveFeishuLogin(profile, { getChains: getUserDepartmentChains });
   } catch (e) {

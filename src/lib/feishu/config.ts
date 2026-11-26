@@ -42,3 +42,13 @@ export function isFeishuLoginEnabled() {
 
 export const FEISHU_CALLBACK_PATH = "/api/auth/feishu/callback";
 export const FEISHU_STATE_COOKIE = "portal_feishu_state";
+
+/**
+ * Endereço de volta do login do Feishu: o do domínio em que a pessoa está (assim trocar o domínio do site
+ * não quebra o login, mesmo que APP_URL ainda esteja no antigo). O endereço precisa estar cadastrado em
+ * "URLs de redirecionamento" do app no Feishu. Origem estranha (http fora do localhost) cai no APP_URL.
+ */
+export function feishuCallbackUrl(requestOrigin: string) {
+  const ok = /^https:\/\/[a-z0-9.-]+$/i.test(requestOrigin) || /^http:\/\/localhost(:\d+)?$/.test(requestOrigin);
+  return (ok ? requestOrigin : feishuConfig().appUrl) + FEISHU_CALLBACK_PATH;
+}
