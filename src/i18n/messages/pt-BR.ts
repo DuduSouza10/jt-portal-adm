@@ -512,7 +512,7 @@ export const ptBR = {
     unidade: "Unidade",
     unidadeDica: "Ex.: un, cx, pct, rolo",
     ativo: "Produto ativo (pode ser solicitado)",
-    lacre: "É lacre (aparece só em Solicitar lacres)",
+    lacre: "É lacre (a franquia só pede lacres)",
     limitesTitulo: "Limite por período",
     limitesDescricao: "Quanto uma base ou franquia pode pedir deste produto no período. Ao atingir o limite, o produto fica bloqueado para ela até o fim do período. Deixe vazio para não limitar.",
     limiteBase: "Limite por base",

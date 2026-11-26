@@ -515,7 +515,7 @@ export const zhCN: Messages = {
     unidade: "单位",
     unidadeDica: "例如 un、cx、pct、rolo",
     ativo: "产品已启用（可被申领）",
-    lacre: "封签（只在“申领封签”中显示）",
+    lacre: "封签（加盟店只能申领封签）",
     limitesTitulo: "周期限额",
     limitesDescricao: "网点或加盟商在一个周期内最多可申领该产品的数量。达到限额后，该产品在周期结束前对其锁定。留空表示不限额。",
     limiteBase: "网点限额",

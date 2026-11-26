@@ -55,10 +55,13 @@ const EH_LACRE: Prisma.ProdutoWhereInput = {
   OR: [{ lacre: true }, { name: { contains: "lacre", mode: "insensitive" } }, { name: { contains: "封条" } }],
 };
 
-/** Produtos que podem ser pedidos: insumos (padrão) ou só os lacres, conforme a aba. */
-export function produtosParaPedir({ lacres = false }: { lacres?: boolean } = {}) {
+/**
+ * Produtos que podem ser pedidos. `lacres: true` = só lacres (Franquias › Solicitar lacres);
+ * `"todos"` = insumos e lacres (Solicitar insumos, das bases, S19); padrão = só insumos.
+ */
+export function produtosParaPedir({ lacres = false }: { lacres?: boolean | "todos" } = {}) {
   return db.produto.findMany({
-    where: { active: true, ...(lacres ? EH_LACRE : { NOT: EH_LACRE }) },
+    where: { active: true, ...(lacres === "todos" ? {} : lacres ? EH_LACRE : { NOT: EH_LACRE }) },
     select: { id: true, code: true, name: true, unit: true },
     orderBy: { code: "asc" },
   });

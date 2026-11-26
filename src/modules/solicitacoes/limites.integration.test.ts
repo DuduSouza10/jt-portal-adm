@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/session";
 import { lancarEntrada } from "@/modules/estoque/service";
 import { aprovar, criar, enviarLote, recusar, separar } from "./service";
+import { produtosParaPedir } from "./queries";
 
 const tag = `L${Date.now().toString(36).toUpperCase()}`;
 let userId: string;
@@ -15,7 +16,6 @@ let base: string;
 let franquia: string;
 let luva: string;
 let fita: string;
-let cola: string;
 
 const actor = (over: Partial<CurrentUser>): CurrentUser => ({
   id: userId,
@@ -47,11 +47,9 @@ beforeAll(async () => {
   luva = (await db.produto.create({ data: { code: `${tag}-LUVA`, name: "Luva", unit: "cx", limitBase: 10, limitFranquia: 4, limitBlockDays: 60, lacre: true } })).id;
   // S13: franquia só pede lacre; os produtos destes testes são lacres para a franquia poder pedir.
   fita = (await db.produto.create({ data: { code: `${tag}-FITA`, name: "Fita", lacre: true } })).id;
-  // S19: lacre é só da franquia; a base pede insumo comum (cola, com limite de 10 cx).
-  cola = (await db.produto.create({ data: { code: `${tag}-COLA`, name: "Cola", unit: "cx", limitBase: 10, limitFranquia: 4, limitBlockDays: 60 } })).id;
   const profile = await db.accessProfile.create({ data: { key: tag.toLowerCase(), name: "T", scope: "GLOBAL", permissions: ["*"] } });
   userId = (await db.user.create({ data: { name: "T", login: tag.toLowerCase(), profileId: profile.id } })).id;
-  await lancarEntrada(admin(), { baseId: almox, document: "NF", reason: null, itens: [{ produtoId: luva, quantity: 500 }, { produtoId: fita, quantity: 500 }, { produtoId: cola, quantity: 500 }] });
+  await lancarEntrada(admin(), { baseId: almox, document: "NF", reason: null, itens: [{ produtoId: luva, quantity: 500 }, { produtoId: fita, quantity: 500 }] });
 });
 
 afterAll(async () => {
@@ -73,15 +71,15 @@ afterAll(async () => {
 
 describe("S1 e S2: ciclo de 3 meses e número de pessoas", () => {
   it("base informa pessoas; depois de pedir entra no ciclo; recusa derruba o ciclo; envio conta do envio", async () => {
-    await expect(pedir(base, cola, 1, null)).rejects.toThrow(/número de pessoas/);
+    await expect(pedir(base, fita, 1, null)).rejects.toThrow(/número de pessoas/);
 
-    const s1 = await pedir(base, cola, 2);
+    const s1 = await pedir(base, fita, 2);
     expect(s1.peopleCount).toBe(8);
-    await expect(pedir(base, cola, 1)).rejects.toThrow(/ciclo de 3 meses/);
+    await expect(pedir(base, fita, 1)).rejects.toThrow(/ciclo de 3 meses/);
 
     // Recusado: o ciclo cai e a base pode pedir de novo.
     await recusar(admin(), s1.id, "teste");
-    const s2 = await pedir(base, cola, 2);
+    const s2 = await pedir(base, fita, 2);
 
     // Enviado: o ciclo passa a contar 3 meses a partir do envio.
     await aprovar(admin(), { id: s2.id, almoxarifadoId: almox, quantidades: {}, note: null });
@@ -94,7 +92,7 @@ describe("S1 e S2: ciclo de 3 meses e número de pessoas", () => {
     expect(ciclo.reason).toMatch(/envio/);
 
     // Quem aprova não entra no ciclo; franquia não tem ciclo e não precisa informar pessoas.
-    await criar(admin(), { baseId: base, priority: "NORMAL", notes: null, itens: [{ produtoId: cola, quantity: 1 }] });
+    await criar(admin(), { baseId: base, priority: "NORMAL", notes: null, itens: [{ produtoId: fita, quantity: 1 }] });
     await pedir(franquia, fita, 1, null);
     await fechar(franquia);
     await pedir(franquia, fita, 1, null);
@@ -112,8 +110,8 @@ describe("S16: um pedido por vez", () => {
       // Franquia (sem ciclo) e base com o ciclo desligado: o segundo pedido é barrado na hora.
       const f1 = await pedir(franquia, fita, 1, null);
       await expect(pedir(franquia, fita, 1, null)).rejects.toThrow(/ainda está em andamento/);
-      const b1 = await pedir(base, cola, 1);
-      await expect(pedir(base, cola, 1)).rejects.toThrow(/ainda está em andamento/);
+      const b1 = await pedir(base, fita, 1);
+      await expect(pedir(base, fita, 1)).rejects.toThrow(/ainda está em andamento/);
       expect(await db.solicitacao.count({ where: { baseId: { in: [base, franquia] }, status: "PENDENTE" } })).toBe(2);
 
       // Uma base não trava a outra, e quem aprova pode abrir pedido mesmo assim.
@@ -126,9 +124,9 @@ describe("S16: um pedido por vez", () => {
 
       // Ainda em andamento depois de aprovado.
       await aprovar(admin(), { id: b1.id, almoxarifadoId: almox, quantidades: {}, note: null });
-      await expect(pedir(base, cola, 1)).rejects.toThrow(/ainda está em andamento/);
+      await expect(pedir(base, fita, 1)).rejects.toThrow(/ainda está em andamento/);
       await db.solicitacao.update({ where: { id: b1.id }, data: { status: "RECEBIDA" } });
-      await pedir(base, cola, 1);
+      await pedir(base, fita, 1);
     } finally {
       await db.setting.deleteMany({ where: { key: "pedidos" } });
       await fechar(base);
@@ -139,11 +137,15 @@ describe("S16: um pedido por vez", () => {
 });
 
 describe("S3: limite por produto", () => {
-  it("S19: base não pede lacre (nem pelo nome), só a franquia", async () => {
-    await expect(pedir(base, fita, 1)).rejects.toThrow("Lacre é só para franquias");
-    const porNome = (await db.produto.create({ data: { code: `${tag}-LNOME`, name: "Lacre azul 30cm" } })).id;
-    await expect(criar(admin(), { baseId: base, priority: "NORMAL", notes: null, peopleCount: 3, itens: [{ produtoId: porNome, quantity: 1 }] })).rejects.toThrow("Lacre é só para franquias");
-    await db.produto.delete({ where: { id: porNome } });
+  it("S19: a base pede lacre em Solicitar insumos; só a página da franquia lista apenas lacres", async () => {
+    const ids = async (o?: Parameters<typeof produtosParaPedir>[0]) => (await produtosParaPedir(o)).map((p) => p.id);
+    expect(await ids({ lacres: "todos" })).toContain(fita);
+    expect(await ids({ lacres: true })).toContain(fita);
+    expect(await ids()).not.toContain(fita);
+    // e o pedido da base com lacre é aceito
+    await fechar(base);
+    await expect(pedir(base, fita, 1)).resolves.toBeTruthy();
+    await fechar(base);
   });
 
   it("S13: franquia não pede insumo que não é lacre", async () => {
@@ -179,12 +181,12 @@ describe("S1 desligado em Configurações", () => {
     await db.setting.upsert({ where: { key: "pedidos" }, update: { value: { cicloAtivo: false, cicloMeses: 3 } }, create: { key: "pedidos", value: { cicloAtivo: false, cicloMeses: 3 } } });
     try {
       await fechar(base);
-      await pedir(base, cola, 1);
+      await pedir(base, fita, 1);
       await fechar(base);
-      await pedir(base, cola, 1);
+      await pedir(base, fita, 1);
       expect(await db.cicloBase.count({ where: { baseId: base } })).toBe(0);
       await fechar(base);
-      await expect(pedir(base, cola, 11)).rejects.toThrow("Limite permitido: 10 cx");
+      await expect(pedir(base, luva, 11)).rejects.toThrow("Limite permitido: 10 cx");
     } finally {
       await db.setting.deleteMany({ where: { key: "pedidos" } });
     }
