@@ -41,7 +41,7 @@ export const DEFAULT_SLA_SETTINGS: SlaSettings = {
 
 const KEY = "sla";
 
-// ------------------------------------------------------------------ Pedidos (ciclo de 3 meses, S1)
+// ------------------------------------------------------------------ Pedidos (ciclo, S1 e S20)
 
 export const pedidoSettingsSchema = z.object({
   /** Ciclo da base ligado? (decisão do Eduardo: manter, com opção de tirar) */
@@ -51,7 +51,7 @@ export const pedidoSettingsSchema = z.object({
   limitesAtivos: z.boolean().default(true),
 });
 export type PedidoSettings = z.infer<typeof pedidoSettingsSchema>;
-export const DEFAULT_PEDIDO_SETTINGS: PedidoSettings = { cicloAtivo: true, cicloMeses: 3, limitesAtivos: true };
+export const DEFAULT_PEDIDO_SETTINGS: PedidoSettings = { cicloAtivo: true, cicloMeses: 1, limitesAtivos: true };
 const PEDIDO_KEY = "pedidos";
 
 export async function getPedidoSettings(): Promise<PedidoSettings> {
