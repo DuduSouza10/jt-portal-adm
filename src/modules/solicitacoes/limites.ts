@@ -3,9 +3,9 @@ import type { SolicitacaoStatus } from "@/generated/prisma/enums";
 /**
  * Regras de pedido trazidas do portal do Eduardo (jt-portal-insumos) — PURAS, testadas em limites.test.ts.
  *
- * S1. Ciclo de 3 meses: só base (tipo BASE; franquia não tem). Ao pedir, a base fica sem poder abrir pedido
- *     novo por 3 meses; quando o pedido é ENVIADO, os 3 meses passam a contar do envio. O ciclo cai se o
- *     pedido de origem for recusado ou cancelado.
+ * S1. Ciclo (padrão 1 mês): na base (tipo BASE), ao pedir, ela fica sem poder abrir pedido novo até o fim do
+ *     ciclo; quando o pedido é ENVIADO, o ciclo passa a contar do envio. O ciclo cai se o pedido de origem for
+ *     recusado ou cancelado. Na franquia vale o S20 (duas vagas: insumos e lacres).
  * S2. A base informa o número de pessoas em cada pedido (obrigatório). Não limita quantidade: é informativo.
  * S3. Limite por produto: limite para base e para franquia, num período (padrão 60 dias). Soma o que a
  *     base pediu no período (pedidos que não foram recusados/cancelados). Atingiu o limite: o produto fica
@@ -13,7 +13,7 @@ import type { SolicitacaoStatus } from "@/generated/prisma/enums";
  * Quem aprova (solicitacoes.aprovar) não entra nas regras, como o admin no sistema do Eduardo.
  */
 
-export const CYCLE_MONTHS = 3;
+export const CYCLE_MONTHS = 1;
 export const DEFAULT_LIMIT_DAYS = 60;
 export const MAX_PEOPLE = 99_999;
 
@@ -58,4 +58,21 @@ export function limitError(name: string, unit: string, limit: number | null, use
 export function periodStart(now: Date, days: number, revokedAt: Date | null | undefined) {
   const start = new Date(now.getTime() - Math.max(1, days) * 86_400_000);
   return revokedAt && revokedAt > start ? revokedAt : start;
+}
+
+/**
+ * S20: ciclo da franquia, com duas vagas por ciclo: um pedido de insumos (sem lacre) e um de lacres. A franquia só
+ * fica bloqueada depois dos dois. `insumosId`/`lacresId` guardam o pedido de cada vaga.
+ */
+export type CicloFranquia = { insumosId: string | null; lacresId: string | null; blockedUntil: Date; revokedAt: Date | null };
+
+/** O ciclo acabou (ou foi liberado)? Aí as vagas voltam a ficar livres. Ciclo só vence depois das duas vagas feitas. */
+export function cicloFranquiaAcabou(c: CicloFranquia | null | undefined, now: Date) {
+  return !c || !!c.revokedAt || (!!c.insumosId && !!c.lacresId && c.blockedUntil <= now);
+}
+
+/** Vagas usadas agora (pedido ainda vale: não foi recusado nem cancelado) e se a franquia está bloqueada. */
+export function estadoCicloFranquia(c: CicloFranquia | null | undefined, vivo: { insumos: boolean; lacres: boolean }, now: Date) {
+  if (!c || cicloFranquiaAcabou(c, now)) return { insumos: false, lacres: false, bloqueada: false };
+  return { insumos: vivo.insumos, lacres: vivo.lacres, bloqueada: vivo.insumos && vivo.lacres && c.blockedUntil > now };
 }

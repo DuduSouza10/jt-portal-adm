@@ -591,6 +591,9 @@ model CicloBase {
   baseId              String    @id
   blockedUntil        DateTime
   sourceSolicitacaoId String?
+  /// S20 (franquia): pedido de insumos e pedido de lacres do ciclo. A franquia só fica bloqueada depois dos dois.
+  insumosSolicitacaoId String?
+  lacresSolicitacaoId  String?
   reason              String
   revokedAt           DateTime?
   updatedById         String?

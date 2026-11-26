@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const dateInput = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
-/** Ciclos de 3 meses das bases (S1) e produtos bloqueados por limite (S3), com liberação manual. */
+/** Ciclos das bases (S1) e das franquias (S20) e produtos bloqueados por limite (S3), com liberação manual. */
 export default async function CiclosPage() {
   const user = await requirePermission("solicitacoes.aprovar");
   const t = await getT();

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, holdActive, limitError, limitFor, periodStart } from "./limites";
+import { addMonths, cicloFranquiaAcabou, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
 
 const now = new Date("2026-11-13T15:00:00Z");
 
-describe("ciclo de 3 meses (S1)", () => {
+describe("ciclo (S1)", () => {
   it("soma meses de calendário", () => {
     expect(addMonths(new Date("2026-11-13T15:00:00Z"), 3).toISOString()).toBe("2027-02-13T15:00:00.000Z");
     expect(addMonths(new Date("2026-11-30T12:00:00Z"), 3).toISOString()).toBe("2027-02-28T12:00:00.000Z");
@@ -41,5 +41,31 @@ describe("limite por produto (S3)", () => {
     expect(periodStart(now, 60, null).toISOString()).toBe("2026-09-14T15:00:00.000Z");
     const liberado = new Date("2026-11-01T00:00:00Z");
     expect(periodStart(now, 60, liberado)).toBe(liberado);
+  });
+});
+
+describe("ciclo da franquia: duas vagas, insumos e lacres (S20)", () => {
+  const ciclo = { insumosId: "i", lacresId: "l", blockedUntil: new Date("2026-12-13T15:00:00Z"), revokedAt: null };
+  const vivas = { insumos: true, lacres: true };
+
+  it("só bloqueia com as duas vagas feitas e o prazo valendo", () => {
+    expect(estadoCicloFranquia(ciclo, vivas, now)).toEqual({ insumos: true, lacres: true, bloqueada: true });
+    // Aberto (falta lacres): nada bloqueia, só a vaga de insumos fica usada.
+    const aberto = { insumosId: "i", lacresId: null, blockedUntil: now, revokedAt: null };
+    expect(estadoCicloFranquia(aberto, { insumos: true, lacres: false }, now)).toEqual({ insumos: true, lacres: false, bloqueada: false });
+    expect(estadoCicloFranquia(null, vivas, now)).toEqual({ insumos: false, lacres: false, bloqueada: false });
+  });
+
+  it("pedido recusado ou cancelado devolve a vaga e derruba o bloqueio", () => {
+    expect(estadoCicloFranquia(ciclo, { insumos: true, lacres: false }, now)).toEqual({ insumos: true, lacres: false, bloqueada: false });
+  });
+
+  it("ciclo completo e vencido, ou liberado, zera as vagas", () => {
+    const depois = new Date("2026-12-14T00:00:00Z");
+    expect(cicloFranquiaAcabou(ciclo, depois)).toBe(true);
+    expect(estadoCicloFranquia(ciclo, vivas, depois)).toEqual({ insumos: false, lacres: false, bloqueada: false });
+    expect(cicloFranquiaAcabou({ ...ciclo, revokedAt: now }, now)).toBe(true);
+    // Ciclo aberto não vence por tempo: só fecha quando as duas vagas forem feitas.
+    expect(cicloFranquiaAcabou({ insumosId: "i", lacresId: null, blockedUntil: now, revokedAt: null }, depois)).toBe(false);
   });
 });

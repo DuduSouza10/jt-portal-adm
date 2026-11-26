@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abaDe, ehLacre, ABAS, cancelarItemError, formatNumber, parseScan, planQuantities, totalDaAba, transitionError } from "./rules";
+import { abaDe, ehLacre, ABAS, cancelarItemError, formatNumber, parseScan, planQuantities, tipoPedidoFranquia, totalDaAba, transitionError } from "./rules";
 
 describe("transitionError (S4)", () => {
   it("segue o fluxo", () => {
@@ -97,5 +97,16 @@ describe("ehLacre (S19)", () => {
     expect(ehLacre({ lacre: false, name: "LACRE numerado" })).toBe(true);
     expect(ehLacre({ lacre: false, name: "封条" })).toBe(true);
     expect(ehLacre({ lacre: false, name: "Caneta azul" })).toBe(false);
+  });
+});
+
+describe("tipoPedidoFranquia (S20)", () => {
+  const lacre = { lacre: true, name: "Fita" };
+  const insumo = { lacre: false, name: "Papel" };
+  it("só lacres é pedido de lacres; sem lacre é de insumos; mistura é barrada", () => {
+    expect(tipoPedidoFranquia([lacre, { lacre: false, name: "Lacre numerado" }])).toBe("LACRES");
+    expect(tipoPedidoFranquia([insumo])).toBe("INSUMOS");
+    expect(tipoPedidoFranquia([])).toBe("INSUMOS"); // só itens fora do cadastro
+    expect(tipoPedidoFranquia([lacre, insumo])).toBeNull();
   });
 });

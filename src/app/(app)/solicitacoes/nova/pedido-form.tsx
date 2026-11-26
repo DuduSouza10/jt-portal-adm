@@ -15,7 +15,7 @@ import type { FormState } from "@/lib/action-result";
 import { criarAction } from "../actions";
 
 type Produto = { id: string; code: string; name: string; unit: string };
-type Base = { id: string; code: string; name: string; regionalId: string; pedePessoas: boolean; cicloAte: string | null; emAndamento: string | null };
+type Base = { id: string; code: string; name: string; regionalId: string; pedePessoas: boolean; cicloAte: string | null; emAndamento: string | null; jaFez?: "INSUMOS" | "LACRES" | null };
 type Linha = { key: number; produtoId: string; livre: string; quantity: string };
 
 /**
@@ -66,7 +66,7 @@ export function PedidoForm({
   const outros = linhas.filter((l) => !l.produtoId && l.livre).map((l) => ({ nome: l.livre, quantity: Number(l.quantity) }));
   const soQtd = linhas.some((l) => !l.produtoId && !l.livre && l.quantity); // quantidade sem insumo
   const invalid =
-    itens.length + outros.length === 0 || [...itens, ...outros].some((i) => !(i.quantity > 0)) || soQtd || !!base?.cicloAte || !!base?.emAndamento;
+    itens.length + outros.length === 0 || [...itens, ...outros].some((i) => !(i.quantity > 0)) || soQtd || !!base?.cicloAte || !!base?.emAndamento || !!base?.jaFez;
 
   return (
     <form {...formProps} className="space-y-4">
@@ -110,11 +110,17 @@ export function PedidoForm({
 
       {base?.cicloAte && (
         <Alert>
-          <AlertDescription className="text-foreground">{t("solicitacoes.nova.noCiclo", { data: base.cicloAte })}</AlertDescription>
+          <AlertDescription className="text-foreground">{t(base.jaFez ? "solicitacoes.nova.noCicloFranquia" : "solicitacoes.nova.noCiclo", { data: base.cicloAte })}</AlertDescription>
         </Alert>
       )}
 
-      {base?.emAndamento && (
+      {base?.jaFez && !base.cicloAte && (
+        <Alert>
+          <AlertDescription className="text-foreground">{t(base.jaFez === "LACRES" ? "solicitacoes.nova.jaFezLacres" : "solicitacoes.nova.jaFezInsumos")}</AlertDescription>
+        </Alert>
+      )}
+
+      {base?.emAndamento && !base.jaFez && (
         <Alert>
           <AlertDescription className="text-foreground">{t("solicitacoes.nova.emAndamento", { n: base.emAndamento })}</AlertDescription>
         </Alert>
