@@ -104,6 +104,7 @@ const ZH: [string, string][] = [
   ["Escreva a mensagem.", "请输入消息。"],
   ["Sem permissão.", "没有权限。"],
   ["Franquia só pode pedir lacres. Use Solicitar lacres.", "加盟店只能申领封签，请使用“申领封签”。"],
+  ["Lacre é só para franquias.", "封签仅限加盟店申领。"],
   ["Selecione ao menos uma base.", "请至少选择一个网点。"],
   ["Seu tipo de acesso já vê as bases pelo alcance.", "你的权限角色已按范围查看网点。"],
   ["Já estão com outro supervisor: {x}.", "以下网点已由其他主管负责：{x}。"],

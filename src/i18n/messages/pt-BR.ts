@@ -64,7 +64,6 @@ export const ptBR = {
     precificacao: { label: "Precificação", description: "Preço dos produtos e histórico de alterações" },
     inicio: { label: "Início", description: "Resumo do dia" },
     solicitarInsumos: { label: "Solicitar insumos", description: "Montar e enviar um pedido" },
-    solicitarLacres: { label: "Solicitar lacres", description: "Pedir lacres numerados" },
     franquias: { label: "Franquias", description: "Pedidos, lacres, estoque e relatórios das franquias" },
     solicitacoes: { label: "Solicitações", description: "Acompanhar pedidos" },
     expedicao: { label: "Expedição", description: "Separar e enviar" },

@@ -67,7 +67,6 @@ export const zhCN: Messages = {
     precificacao: { label: "定价", description: "产品价格及修改记录" },
     inicio: { label: "首页", description: "今日概况" },
     solicitarInsumos: { label: "申领物料", description: "填写并提交申领单" },
-    solicitarLacres: { label: "申领封签", description: "申领编号封签" },
     franquias: { label: "加盟网点", description: "加盟网点的申领单、封签、库存与报表" },
     solicitacoes: { label: "申领单", description: "跟踪申领进度" },
     expedicao: { label: "发货", description: "拣货与发货" },
