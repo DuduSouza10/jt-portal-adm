@@ -6,7 +6,7 @@ import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
 import { can, canAccessAlmoxarifado, canAccessBase, canAny } from "@/lib/permissions/check";
 import { baixarReserva, entradaFranquia, liberarReserva, reservar, STOCK_TX } from "@/modules/estoque/api";
-import { cancelarItemError, formatNumber, planQuantities, TO, transitionError, type Acao, type OutroItem } from "./rules";
+import { cancelarItemError, ehLacre, formatNumber, planQuantities, TO, transitionError, type Acao, type OutroItem } from "./rules";
 import type { AprovarInput, CancelarItemInput, CriarInput, EnvioInput, SepararInput } from "./schemas";
 import { notificar } from "./notify";
 import * as limites from "./limites.service";
@@ -124,7 +124,7 @@ export async function criar(user: CurrentUser, dados: Omit<CriarInput, "outros">
     const inativo = produtos.find((p) => !p.active);
     if (inativo) throw new DomainError(`${inativo.code} não está mais disponível para pedido.`);
     // S13 (decisão do Diogo, 2026-11-25): franquia só pede lacres; insumos são só das bases.
-    if (base.type === "FRANQUIA" && produtos.some((p) => !p.lacre)) throw new DomainError("Franquia só pode pedir lacres. Use Solicitar lacres.");
+    if (base.type === "FRANQUIA" && produtos.some((p) => !ehLacre(p))) throw new DomainError("Franquia só pode pedir lacres. Use Solicitar lacres.");
     // S11: só pede o que o almoxarifado da regional da base tem disponível agora.
     const disp = await tx.stockBalance.findMany({
       where: { produtoId: { in: ids }, base: { type: "ALMOXARIFADO", active: true, regionalId: base.regionalId } },

@@ -6,6 +6,14 @@ import type { Prioridade, SolicitacaoStatus } from "@/generated/prisma/enums";
  * com RECUSADA (só de PENDENTE) e CANCELADA (de PENDENTE ou APROVADA).
  */
 
+/**
+ * Lacre = produto marcado "É lacre" ou com "lacre"/封条 no nome (mesma regra de EH_LACRE em queries.ts).
+ * S13: a franquia só pede lacre (a base pode pedir lacre e insumo; S19).
+ */
+export function ehLacre(p: { lacre: boolean; name: string }): boolean {
+  return p.lacre || /lacre/i.test(p.name) || p.name.includes("封条");
+}
+
 export type Acao = "aprovar" | "recusar" | "cancelar" | "iniciarSeparacao" | "separar" | "enviar" | "receber";
 
 const FROM: Record<Acao, SolicitacaoStatus[]> = {

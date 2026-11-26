@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abaDe, ABAS, cancelarItemError, formatNumber, parseScan, planQuantities, totalDaAba, transitionError } from "./rules";
+import { abaDe, ehLacre, ABAS, cancelarItemError, formatNumber, parseScan, planQuantities, totalDaAba, transitionError } from "./rules";
 
 describe("transitionError (S4)", () => {
   it("segue o fluxo", () => {
@@ -87,5 +87,15 @@ describe("abas da lista", () => {
     expect(totalDaAba(abaDe("abertas"), n)).toBe(9);
     expect(totalDaAba(abaDe("ENCERRADAS"), n)).toBe(6);
     expect(totalDaAba(abaDe("EM_SEPARACAO"), n)).toBe(0);
+  });
+});
+
+describe("ehLacre (S19)", () => {
+  it("vale a caixinha, o nome com lacre ou 封条", () => {
+    expect(ehLacre({ lacre: true, name: "Fita" })).toBe(true);
+    expect(ehLacre({ lacre: false, name: "Lacre azul 30cm" })).toBe(true);
+    expect(ehLacre({ lacre: false, name: "LACRE numerado" })).toBe(true);
+    expect(ehLacre({ lacre: false, name: "封条" })).toBe(true);
+    expect(ehLacre({ lacre: false, name: "Caneta azul" })).toBe(false);
   });
 });

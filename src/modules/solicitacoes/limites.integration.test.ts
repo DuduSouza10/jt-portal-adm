@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/session";
 import { lancarEntrada } from "@/modules/estoque/service";
 import { aprovar, criar, enviarLote, recusar, separar } from "./service";
+import { produtosParaPedir } from "./queries";
 
 const tag = `L${Date.now().toString(36).toUpperCase()}`;
 let userId: string;
@@ -136,6 +137,17 @@ describe("S16: um pedido por vez", () => {
 });
 
 describe("S3: limite por produto", () => {
+  it("S19: a base pede lacre em Solicitar insumos; só a página da franquia lista apenas lacres", async () => {
+    const ids = async (o?: Parameters<typeof produtosParaPedir>[0]) => (await produtosParaPedir(o)).map((p) => p.id);
+    expect(await ids({ lacres: "todos" })).toContain(fita);
+    expect(await ids({ lacres: true })).toContain(fita);
+    expect(await ids()).not.toContain(fita);
+    // e o pedido da base com lacre é aceito
+    await fechar(base);
+    await expect(pedir(base, fita, 1)).resolves.toBeTruthy();
+    await fechar(base);
+  });
+
   it("S13: franquia não pede insumo que não é lacre", async () => {
     const papel = (await db.produto.create({ data: { code: `${tag}-PAPEL`, name: "Papel" } })).id;
     await expect(criar(admin(), { baseId: franquia, priority: "NORMAL", notes: null, itens: [{ produtoId: papel, quantity: 1 }] })).rejects.toThrow("Franquia só pode pedir lacres");

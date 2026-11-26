@@ -19,10 +19,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NovaSolicitacaoPage() {
   const user = await requirePermission("solicitacoes.criar");
   const t = await getT();
-  const [lista, produtos, cfg, disponivel, almoxes] = await Promise.all([basesParaPedir(user), produtosParaPedir(), getPedidoSettings(), disponivelPorRegional(), almoxarifadosPorRegional()]);
-  // S13: insumos são só das bases; franquia pede lacres (em Solicitar lacres).
+  const [lista, produtos, cfg, disponivel, almoxes] = await Promise.all([basesParaPedir(user), produtosParaPedir({ lacres: "todos" }), getPedidoSettings(), disponivelPorRegional(), almoxarifadosPorRegional()]);
+  // S13: insumos são só das bases; franquia pede lacres (Franquias › Solicitar lacres). S19: a base pede insumos e lacres aqui.
   const soFranquia = lista.length > 0 && lista.every((b) => b.type === "FRANQUIA");
-  if (soFranquia) redirect("/solicitacoes/lacres");
+  if (soFranquia) redirect("/franquias/lacres");
   const listaBases = lista.filter((b) => b.type !== "FRANQUIA");
   // S1: mostra antes de montar o pedido se a base está no ciclo (quem aprova não entra no ciclo).
   const isento = isExempt(user);
