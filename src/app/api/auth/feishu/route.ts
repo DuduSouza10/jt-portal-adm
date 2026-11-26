@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { safeNext } from "@/lib/auth/redirect";
 import { buildAuthorizeUrl } from "@/lib/feishu/client";
-import { FEISHU_CALLBACK_PATH, FEISHU_STATE_COOKIE, feishuConfig, isFeishuLoginEnabled } from "@/lib/feishu/config";
+import { FEISHU_STATE_COOKIE, feishuCallbackUrl, isFeishuLoginEnabled } from "@/lib/feishu/config";
 
 // Início do login: gera um "state" anti-CSRF e manda a pessoa para o Feishu autorizar.
 export async function GET(req: NextRequest) {
@@ -18,5 +18,5 @@ export async function GET(req: NextRequest) {
     path: "/api/auth/feishu",
     maxAge: 600,
   });
-  redirect(buildAuthorizeUrl(state, feishuConfig().appUrl + FEISHU_CALLBACK_PATH));
+  redirect(buildAuthorizeUrl(state, feishuCallbackUrl(req.nextUrl.origin)));
 }
