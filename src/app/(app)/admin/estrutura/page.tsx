@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Download, FileSpreadsheet, FileUp, Network, Plus, Table2 } from "lucide-react";
+import { Building2, Download, FileSpreadsheet, FileUp, Network, Plus, Table2, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
@@ -8,17 +8,28 @@ import { isFeishuLoginEnabled } from "@/lib/feishu/config";
 import { getT } from "@/i18n/server";
 import { Button } from "@/components/ui/button";
 import { EmptyState, PageHeader } from "@/components/page-header";
+import { Abas } from "@/components/abas";
+import { AutoAtualizar } from "@/components/auto-atualizar";
+import { contarPessoasComBases, pessoasComBases } from "@/modules/estrutura/service";
 import { ListaBases } from "./lista-bases";
+import { ListaPessoas } from "./pessoas";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
   return { title: t("estrutura.titulo") };
 }
 
-export default async function StructurePage() {
+export default async function StructurePage(props: PageProps<"/admin/estrutura">) {
   const me = await requirePermission("estrutura.ver");
   const editable = can(me, "estrutura.editar");
   const t = await getT();
+  // Aba "Pessoas": mostra nome e login de quem tem base, então exige também "Ver usuários".
+  const podePessoas = can(me, "usuarios.ver");
+  const aba = podePessoas && (await props.searchParams).aba === "pessoas" ? "pessoas" : "bases";
+  const [pessoas, nPessoas] = await Promise.all([
+    aba === "pessoas" ? pessoasComBases() : Promise.resolve([]),
+    podePessoas ? contarPessoasComBases() : Promise.resolve(0),
+  ]);
   const lista = await db.regional.findMany({
     orderBy: [{ active: "desc" }, { code: "asc" }],
     include: { bases: { orderBy: [{ active: "desc" }, { code: "asc" }] } },
@@ -34,11 +45,14 @@ export default async function StructurePage() {
     bases: r.bases.map((b) => ({ id: b.id, code: b.code, name: b.name, type: b.type, city: b.city, state: b.state, active: b.active, hasChat: !!b.feishuChatId })),
   }));
 
+  const nBases = regionals.reduce((n, r) => n + r.bases.length, 0);
+
   return (
     <div className="space-y-6">
+      {aba === "pessoas" && <AutoAtualizar segundos={10} />}
       <PageHeader
         title={t("estrutura.titulo")}
-        description={t("estrutura.descricao")}
+        description={aba === "pessoas" ? t("estrutura.pessoas.descricao") : t("estrutura.descricao")}
         actions={
           <>
             {/* Exportar vale para quem só vê; modelo e importar, só para quem edita. */}
@@ -90,7 +104,22 @@ export default async function StructurePage() {
           </>
         }
       />
-      {regionals.length === 0 ? <EmptyState>{t("estrutura.vazio")}</EmptyState> : <ListaBases regionals={regionals} editable={editable} />}
+      {podePessoas && (
+        <Abas
+          label={t("estrutura.titulo")}
+          items={[
+            { href: "/admin/estrutura", label: t("estrutura.abas.bases"), icon: Building2, count: nBases, ativa: aba === "bases" },
+            { href: "/admin/estrutura?aba=pessoas", label: t("estrutura.abas.pessoas"), icon: Users, count: nPessoas, ativa: aba === "pessoas" },
+          ]}
+        />
+      )}
+      {aba === "pessoas" ? (
+        <ListaPessoas pessoas={pessoas} nomesRegionais={Object.fromEntries(regionals.map((r) => [r.code, r.name]))} />
+      ) : regionals.length === 0 ? (
+        <EmptyState>{t("estrutura.vazio")}</EmptyState>
+      ) : (
+        <ListaBases regionals={regionals} editable={editable} />
+      )}
     </div>
   );
 }

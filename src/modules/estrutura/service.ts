@@ -4,6 +4,7 @@ import { audit, diff } from "@/lib/audit";
 import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
 import type { BaseInput, RegionalInput } from "./schemas";
+import type { PessoaComBases } from "./pessoas";
 
 export async function saveRegional(actor: CurrentUser, id: string | null, input: RegionalInput) {
   return db.$transaction(async (tx) => {
@@ -135,3 +136,38 @@ export async function ativarBases(actor: CurrentUser, ids: string[], active: boo
     return bases.length;
   });
 }
+
+/**
+ * Pessoas que têm base registrada (qualquer tipo de acesso: supervisor, RM, conta de base, franquia...), com as bases ativas
+ * de cada uma. Só leitura, para a aba "Pessoas" de Regionais e bases. Não devolve e-mail, telefone nem matrícula.
+ */
+export async function pessoasComBases(): Promise<PessoaComBases[]> {
+  const users = await db.user.findMany({
+    where: { bases: { some: { base: { active: true } } } },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      login: true,
+      active: true,
+      profile: { select: { key: true, name: true } },
+      bases: {
+        where: { base: { active: true } },
+        select: { base: { select: { id: true, code: true, name: true, type: true, regional: { select: { code: true } } } } },
+      },
+    },
+  });
+  return users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    login: u.login,
+    active: u.active,
+    perfil: { key: u.profile.key, name: u.profile.name },
+    bases: u.bases
+      .map((b) => ({ id: b.base.id, code: b.base.code, name: b.base.name, type: b.base.type, regionalCode: b.base.regional.code }))
+      .sort((a, b) => a.code.localeCompare(b.code)),
+  }));
+}
+
+/** Quantas pessoas têm base registrada (o número da aba). */
+export const contarPessoasComBases = () => db.user.count({ where: { bases: { some: { base: { active: true } } } } });
