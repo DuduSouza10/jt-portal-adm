@@ -189,7 +189,7 @@ describe("um por base: o primeiro entra direto, o resto aguarda", () => {
     expect(r).toMatchObject({ kind: "ok", pending: false });
   });
 
-  it("franquia: o primeiro e o aprovado entram como Base, sem ver preços", async () => {
+  it("franquia: o primeiro entra como Base e o aprovado vira Franquia", async () => {
     const a = await login(perfil("fr1"), [chainMG("F ORL")]);
     const b = await login(perfil("fr2"), [chainMG("F ORL")]);
     if (a.kind !== "ok" || b.kind !== "ok") throw new Error("login");
@@ -198,8 +198,9 @@ describe("um por base: o primeiro entra direto, o resto aguarda", () => {
     const profile = await db.accessProfile.findUniqueOrThrow({ where: { key: `${tag}-adm` } });
     const adm = await db.user.findFirstOrThrow({ where: { login: `${tag}aprovador` } });
     const actor = { id: adm.id, name: "Aprovador", login: adm.login, email: null, mustChangePassword: false, profile: { id: profile.id, key: profile.key, name: "Admin teste" }, permissions: ["*"], scope: "GLOBAL", bases: [], baseIds: [], regionalIds: [] } as never;
-    await aprovarAcesso(actor, b.userId);
-    expect((await db.user.findUniqueOrThrow({ where: { id: b.userId }, include: { profile: true } })).profile.key).toBe("base");
+    const x = await aprovarAcesso(actor, b.userId);
+    expect(x.perfil).toBe("Franquia");
+    expect((await db.user.findUniqueOrThrow({ where: { id: b.userId }, include: { profile: true } })).profile.key).toBe("franquia");
   });
 
   it("sem base (fora de unidade) não aprova direto: o admin escolhe no cadastro", async () => {

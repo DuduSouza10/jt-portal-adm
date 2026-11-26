@@ -81,3 +81,8 @@ export function sameLinks(
   const eq = (x: readonly string[], y: readonly string[]) => x.length === y.length && [...x].sort().join() === [...y].sort().join();
   return eq(a.baseIds, b.baseIds) && eq(a.regionalIds, b.regionalIds);
 }
+
+/** Tipo de acesso que a aprovação dá (E11): Franquia quando todas as bases ligadas são franquias; senão, Base. */
+export function perfilDaAprovacao(tipos: readonly string[]): "franquia" | "base" {
+  return tipos.length > 0 && tipos.every((t) => t === "FRANQUIA") ? "franquia" : "base";
+}

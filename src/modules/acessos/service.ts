@@ -7,7 +7,7 @@ import { generateTempPassword, hashTempPassword } from "@/lib/auth/password";
 import { ALL, sanitizePermissions } from "@/lib/permissions/catalog";
 import type { Scope } from "@/lib/permissions/check";
 import { SUPERVISOR_KEY } from "@/lib/permissions/default-profiles";
-import { isSubsetOf, linksOutsideScopeError, ownProfileEditError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
+import { isSubsetOf, linksOutsideScopeError, ownProfileEditError, perfilDaAprovacao, sameLinks, scopeLinksError, scopeWithin } from "./rules";
 import type { ProfileInput, UserInput } from "./schemas";
 
 // ============================================================ Usuários
@@ -250,7 +250,7 @@ export async function aprovarAcesso(actor: CurrentUser, id: string) {
   if (u.profile.key !== "aguardando") throw new DomainError("Este usuário não está aguardando liberação.");
   const bases = u.bases.filter((b) => b.base.type !== "ALMOXARIFADO");
   if (!bases.length) throw new DomainError("Sem base vinculada: abra o cadastro e escolha o tipo de acesso e a base.");
-  const perfil = await db.accessProfile.findUnique({ where: { key: "base" } });
+  const perfil = await db.accessProfile.findUnique({ where: { key: perfilDaAprovacao(bases.map((b) => b.base.type)) } });
   if (!perfil) throw new DomainError("Tipo de acesso não encontrado.");
   await saveUser(actor, id, {
     name: u.name,
@@ -269,7 +269,7 @@ export async function aprovarAcesso(actor: CurrentUser, id: string) {
       userId: id,
       title: "Seu acesso foi liberado",
       body: `Você já pode pedir insumos para ${bases.map((b) => b.base.code).join(", ")}.`,
-      link: "/solicitacoes/nova",
+      link: perfil.key === "franquia" ? "/franquias" : "/solicitacoes/nova",
       refType: "usuario",
       refId: id,
     },

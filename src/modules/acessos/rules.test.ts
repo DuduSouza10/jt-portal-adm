@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSubsetOf, linksOutsideScopeError, ownProfileEditError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
+import { isSubsetOf, perfilDaAprovacao, linksOutsideScopeError, ownProfileEditError, sameLinks, scopeLinksError, scopeWithin } from "./rules";
 
 describe("isSubsetOf", () => {
   it("Dev concede qualquer coisa", () => {
@@ -82,5 +82,15 @@ describe("ownProfileEditError (E8)", () => {
 
   it("o Dev (curinga) pode editar o próprio", () => {
     expect(ownProfileEditError({ permissions: ["*"], profileId: "p-dev" }, "p-dev")).toBeNull();
+  });
+});
+
+describe("perfilDaAprovacao", () => {
+  it("só franquias viram Franquia; qualquer base comum, ou nenhuma, vira Base", () => {
+    expect(perfilDaAprovacao(["FRANQUIA"])).toBe("franquia");
+    expect(perfilDaAprovacao(["FRANQUIA", "FRANQUIA"])).toBe("franquia");
+    expect(perfilDaAprovacao(["BASE"])).toBe("base");
+    expect(perfilDaAprovacao(["BASE", "FRANQUIA"])).toBe("base");
+    expect(perfilDaAprovacao([])).toBe("base");
   });
 });
