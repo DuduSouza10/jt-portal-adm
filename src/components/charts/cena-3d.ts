@@ -207,14 +207,14 @@ export function createScene(el: HTMLElement, o: SceneOpts): SceneApi {
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.55, 0.6, 0.32);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 0.6);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
   let hoverCell: number | null = null;
   let selected: number | null = null;
   function glow() {
-    for (const b of blocks) b.material.emissiveIntensity = b.userData.cell === hoverCell || b.userData.cell === selected ? 1.1 : b.userData.base;
+    for (const b of blocks) b.material.emissiveIntensity = b.userData.cell === hoverCell || b.userData.cell === selected ? 0.5 : b.userData.base;
   }
 
   function paint() {
@@ -243,7 +243,7 @@ export function createScene(el: HTMLElement, o: SceneOpts): SceneApi {
       b.material.metalness = dark ? 0.35 : 0.1;
       b.material.roughness = dark ? 0.28 : 0.32;
       b.material.clearcoat = dark ? 0.15 : 0.6;
-      b.userData.base = on ? (dark ? 0.26 : 0.16) : dark ? 0.05 : 0.04;
+      b.userData.base = on ? (dark ? 0.18 : 0.12) : dark ? 0.05 : 0.04;
       b.material.opacity = on ? (dark ? 0.97 : 1) : dark ? 0.38 : 0.75;
     }
     glow();
