@@ -2,7 +2,7 @@
  * S1–S3 (regras do portal do Eduardo) contra um PostgreSQL real: ciclo da base (1 mês) e das franquias (insumos + lacres), número de
  * pessoas obrigatório e limite por produto com bloqueio automático; recusa desfaz; quem aprova não entra.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/session";
 import { lancarEntrada } from "@/modules/estoque/service";
@@ -233,6 +233,41 @@ describe("S20: franquia, duas solicitações por ciclo (insumos e lacres)", () =
       await db.setting.deleteMany({ where: { key: "pedidos" } });
     }
     expect(ins.id).toBeTruthy();
+  });
+});
+
+describe("S22: bases só pedem às segundas e terças", () => {
+  it("base barrada de quarta a domingo; franquia e quem aprova pedem todos os dias", async () => {
+    await fechar(base);
+    await fechar(franquia);
+    await db.cicloBase.deleteMany({ where: { baseId: base } });
+    (globalThis as { __regraDoDiaDePedir?: boolean }).__regraDoDiaDePedir = true;
+    // Só o Date é falso (e só neste teste): a regra olha o dia da semana de Brasília.
+    const dia = (iso: string) => vi.useFakeTimers({ toFake: ["Date"], now: new Date(iso) });
+    try {
+      dia("2026-11-25T15:00:00-03:00"); // quarta
+      await expect(pedir(base, fita, 1)).rejects.toThrow(/segundas e terças-feiras/);
+      await pedir(franquia, fita, 1, null);
+      await criar(admin(), { baseId: base, priority: "NORMAL", notes: null, itens: [{ produtoId: fita, quantity: 1 }] });
+      await fechar(base);
+      await fechar(franquia);
+
+      dia("2026-11-22T12:00:00-03:00"); // domingo
+      await expect(pedir(base, fita, 1)).rejects.toThrow(/segundas e terças-feiras/);
+
+      // Segunda e terça (até 23h59 de Brasília, mesmo já sendo quarta em UTC) passam.
+      dia("2026-11-24T23:30:00-03:00"); // terça à noite = quarta 02:30 UTC
+      const s = await pedir(base, fita, 1);
+      await recusar(admin(), s.id, "teste");
+      dia("2026-11-23T08:00:00-03:00"); // segunda
+      await pedir(base, fita, 1);
+    } finally {
+      vi.useRealTimers();
+      delete (globalThis as { __regraDoDiaDePedir?: boolean }).__regraDoDiaDePedir;
+      await fechar(base);
+      await fechar(franquia);
+      await db.cicloBase.deleteMany({ where: { baseId: base } });
+    }
   });
 });
 

@@ -845,6 +845,7 @@ export const ptBR = {
     pessoas: "Pessoas na base",
     pessoasAjuda: "Quantas pessoas trabalham na base hoje.",
     emAndamento: "A solicitação {n} ainda está em andamento. Só dá para fazer outra depois que ela for recebida, recusada ou cancelada.",
+    foraDoDia: "As bases só podem fazer solicitações às segundas e terças-feiras. Hoje o pedido está fechado: tente de novo na próxima segunda.",
     noCiclo: "Esta base está no ciclo e poderá fazer uma nova solicitação após {data}.",
     noCicloFranquia: "Esta franquia já fez as duas solicitações do ciclo (insumos e lacres) e poderá fazer novas após {data}.",
     jaFezInsumos: "Esta franquia já fez a solicitação de insumos deste ciclo. Falta só a de lacres.",

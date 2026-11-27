@@ -187,6 +187,7 @@ const ZH: [string, string][] = [
   ["Item não encontrado neste pedido.", "该申请中没有这一项。"],
   ["Este item já foi cancelado.", "该项已被取消。"],
   ["Item inválido.", "项目无效。"],
+  ["As bases só podem fazer solicitações às segundas e terças-feiras. Tente de novo na próxima segunda.", "网点只能在周一和周二提交申领。请下周一再试。"],
   ["Quantidade alterada.", "数量已修改。"],
   ["Só dá para mudar a quantidade enquanto {n} aguarda aprovação.", "仅在 {n} 待审批时才能修改数量。"],
   ["Informe uma quantidade inteira maior que zero. Para tirar o item, use Cancelar item.", "请填写大于 0 的整数。若要移除该项，请使用“取消该项”。"],

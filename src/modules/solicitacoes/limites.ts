@@ -76,3 +76,19 @@ export function estadoCicloFranquia(c: CicloFranquia | null | undefined, vivo: {
   if (!c || cicloFranquiaAcabou(c, now)) return { insumos: false, lacres: false, bloqueada: false };
   return { insumos: vivo.insumos, lacres: vivo.lacres, bloqueada: vivo.insumos && vivo.lacres && c.blockedUntil > now };
 }
+
+/**
+ * S22: as bases (tipo BASE) só abrem pedido às segundas e terças-feiras; a franquia pede todos os dias.
+ * O dia vale no fuso de Brasília (0 = domingo ... 6 = sábado).
+ */
+export const DIAS_PEDIDO_BASE = [1, 2];
+export const FUSO_PEDIDOS = "America/Sao_Paulo";
+
+export function diaDaSemana(now: Date, fuso = FUSO_PEDIDOS) {
+  const nome = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: fuso }).format(now);
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(nome);
+}
+
+export function baseNoDiaDePedir(now: Date) {
+  return DIAS_PEDIDO_BASE.includes(diaDaSemana(now));
+}

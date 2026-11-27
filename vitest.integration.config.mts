@@ -14,7 +14,7 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.integration.test.ts"],
-    setupFiles: ["dotenv/config"],
+    setupFiles: ["dotenv/config", "./src/test/dia-de-pedir.ts"],
     environment: "node",
     fileParallelism: false,
     testTimeout: 120_000,

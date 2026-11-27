@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, cicloFranquiaAcabou, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
+import { addMonths, baseNoDiaDePedir, cicloFranquiaAcabou, diaDaSemana, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
 
 const now = new Date("2026-11-13T15:00:00Z");
 
@@ -67,5 +67,20 @@ describe("ciclo da franquia: duas vagas, insumos e lacres (S20)", () => {
     expect(cicloFranquiaAcabou({ ...ciclo, revokedAt: now }, now)).toBe(true);
     // Ciclo aberto não vence por tempo: só fecha quando as duas vagas forem feitas.
     expect(cicloFranquiaAcabou({ insumosId: "i", lacresId: null, blockedUntil: now, revokedAt: null }, depois)).toBe(false);
+  });
+});
+
+describe("dia de pedir da base (S22)", () => {
+  it("segunda e terça valem; o resto da semana não", () => {
+    const dias = ["2026-11-22", "2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-27", "2026-11-28"]; // dom a sáb
+    expect(dias.map((d) => baseNoDiaDePedir(new Date(`${d}T12:00:00-03:00`)))).toEqual([false, true, true, false, false, false, false]);
+  });
+
+  it("conta o dia no horário de Brasília, não em UTC", () => {
+    // Terça 23:30 em Brasília já é quarta em UTC: ainda vale. Segunda 00:30 em Brasília é segunda 03:30 UTC.
+    expect(diaDaSemana(new Date("2026-11-24T23:30:00-03:00"))).toBe(2);
+    expect(baseNoDiaDePedir(new Date("2026-11-24T23:30:00-03:00"))).toBe(true);
+    expect(baseNoDiaDePedir(new Date("2026-11-25T00:30:00-03:00"))).toBe(false);
+    expect(baseNoDiaDePedir(new Date("2026-11-23T00:30:00-03:00"))).toBe(true);
   });
 });
