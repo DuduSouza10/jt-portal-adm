@@ -2,7 +2,7 @@
 
 import { SelectBox } from "@/components/ui/combobox";
 import { useKeepForm } from "@/components/use-keep-form";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,15 +206,14 @@ export function EditarQuantidadeForm({
   atual: number;
 }) {
   const t = useT();
-  const [aberto, setAberto] = useState(false);
+  // Guarda o resultado que valia ao abrir: um resultado novo com sucesso fecha o campo (a lista já mostra a
+  // quantidade nova e o histórico, a mudança), sem efeito nem estado extra.
   const { state, pending, formProps } = useKeepForm(action, {});
-  // Salvou: fecha o campo; a lista já mostra a quantidade nova (e o histórico, a mudança).
-  useEffect(() => {
-    if (state.ok) setAberto(false);
-  }, [state]);
+  const [abertoEm, setAbertoEm] = useState<typeof state | null>(null);
+  const aberto = abertoEm !== null && !(state.ok && state !== abertoEm);
   if (!aberto)
     return (
-      <button type="button" onClick={() => setAberto(true)} className="text-xs font-medium text-primary underline-offset-4 hover:underline">
+      <button type="button" onClick={() => setAbertoEm(state)} className="text-xs font-medium text-primary underline-offset-4 hover:underline">
         {t("solicitacoes.detalhe.editarQtd")}
       </button>
     );
@@ -228,7 +227,7 @@ export function EditarQuantidadeForm({
         <Button type="submit" size="sm" disabled={pending}>
           {pending ? t("comum.salvando") : t("solicitacoes.detalhe.editarQtdSalvar")}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={() => setAberto(false)}>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setAbertoEm(null)}>
           {t("solicitacoes.detalhe.cancelarItemVoltar")}
         </Button>
       </div>
