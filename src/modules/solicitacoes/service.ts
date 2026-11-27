@@ -6,8 +6,8 @@ import { DomainError } from "@/lib/errors";
 import type { CurrentUser } from "@/lib/auth/session";
 import { can, canAccessAlmoxarifado, canAccessBase, canAny } from "@/lib/permissions/check";
 import { baixarReserva, entradaFranquia, liberarReserva, reservar, STOCK_TX } from "@/modules/estoque/api";
-import { cancelarItemError, formatNumber, planQuantities, TO, transitionError, type Acao, type OutroItem } from "./rules";
-import type { AprovarInput, CancelarItemInput, CriarInput, EnvioInput, SepararInput } from "./schemas";
+import { cancelarItemError, editarQuantidadeError, formatNumber, planQuantities, TO, transitionError, type Acao, type OutroItem } from "./rules";
+import type { AprovarInput, CancelarItemInput, CriarInput, EditarQuantidadeInput, EnvioInput, SepararInput } from "./schemas";
 import { notificar } from "./notify";
 import * as limites from "./limites.service";
 import { getPedidoSettings } from "@/lib/settings";
@@ -285,6 +285,48 @@ export async function cancelarItem(user: CurrentUser, input: CancelarItemInput) 
       tx,
     );
     await notificar(tx, s.id, { tipo: "itemCancelado", item: nome, motivo: input.reason }, user);
+  });
+}
+
+/**
+ * S21: quem aprova muda a quantidade pedida de UM item enquanto o pedido aguarda aprovação (para mais ou para menos),
+ * sem justificativa. Fica no histórico do pedido (quem, quando, de → para) para todos que abrirem o pedido.
+ * Antes da aprovação não há reserva de estoque, então basta gravar a nova quantidade: a aprovação, o limite e o envio
+ * já partem dela.
+ */
+export async function editarQuantidade(user: CurrentUser, input: EditarQuantidadeInput) {
+  return db.$transaction(async (tx) => {
+    // Mesmo trava do cancelar item: edições simultâneas não sobrescrevem a lista de itens digitados.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`pedido-item:${input.id}`}, 0))`;
+    const s = await tx.solicitacao.findUnique({ where: { id: input.id }, include: withBases });
+    if (!s || !canSee(user, s)) throw new DomainError("Solicitação não encontrada.");
+    if (!allowed(user, "aprovar", s)) throw new DomainError("Você não tem permissão para isso.");
+    const number = formatNumber(s.number);
+    const outros = listaOutros(s);
+    const alvo = input.produtoId ? s.itens.find((i) => i.produtoId === input.produtoId) : outros[input.outro!];
+    if (!alvo) throw new DomainError("Item não encontrado neste pedido.");
+    if ("cancelledAt" in alvo ? alvo.cancelledAt : alvo.cancelado) throw new DomainError("Este item já foi cancelado.");
+    const atual = "requested" in alvo ? alvo.requested : alvo.quantity;
+    const err = editarQuantidadeError(s.status, number, atual, input.quantity);
+    if (err) throw new DomainError(err);
+
+    let nome: string;
+    if (input.produtoId) {
+      const it = alvo as (typeof s.itens)[number];
+      await tx.solicitacaoItem.update({ where: { id: it.id }, data: { requested: input.quantity } });
+      nome = `${it.produto.code} ${it.produto.name} (${it.produto.unit})`;
+    } else {
+      const o = alvo as OutroItem;
+      const novo = outros.map((x, i) => (i === input.outro ? { ...x, quantity: input.quantity } : x));
+      await tx.solicitacao.update({ where: { id: s.id }, data: { outrosItens: novo } });
+      nome = o.nome;
+    }
+    const resumo = `${nome}: ${atual} → ${input.quantity}`;
+    await tx.solicitacaoEvento.create({ data: { solicitacaoId: s.id, type: "QUANTIDADE_ALTERADA", note: resumo, actorId: user.id } });
+    await audit(
+      { actorId: user.id, action: "solicitacao.editarQuantidade", entity: "Solicitacao", entityId: s.id, summary: `${number} (${s.base.code}): quantidade alterada, ${resumo}` },
+      tx,
+    );
   });
 }
 

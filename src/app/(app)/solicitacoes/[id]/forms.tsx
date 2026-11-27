@@ -2,7 +2,7 @@
 
 import { SelectBox } from "@/components/ui/combobox";
 import { useKeepForm } from "@/components/use-keep-form";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,6 +191,52 @@ export function BotaoForm({
  * S17: tira UM item do pedido (quem aprova, enquanto aguarda aprovação). Começa como link discreto;
  * abre o motivo (obrigatório) e confirma. Quem pediu é avisado pelo servidor.
  */
+/** S21: muda a quantidade pedida de um item enquanto aguarda aprovação. Sem justificativa; fica no histórico. */
+export function EditarQuantidadeForm({
+  id,
+  action,
+  produtoId,
+  outro,
+  atual,
+}: {
+  id: string;
+  action: (s: FormState, f: FormData) => Promise<FormState>;
+  produtoId?: string;
+  outro?: number;
+  atual: number;
+}) {
+  const t = useT();
+  const [aberto, setAberto] = useState(false);
+  const { state, pending, formProps } = useKeepForm(action, {});
+  // Salvou: fecha o campo; a lista já mostra a quantidade nova (e o histórico, a mudança).
+  useEffect(() => {
+    if (state.ok) setAberto(false);
+  }, [state]);
+  if (!aberto)
+    return (
+      <button type="button" onClick={() => setAberto(true)} className="text-xs font-medium text-primary underline-offset-4 hover:underline">
+        {t("solicitacoes.detalhe.editarQtd")}
+      </button>
+    );
+  return (
+    <form {...formProps} className="mt-1 w-full space-y-2">
+      <input type="hidden" name="id" value={id} />
+      {produtoId && <input type="hidden" name="produtoId" value={produtoId} />}
+      {outro !== undefined && <input type="hidden" name="outro" value={outro} />}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input name="quantity" type="number" min={1} max={99999} step={1} inputMode="numeric" required defaultValue={atual} autoFocus aria-label={t("solicitacoes.detalhe.editarQtdNova")} className="h-8 w-28 text-right" />
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? t("comum.salvando") : t("solicitacoes.detalhe.editarQtdSalvar")}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setAberto(false)}>
+          {t("solicitacoes.detalhe.cancelarItemVoltar")}
+        </Button>
+      </div>
+      <Feedback state={state} />
+    </form>
+  );
+}
+
 export function CancelarItemForm({
   id,
   action,

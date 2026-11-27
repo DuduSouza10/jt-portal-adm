@@ -135,6 +135,16 @@ export function cancelarItemError(status: SolicitacaoStatus, number: string, ati
   return null;
 }
 
+// ------------------------------------------------------------------ Editar quantidade (S21)
+
+/** Mensagem de erro se não dá para mudar a quantidade pedida agora, ou null. Só enquanto aguarda aprovação. */
+export function editarQuantidadeError(status: SolicitacaoStatus, number: string, atual: number, nova: number): string | null {
+  if (status !== "PENDENTE") return `Só dá para mudar a quantidade enquanto ${number} aguarda aprovação.`;
+  if (!Number.isInteger(nova) || nova < 1) return "Informe uma quantidade inteira maior que zero. Para tirar o item, use Cancelar item.";
+  if (nova === atual) return "A quantidade é a mesma que já está no pedido.";
+  return null;
+}
+
 // ------------------------------------------------------------------ Abas da lista
 
 export type AbaKey = "abertas" | "PENDENTE" | "APROVADA" | "EM_SEPARACAO" | "SEPARADA" | "ENVIADA" | "RECEBIDA" | "ENCERRADAS";
