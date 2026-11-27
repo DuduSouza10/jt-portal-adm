@@ -397,6 +397,7 @@ enum SolicitacaoEventoTipo {
   STATUS
   COMENTARIO
   ITEM_CANCELADO // quem aprova tirou um item do pedido (S17); o motivo vai na nota
+  QUANTIDADE_ALTERADA // quem aprova mudou a quantidade pedida de um item (S21); a nota traz de → para
 }
 
 /// Pedido de insumos de uma base.

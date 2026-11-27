@@ -9,6 +9,7 @@ import {
   cancelarItemSchema,
   comentarioSchema,
   criarSchema,
+  editarQuantidadeSchema,
   motivoSchema,
   separarSchema,
   textoSchema,
@@ -56,6 +57,15 @@ export async function cancelarItemAction(_: FormState, f: FormData): Promise<For
   const r = await runAction("solicitacao.cancelarItem", () => svc.cancelarItem(user, p.data));
   if (!r.error) refresh(p.data.id);
   return r.error ? r : { ok: true, message: "Item cancelado. Quem pediu foi avisado." };
+}
+
+export async function editarQuantidadeAction(_: FormState, f: FormData): Promise<FormState> {
+  const user = await requirePermission("solicitacoes.aprovar");
+  const p = editarQuantidadeSchema.safeParse(form(f));
+  if (!p.success) return { error: firstIssue(p.error) };
+  const r = await runAction("solicitacao.editarQuantidade", () => svc.editarQuantidade(user, p.data));
+  if (!r.error) refresh(p.data.id);
+  return r.error ? r : { ok: true, message: "Quantidade alterada." };
 }
 
 export async function recusarAction(_: FormState, f: FormData): Promise<FormState> {

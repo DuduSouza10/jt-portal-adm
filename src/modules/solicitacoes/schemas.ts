@@ -77,6 +77,17 @@ export const envioSchema = z.object({
 });
 export type EnvioInput = z.infer<typeof envioSchema>;
 
+/** S21: muda a quantidade pedida de um item (sem justificativa). `produtoId` = item do cadastro; `outro` = item digitado. */
+export const editarQuantidadeSchema = z
+  .object({
+    id: z.string().min(1),
+    produtoId: z.string().min(1).optional(),
+    outro: z.preprocess((v) => (v === "" || v === undefined ? undefined : v), z.coerce.number().int().min(0).optional()),
+    quantity: z.coerce.number({ error: "Informe a quantidade." }).int("Informe uma quantidade inteira.").min(1, "Informe uma quantidade maior que zero.").max(99_999),
+  })
+  .refine((v) => (v.produtoId ? 1 : 0) + (v.outro !== undefined ? 1 : 0) === 1, { message: "Item inválido.", path: ["produtoId"] });
+export type EditarQuantidadeInput = z.infer<typeof editarQuantidadeSchema>;
+
 /** S17: tira um item do pedido. `produtoId` para item do cadastro; `outro` (posição na lista) para item digitado. */
 export const cancelarItemSchema = z
   .object({

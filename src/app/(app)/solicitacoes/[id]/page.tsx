@@ -20,13 +20,14 @@ import {
   aprovarAction,
   cancelarAction,
   cancelarItemAction,
+  editarQuantidadeAction,
   comentarAction,
   iniciarSeparacaoAction,
   receberAction,
   recusarAction,
   separarAction,
 } from "../actions";
-import { BotaoForm, CancelarItemForm, QuantidadesForm, TextoForm } from "./forms";
+import { BotaoForm, CancelarItemForm, EditarQuantidadeForm, QuantidadesForm, TextoForm } from "./forms";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -50,6 +51,8 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
   const itensValem = s.itens.filter((i) => !i.cancelledAt);
   const valem = itensValem.length + outros.filter((o) => !o.cancelado).length;
   const podeTirarItem = pode("aprovar") && valem > 1;
+  // S21: quem aprova muda a quantidade pedida enquanto o pedido aguarda aprovação.
+  const podeEditarQtd = pode("aprovar");
 
   const [almoxarifados, disponivel] = pode("aprovar")
     ? await Promise.all([almoxarifadosAtivos(), disponivelPorAlmox(s.itens.filter((i) => !i.cancelledAt).map((i) => i.produtoId))])
@@ -154,7 +157,12 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                           {t("solicitacoes.detalhe.itemCancelado")}: {i.cancelNote}
                         </p>
                       )}
-                      {podeTirarItem && !i.cancelledAt && <CancelarItemForm id={s.id} action={cancelarItemAction} produtoId={i.produtoId} />}
+                      {!i.cancelledAt && (podeEditarQtd || podeTirarItem) && (
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                          {podeEditarQtd && <EditarQuantidadeForm id={s.id} action={editarQuantidadeAction} produtoId={i.produtoId} atual={i.requested} />}
+                          {podeTirarItem && <CancelarItemForm id={s.id} action={cancelarItemAction} produtoId={i.produtoId} />}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className={cn("text-right tabular-nums", i.cancelledAt && "text-muted-foreground line-through")}>{i.requested}</TableCell>
                     <TableCell className="text-right tabular-nums">{i.cancelledAt ? "—" : (i.approved ?? "—")}</TableCell>
@@ -193,7 +201,12 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                             {t("solicitacoes.detalhe.itemCancelado")}: {o.cancelado.motivo}
                           </p>
                         )}
-                        {podeTirarItem && !o.cancelado && <CancelarItemForm id={s.id} action={cancelarItemAction} outro={i} />}
+                        {!o.cancelado && (podeEditarQtd || podeTirarItem) && (
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            {podeEditarQtd && <EditarQuantidadeForm id={s.id} action={editarQuantidadeAction} outro={i} atual={o.quantity} />}
+                            {podeTirarItem && <CancelarItemForm id={s.id} action={cancelarItemAction} outro={i} />}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className={cn("text-right align-top tabular-nums", o.cancelado && "text-muted-foreground line-through")}>{o.quantity}</TableCell>
                     </TableRow>
@@ -284,7 +297,9 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                             ? t("solicitacoes.detalhe.comentario")
                             : e.type === "ITEM_CANCELADO"
                               ? t("solicitacoes.detalhe.itemCanceladoEvento")
-                              : statusText(t, e.toStatus!)}
+                              : e.type === "QUANTIDADE_ALTERADA"
+                                ? t("solicitacoes.detalhe.quantidadeAlteradaEvento")
+                                : statusText(t, e.toStatus!)}
                       </span>
                       <span className="text-muted-foreground">
                         {" "}
@@ -306,7 +321,9 @@ export default async function SolicitacaoPage(props: PageProps<"/solicitacoes/[i
                 <CardTitle>{t("solicitacoes.detalhe.aprovar")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* S21: a chave faz o formulário recomeçar com a quantidade nova quando quem aprova edita o pedido. */}
                 <QuantidadesForm
+                  key={itensValem.map((i) => i.requested).join("-")}
                   id={s.id}
                   action={aprovarAction}
                   submitLabel={t("solicitacoes.detalhe.aprovarReservar")}

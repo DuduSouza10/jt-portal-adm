@@ -7,7 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/lib/auth/session";
 import { lancarEntrada } from "@/modules/estoque/service";
-import { aprovar, cancelar, cancelarItem, criar, enviarLote, iniciarSeparacao, lookupParaEnvio, receber, recusar, separar } from "./service";
+import { aprovar, cancelar, cancelarItem, criar, editarQuantidade, enviarLote, iniciarSeparacao, lookupParaEnvio, receber, recusar, separar } from "./service";
 
 const tag = `S${Date.now().toString(36).toUpperCase()}`;
 let regionalId: string;
@@ -224,5 +224,40 @@ describe("S17: cancelar item do pedido", () => {
     expect((await bal(p3)).reserved).toBe(antes.reserved);
     // Depois de aprovado não dá mais para tirar item.
     await expect(cancelarItem(gestor(), { id: s.id, produtoId: p1, reason: "tarde" })).rejects.toThrow(/aguarda aprovação/);
+  });
+});
+
+describe("S21: editar quantidade pedida", () => {
+  it("quem aprova muda a quantidade (para mais ou menos) sem justificativa; fica no histórico; só pendente; aprovação parte da nova", async () => {
+    const perfil = await db.accessProfile.findUniqueOrThrow({ where: { key: tag.toLowerCase() } });
+    const req = await db.user.create({ data: { name: "Quem pediu 2", login: `${tag.toLowerCase()}req2`, profileId: perfil.id } });
+    const pediu = actor({ id: req.id, scope: "BASE", baseIds: [base], permissions: ["produtos.ver", "solicitacoes.criar", "solicitacoes.ver"] });
+    await db.solicitacao.updateMany({ where: { baseId: base, status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA"] } }, data: { status: "RECEBIDA" } });
+    await db.cicloBase.deleteMany({ where: { baseId: base } });
+    const p4 = (await db.produto.create({ data: { code: `${tag}-P4`, name: "Produto 4" } })).id;
+    await lancarEntrada(actor({}), { baseId: almox, document: "NF4", reason: null, itens: [{ produtoId: p4, quantity: 50 }] });
+    const s = await criar(pediu, { baseId: base, priority: "NORMAL", peopleCount: 5, notes: null, itens: [{ produtoId: p4, quantity: 4 }], outros: [{ nome: "grampeador", quantity: 2 }] });
+
+    // Para mais, para menos e item digitado, sem motivo.
+    await editarQuantidade(gestor(), { id: s.id, produtoId: p4, quantity: 7 });
+    expect((await db.solicitacaoItem.findFirstOrThrow({ where: { solicitacaoId: s.id } })).requested).toBe(7);
+    await editarQuantidade(gestor(), { id: s.id, outro: 0, quantity: 5 });
+    expect(((await db.solicitacao.findUniqueOrThrow({ where: { id: s.id } })).outrosItens as { quantity: number }[])[0].quantity).toBe(5);
+
+    // Fica no histórico (quem e de → para) e na auditoria.
+    const eventos = await db.solicitacaoEvento.findMany({ where: { solicitacaoId: s.id, type: "QUANTIDADE_ALTERADA" }, orderBy: { createdAt: "asc" } });
+    expect(eventos.map((e) => e.note)).toEqual([expect.stringContaining("4 → 7"), expect.stringContaining("grampeador: 2 → 5")]);
+    expect(eventos.every((e) => e.actorId === gestor().id)).toBe(true);
+    expect(await db.auditLog.count({ where: { entityId: s.id, action: "solicitacao.editarQuantidade" } })).toBe(2);
+
+    // Mesma quantidade, zero, item inexistente, quem não aprova.
+    await expect(editarQuantidade(gestor(), { id: s.id, produtoId: p4, quantity: 7 })).rejects.toThrow(/mesma/);
+    await expect(editarQuantidade(gestor(), { id: s.id, produtoId: p4, quantity: 0 })).rejects.toThrow(/maior que zero/);
+    await expect(editarQuantidade(pediu, { id: s.id, produtoId: p4, quantity: 3 })).rejects.toThrow(/permissão/);
+
+    // A aprovação já parte da quantidade nova (máximo = 7) e reserva o estoque dela.
+    await aprovar(gestor(), { id: s.id, almoxarifadoId: almox, quantidades: {}, note: null });
+    expect((await db.solicitacaoItem.findFirstOrThrow({ where: { solicitacaoId: s.id } })).approved).toBe(7);
+    await expect(editarQuantidade(gestor(), { id: s.id, produtoId: p4, quantity: 9 })).rejects.toThrow(/aguarda aprovação/);
   });
 });

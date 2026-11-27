@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abaDe, ehLacre, ABAS, cancelarItemError, formatNumber, parseScan, planQuantities, tipoPedidoFranquia, totalDaAba, transitionError } from "./rules";
+import { abaDe, ehLacre, ABAS, cancelarItemError, editarQuantidadeError, formatNumber, parseScan, planQuantities, tipoPedidoFranquia, totalDaAba, transitionError } from "./rules";
 
 describe("transitionError (S4)", () => {
   it("segue o fluxo", () => {
@@ -108,5 +108,16 @@ describe("tipoPedidoFranquia (S20)", () => {
     expect(tipoPedidoFranquia([insumo])).toBe("INSUMOS");
     expect(tipoPedidoFranquia([])).toBe("INSUMOS"); // só itens fora do cadastro
     expect(tipoPedidoFranquia([lacre, insumo])).toBeNull();
+  });
+});
+
+describe("editarQuantidadeError (S21)", () => {
+  it("só pendente, inteiro maior que zero e diferente da atual", () => {
+    expect(editarQuantidadeError("PENDENTE", "SOL-000001", 4, 7)).toBeNull();
+    expect(editarQuantidadeError("PENDENTE", "SOL-000001", 4, 2)).toBeNull();
+    expect(editarQuantidadeError("APROVADA", "SOL-000001", 4, 7)).toMatch(/aguarda aprovação/);
+    expect(editarQuantidadeError("PENDENTE", "SOL-000001", 4, 0)).toMatch(/Cancelar item/);
+    expect(editarQuantidadeError("PENDENTE", "SOL-000001", 4, 1.5)).toMatch(/inteira/);
+    expect(editarQuantidadeError("PENDENTE", "SOL-000001", 4, 4)).toMatch(/mesma/);
   });
 });
