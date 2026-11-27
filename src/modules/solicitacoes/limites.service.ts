@@ -5,7 +5,7 @@ import { fmtDateTime } from "@/lib/format";
 import type { CurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
 import { getPedidoSettings, type PedidoSettings } from "@/lib/settings";
-import { addMonths, baseNoDiaDePedir, cicloFranquiaAcabou, COUNTED, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
+import { addMonths, baseNoDiaDePedir, cicloFranquiaAcabou, COUNTED, diaDeHoje, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
 import { ABERTOS, formatNumber, tipoPedidoFranquia, type TipoPedido } from "./rules";
 
 /**
@@ -21,7 +21,13 @@ const meses = (n: number) => (n === 1 ? "1 mês" : `${n} meses`);
 
 /** Quem aprova não entra no ciclo nem nos limites (no sistema do Eduardo, o admin). */
 /** S22: mensagem quando a base tenta pedir fora de segunda e terça. */
-export const MSG_FORA_DO_DIA = "As bases só podem fazer solicitações às segundas e terças-feiras. Tente de novo na próxima segunda.";
+export const MSG_FORA_DO_DIA = "As bases só podem fazer solicitações às segundas e terças-feiras. Em caso de urgência, peça ao Admin ou ao Dev para liberar a base por hoje.";
+
+/** S23: a base pode pedir agora? Segunda e terça, ou liberada pelo Dev/Admin para o dia de hoje. */
+async function baseLiberadaAgora(tx: Tx, baseId: string, now: Date) {
+  if (baseNoDiaDePedir(now)) return true;
+  return !!(await tx.liberacaoDia.findUnique({ where: { baseId_dia: { baseId, dia: diaDeHoje(now) } }, select: { id: true } }));
+}
 
 export const isExempt = (user: CurrentUser) => can(user, "solicitacoes.aprovar");
 
@@ -83,7 +89,7 @@ export async function avisosDoPedido(tx: Tx, base: Base, tipo: TipoPedido | unde
     };
   }
   const c = base.type === "BASE" && cfg.cicloAtivo ? await activeCycle(tx, base.id, now) : null;
-  return { cicloAte: c?.blockedUntil ?? null, jaFez: false, foraDoDia: base.type === "BASE" && !baseNoDiaDePedir(now), emAndamento: await pedidoEmAndamento(tx, base.id) };
+  return { cicloAte: c?.blockedUntil ?? null, jaFez: false, foraDoDia: base.type === "BASE" && !(await baseLiberadaAgora(tx, base.id, now)), emAndamento: await pedidoEmAndamento(tx, base.id) };
 }
 
 /** Quanto a base já pediu do produto no período do limite. */
@@ -110,8 +116,8 @@ export async function checkBeforeCreate(
   if (base.type === "FRANQUIA" && !tipoPedidoFranquia(produtos)) throw new DomainError("Lacre e insumo não vão no mesmo pedido da franquia: faça um pedido de insumos e outro de lacres.");
   if (isExempt(user)) return;
   if (base.type === "BASE") {
-    // S22: a base só pede às segundas e terças.
-    if (!baseNoDiaDePedir(now)) throw new DomainError(MSG_FORA_DO_DIA);
+    // S22/S23: a base só pede às segundas e terças, a não ser que o Dev/Admin tenha liberado a base por hoje.
+    if (!(await baseLiberadaAgora(tx, base.id, now))) throw new DomainError(MSG_FORA_DO_DIA);
     if (!peopleCount) throw new DomainError("Informe o número de pessoas na base.");
     const c = cfg.cicloAtivo ? await activeCycle(tx, base.id, now) : null;
     if (c) throw new DomainError(`Esta base está no ciclo e poderá fazer uma nova solicitação após ${fmtDateTime(c.blockedUntil)}.`);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, baseNoDiaDePedir, cicloFranquiaAcabou, diaDaSemana, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
+import { addMonths, baseNoDiaDePedir, cicloFranquiaAcabou, diaDaSemana, diaDeHoje, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
 
 const now = new Date("2026-11-13T15:00:00Z");
 
@@ -82,5 +82,12 @@ describe("dia de pedir da base (S22)", () => {
     expect(baseNoDiaDePedir(new Date("2026-11-24T23:30:00-03:00"))).toBe(true);
     expect(baseNoDiaDePedir(new Date("2026-11-25T00:30:00-03:00"))).toBe(false);
     expect(baseNoDiaDePedir(new Date("2026-11-23T00:30:00-03:00"))).toBe(true);
+  });
+
+  it("S23: o dia da liberação de urgência é a data de Brasília", () => {
+    expect(diaDeHoje(new Date("2026-11-25T15:00:00-03:00"))).toBe("2026-11-25");
+    // Quarta 23:30 em Brasília já é quinta em UTC: a liberação ainda é de quarta.
+    expect(diaDeHoje(new Date("2026-11-25T23:30:00-03:00"))).toBe("2026-11-25");
+    expect(diaDeHoje(new Date("2026-11-26T00:10:00-03:00"))).toBe("2026-11-26");
   });
 });

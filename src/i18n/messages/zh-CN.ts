@@ -848,7 +848,7 @@ export const zhCN: Messages = {
     pessoas: "网点人数",
     pessoasAjuda: "目前在该网点工作的人数。",
     emAndamento: "申领单 {n} 仍在处理中，须等其已签收、被拒绝或取消后才能再次申领。",
-    foraDoDia: "网点只能在周一和周二提交申领。今天不开放：请下周一再试。",
+    foraDoDia: "网点只能在周一和周二提交申领。今天不开放：请下周一再试。紧急情况请联系管理员或开发人员，仅为今天放开该网点。",
     noCiclo: "该网点处于周期内，{data} 之后才能再次申领。",
     noCicloFranquia: "该加盟店已完成本周期的两次申领（物料和封签），{data} 之后才能再次申领。",
     jaFezInsumos: "该加盟店已完成本周期的物料申领，只差封签申领。",
@@ -1393,5 +1393,13 @@ export const zhCN: Messages = {
     novaData: "新的截止日期",
     mudarData: "修改日期",
     liberar: "立即解除",
+    liberarDia: {
+      titulo: "今日已放开申领（{n}）",
+      descricao: "自营网点只能在周一和周二申领。遇到紧急情况，可仅为今天放开该网点：明天自动恢复正常规则。",
+      escolher: "选择网点",
+      botao: "仅今天放开",
+      cancelar: "取消放开",
+      liberadaEm: "放开时间",
+    },
   },
 };

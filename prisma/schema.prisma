@@ -73,6 +73,7 @@ model Base {
   solicitacoesAtendidas Solicitacao[]     @relation("SolicitacaoAlmoxarifado")
   cicloPedido           CicloBase?
   bloqueiosProduto      BloqueioProduto[]
+  liberacoesDia         LiberacaoDia[]
 
   @@index([regionalId])
   @@index([type, active])
@@ -604,6 +605,21 @@ model CicloBase {
   base Base @relation(fields: [baseId], references: [id], onDelete: Cascade)
 
   @@index([blockedUntil])
+}
+
+/// S23: liberação de urgência. Dev/Admin libera uma base própria para pedir fora de segunda e terça, só no dia `dia`
+/// (AAAA-MM-DD, horário de Brasília). No dia seguinte a liberação deixa de valer sozinha.
+model LiberacaoDia {
+  id          String   @id @default(cuid())
+  baseId      String
+  dia         String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  base Base @relation(fields: [baseId], references: [id], onDelete: Cascade)
+
+  @@unique([baseId, dia])
+  @@index([dia])
 }
 
 /// S3: produto bloqueado para uma base até `blockedUntil` (limite do período atingido, ou bloqueio manual).
