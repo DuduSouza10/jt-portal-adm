@@ -271,6 +271,37 @@ describe("S22: bases só pedem às segundas e terças", () => {
   });
 });
 
+describe("S23: liberação de urgência do dia", () => {
+  it("o Dev/Admin libera a base só para hoje; no dia seguinte volta a barrar", async () => {
+    await fechar(base);
+    await db.cicloBase.deleteMany({ where: { baseId: base } });
+    await db.liberacaoDia.deleteMany({ where: { baseId: base } });
+    (globalThis as { __regraDoDiaDePedir?: boolean }).__regraDoDiaDePedir = true;
+    const dia = (iso: string) => vi.useFakeTimers({ toFake: ["Date"], now: new Date(iso) });
+    try {
+      dia("2026-11-25T15:00:00-03:00"); // quarta
+      await expect(pedir(base, fita, 1)).rejects.toThrow(/segundas e terças-feiras/);
+
+      await db.liberacaoDia.create({ data: { baseId: base, dia: "2026-11-25" } });
+      const s = await pedir(base, fita, 1); // liberada hoje
+      await recusar(admin(), s.id, "teste");
+
+      dia("2026-11-25T23:50:00-03:00"); // ainda quarta em Brasília (quinta em UTC)
+      const s2 = await pedir(base, fita, 1);
+      await recusar(admin(), s2.id, "teste");
+
+      dia("2026-11-26T09:00:00-03:00"); // quinta: a liberação de quarta não vale mais
+      await expect(pedir(base, fita, 1)).rejects.toThrow(/segundas e terças-feiras/);
+    } finally {
+      vi.useRealTimers();
+      delete (globalThis as { __regraDoDiaDePedir?: boolean }).__regraDoDiaDePedir;
+      await db.liberacaoDia.deleteMany({ where: { baseId: base } });
+      await fechar(base);
+      await db.cicloBase.deleteMany({ where: { baseId: base } });
+    }
+  });
+});
+
 describe("S1 desligado em Configurações", () => {
   it("com o ciclo desligado a base pede de novo; limites continuam valendo", async () => {
     await db.cicloBase.deleteMany({ where: { baseId: base } });

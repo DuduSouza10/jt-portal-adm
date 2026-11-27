@@ -89,6 +89,11 @@ export function diaDaSemana(now: Date, fuso = FUSO_PEDIDOS) {
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(nome);
 }
 
+/** S23: o dia de hoje (AAAA-MM-DD) no horário de Brasília: a chave da liberação de urgência. */
+export function diaDeHoje(now: Date, fuso = FUSO_PEDIDOS) {
+  return now.toLocaleDateString("en-CA", { timeZone: fuso });
+}
+
 export function baseNoDiaDePedir(now: Date) {
   return DIAS_PEDIDO_BASE.includes(diaDaSemana(now));
 }

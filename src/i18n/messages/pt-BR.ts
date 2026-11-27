@@ -845,7 +845,7 @@ export const ptBR = {
     pessoas: "Pessoas na base",
     pessoasAjuda: "Quantas pessoas trabalham na base hoje.",
     emAndamento: "A solicitação {n} ainda está em andamento. Só dá para fazer outra depois que ela for recebida, recusada ou cancelada.",
-    foraDoDia: "As bases só podem fazer solicitações às segundas e terças-feiras. Hoje o pedido está fechado: tente de novo na próxima segunda.",
+    foraDoDia: "As bases só podem fazer solicitações às segundas e terças-feiras. Hoje o pedido está fechado: tente de novo na próxima segunda. Em caso de urgência, peça ao Admin ou ao Dev para liberar a base por hoje.",
     noCiclo: "Esta base está no ciclo e poderá fazer uma nova solicitação após {data}.",
     noCicloFranquia: "Esta franquia já fez as duas solicitações do ciclo (insumos e lacres) e poderá fazer novas após {data}.",
     jaFezInsumos: "Esta franquia já fez a solicitação de insumos deste ciclo. Falta só a de lacres.",
@@ -1390,6 +1390,14 @@ export const ptBR = {
     novaData: "Nova data final",
     mudarData: "Mudar data",
     liberar: "Liberar agora",
+    liberarDia: {
+      titulo: "Liberadas para pedir hoje ({n})",
+      descricao: "As bases próprias só pedem às segundas e terças. Em caso de urgência, libere a base só por hoje: amanhã ela volta à regra normal.",
+      escolher: "Escolha a base",
+      botao: "Liberar por hoje",
+      cancelar: "Cancelar liberação",
+      liberadaEm: "Liberada em",
+    },
   },
 };
 

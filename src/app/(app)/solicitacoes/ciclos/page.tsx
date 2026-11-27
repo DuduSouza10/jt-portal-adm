@@ -6,12 +6,13 @@ import { fmtDateTime } from "@/lib/format";
 import { getPedidoSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
 import { formatNumber } from "@/modules/solicitacoes/rules";
-import { COUNTED, holdActive } from "@/modules/solicitacoes/limites";
+import { COUNTED, diaDeHoje, holdActive } from "@/modules/solicitacoes/limites";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { AjusteForm } from "./ajuste-form";
+import { CancelarLiberacaoForm, LiberarDiaForm } from "./liberar-dia-form";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -27,11 +28,17 @@ export default async function CiclosPage() {
   const podeLiberar = can(user, "solicitacoes.liberar");
   const scope = baseScopeWhere(user);
   const now = new Date();
-  const [cfg, ciclos, bloqueios] = await Promise.all([
+  const hoje = diaDeHoje(now);
+  const [cfg, ciclos, bloqueios, liberacoes, basesProprias] = await Promise.all([
     getPedidoSettings(),
     db.cicloBase.findMany({ where: { revokedAt: null, blockedUntil: { gt: now }, ...(scope && { base: scope }) }, include: { base: true }, orderBy: { blockedUntil: "asc" } }),
     db.bloqueioProduto.findMany({ where: { revokedAt: null, blockedUntil: { gt: now }, ...(scope && { base: scope }) }, include: { base: true, produto: true }, orderBy: { blockedUntil: "asc" } }),
+    // S23: liberações de urgência de hoje e as bases próprias que ainda podem receber uma.
+    podeLiberar ? db.liberacaoDia.findMany({ where: { dia: hoje, ...(scope && { base: scope }) }, include: { base: true }, orderBy: { createdAt: "asc" } }) : [],
+    podeLiberar ? db.base.findMany({ where: { active: true, type: "BASE", ...(scope && { AND: [scope] }) }, select: { id: true, code: true, name: true }, orderBy: { code: "asc" } }) : [],
   ]);
+  const liberadas = new Set(liberacoes.map((l) => l.baseId));
+  const baseParaLiberar = basesProprias.filter((b) => !liberadas.has(b.id));
   // Ciclo/bloqueio cujo pedido de origem foi recusado ou cancelado não vale mais.
   const ids = [...ciclos, ...bloqueios].flatMap((x) => (x.sourceSolicitacaoId ? [x.sourceSolicitacaoId] : []));
   const origens = new Map((await db.solicitacao.findMany({ where: { id: { in: ids } }, select: { id: true, number: true, status: true } })).map((s) => [s.id, s]));
@@ -53,6 +60,40 @@ export default async function CiclosPage() {
         <Alert>
           <AlertDescription className="text-foreground">{t("ciclos.limitesDesligados")}</AlertDescription>
         </Alert>
+      )}
+
+      {podeLiberar && (
+        <section className="space-y-2">
+          <h2 className="font-semibold">{t("ciclos.liberarDia.titulo", { n: liberacoes.length })}</h2>
+          <p className="text-sm text-muted-foreground">{t("ciclos.liberarDia.descricao")}</p>
+          <LiberarDiaForm bases={baseParaLiberar} />
+          {liberacoes.length > 0 && (
+            <Card className="py-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("ciclos.base")}</TableHead>
+                    <TableHead>{t("ciclos.liberarDia.liberadaEm")}</TableHead>
+                    <TableHead className="text-right">{t("ciclos.acoes")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {liberacoes.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell>
+                        <span className="font-medium">{l.base.code}</span> <span className="text-muted-foreground">{l.base.name}</span>
+                      </TableCell>
+                      <TableCell className="tabular-nums">{fmtDateTime(l.createdAt, t.locale)}</TableCell>
+                      <TableCell>
+                        <CancelarLiberacaoForm id={l.id} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )}
+        </section>
       )}
 
       <section className="space-y-2">
