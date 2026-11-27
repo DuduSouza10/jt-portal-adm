@@ -26,7 +26,10 @@ export default async function FranquiasPage(props: PageProps<"/franquias">) {
         basePath="/franquias"
         header={
           can(user, "solicitacoes.criar") ? (
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button asChild variant="outline">
+                <Link href="/franquias/insumos">{t("franquias.abas.insumos")}</Link>
+              </Button>
               <Button asChild>
                 <Link href="/franquias/lacres">{t("solicitacoes.lacres.titulo")}</Link>
               </Button>

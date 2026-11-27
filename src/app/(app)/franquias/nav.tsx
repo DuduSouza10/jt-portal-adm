@@ -1,15 +1,16 @@
 import Link from "next/link";
-import { BarChart3, ClipboardList, Package, Tag } from "lucide-react";
+import { BarChart3, ClipboardList, Package, ShoppingCart, Tag } from "lucide-react";
 import { can, type Actor } from "@/lib/permissions/check";
 import { cn } from "@/lib/utils";
 import { getT } from "@/i18n/server";
 import { PageHeader } from "@/components/page-header";
 
-/** Cabeçalho e sub-abas da aba Franquias: Solicitações, Solicitar lacres, Estoque e Relatórios. */
+/** Cabeçalho e sub-abas da aba Franquias: Solicitações, Solicitar insumos, Solicitar lacres, Estoque e Relatórios. */
 export async function FranquiasNav({ user, current }: { user: Actor; current: string }) {
   const t = await getT();
   const items = [
     { href: "/franquias", label: t("franquias.abas.solicitacoes"), icon: ClipboardList, show: can(user, "solicitacoes.ver") },
+    { href: "/franquias/insumos", label: t("franquias.abas.insumos"), icon: ShoppingCart, show: can(user, "solicitacoes.criar") },
     { href: "/franquias/lacres", label: t("franquias.abas.lacres"), icon: Tag, show: can(user, "solicitacoes.criar") },
     { href: "/franquias/estoque", label: t("franquias.abas.estoque"), icon: Package, show: true },
     { href: "/franquias/relatorios", label: t("franquias.abas.relatorios"), icon: BarChart3, show: true },

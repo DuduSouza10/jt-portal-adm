@@ -1,5 +1,5 @@
 /**
- * S1–S3 (regras do portal do Eduardo) contra um PostgreSQL real: ciclo de 3 meses da base, número de
+ * S1–S3 (regras do portal do Eduardo) contra um PostgreSQL real: ciclo da base (1 mês) e das franquias (insumos + lacres), número de
  * pessoas obrigatório e limite por produto com bloqueio automático; recusa desfaz; quem aprova não entra.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -37,7 +37,11 @@ const pedir = (baseId: string, produtoId: string, quantity: number, peopleCount:
   criar(basePerfil(), { baseId, priority: "NORMAL", notes: null, peopleCount: peopleCount ?? undefined, itens: [{ produtoId, quantity }] });
 
 /** Fecha os pedidos em andamento da base, para os testes de ciclo/limite pedirem de novo (S16). */
-const fechar = (baseId: string) => db.solicitacao.updateMany({ where: { baseId, status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA"] } }, data: { status: "RECEBIDA" } });
+const fechar = async (baseId: string) => {
+  await db.solicitacao.updateMany({ where: { baseId, status: { in: ["PENDENTE", "APROVADA", "EM_SEPARACAO", "SEPARADA", "ENVIADA"] } }, data: { status: "RECEBIDA" } });
+  // S20: a franquia tem duas vagas por ciclo (insumos e lacres); estes testes pedem várias vezes o mesmo tipo.
+  if (baseId === franquia) await db.cicloBase.deleteMany({ where: { baseId } });
+};
 
 beforeAll(async () => {
   const r = await db.regional.create({ data: { code: `${tag}R`, name: "R" } });
@@ -69,29 +73,29 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
-describe("S1 e S2: ciclo de 3 meses e número de pessoas", () => {
+describe("S1 e S2: ciclo e número de pessoas", () => {
   it("base informa pessoas; depois de pedir entra no ciclo; recusa derruba o ciclo; envio conta do envio", async () => {
     await expect(pedir(base, fita, 1, null)).rejects.toThrow(/número de pessoas/);
 
     const s1 = await pedir(base, fita, 2);
     expect(s1.peopleCount).toBe(8);
-    await expect(pedir(base, fita, 1)).rejects.toThrow(/ciclo de 3 meses/);
+    await expect(pedir(base, fita, 1)).rejects.toThrow(/está no ciclo/);
 
     // Recusado: o ciclo cai e a base pode pedir de novo.
     await recusar(admin(), s1.id, "teste");
     const s2 = await pedir(base, fita, 2);
 
-    // Enviado: o ciclo passa a contar 3 meses a partir do envio.
+    // Enviado: o ciclo passa a contar 1 mês (padrão) a partir do envio.
     await aprovar(admin(), { id: s2.id, almoxarifadoId: almox, quantidades: {}, note: null });
     await separar(admin(), { id: s2.id, quantidades: {} });
     await enviarLote(admin(), { ids: [s2.id], tripId: "VG", shippingNotes: null }, { mime: "image/png", data: new Uint8Array([1]) });
     const ciclo = await db.cicloBase.findUniqueOrThrow({ where: { baseId: base } });
     const enviada = await db.solicitacao.findUniqueOrThrow({ where: { id: s2.id } });
     expect(ciclo.sourceSolicitacaoId).toBe(s2.id);
-    expect(ciclo.blockedUntil.getUTCMonth()).toBe((enviada.shippedAt!.getUTCMonth() + 3) % 12);
+    expect(ciclo.blockedUntil.getUTCMonth()).toBe((enviada.shippedAt!.getUTCMonth() + 1) % 12);
     expect(ciclo.reason).toMatch(/envio/);
 
-    // Quem aprova não entra no ciclo; franquia não tem ciclo e não precisa informar pessoas.
+    // Quem aprova não entra no ciclo; franquia não precisa informar pessoas (S20 tem o ciclo dela, testado abaixo).
     await criar(admin(), { baseId: base, priority: "NORMAL", notes: null, itens: [{ produtoId: fita, quantity: 1 }] });
     await pedir(franquia, fita, 1, null);
     await fechar(franquia);
@@ -148,12 +152,6 @@ describe("S3: limite por produto", () => {
     await fechar(base);
   });
 
-  it("S13: franquia não pede insumo que não é lacre", async () => {
-    const papel = (await db.produto.create({ data: { code: `${tag}-PAPEL`, name: "Papel" } })).id;
-    await expect(criar(admin(), { baseId: franquia, priority: "NORMAL", notes: null, itens: [{ produtoId: papel, quantity: 1 }] })).rejects.toThrow("Franquia só pode pedir lacres");
-    await db.produto.delete({ where: { id: papel } });
-  });
-
   it("franquia: limite de 4 no período, bloqueio automático ao atingir e recusa desfaz", async () => {
     await expect(pedir(franquia, luva, 5, null)).rejects.toThrow("Limite permitido: 4 cx");
     await fechar(franquia);
@@ -172,6 +170,69 @@ describe("S3: limite por produto", () => {
     expect((await db.bloqueioProduto.findUniqueOrThrow({ where: { id: bloqueio.id } })).revokedAt).not.toBeNull();
     await pedir(franquia, luva, 1, null);
     expect(a.id).toBeTruthy();
+  });
+});
+
+describe("S20: franquia, duas solicitações por ciclo (insumos e lacres)", () => {
+  it("pede insumos e lacres (um de cada); só depois dos dois é bloqueada; recusa libera a vaga; o ciclo vence", async () => {
+    const papel = (await db.produto.create({ data: { code: `${tag}-PAPEL`, name: "Papel" } })).id;
+    await lancarEntrada(admin(), { baseId: almox, document: "NF", reason: null, itens: [{ produtoId: papel, quantity: 100 }] });
+    await fechar(franquia);
+    await db.bloqueioProduto.deleteMany({ where: { baseId: franquia } });
+    await db.setting.deleteMany({ where: { key: "pedidos" } });
+    const pedirF = (produtoId: string) => pedir(franquia, produtoId, 1, null);
+
+    // Lacre e insumo no mesmo pedido: barrado. Insumo sozinho e lacre sozinho: aceitos, mesmo com o outro em andamento.
+    await expect(criar(admin(), { baseId: franquia, priority: "NORMAL", notes: null, itens: [{ produtoId: papel, quantity: 1 }, { produtoId: fita, quantity: 1 }] })).rejects.toThrow("Lacre e insumo não vão no mesmo pedido");
+    const ins = await pedirF(papel);
+    // Primeiro pedido: ainda não bloqueia (falta o de lacres) e não trava o de lacres.
+    expect((await db.cicloBase.findUniqueOrThrow({ where: { baseId: franquia } })).sourceSolicitacaoId).toBeNull();
+    await expect(pedirF(papel)).rejects.toThrow(/já fez a solicitação de insumos deste ciclo/);
+    const lac = await pedirF(fita);
+
+    // Os dois feitos: bloqueada por 1 mês (padrão), nos dois tipos.
+    const ciclo = await db.cicloBase.findUniqueOrThrow({ where: { baseId: franquia } });
+    expect(ciclo.sourceSolicitacaoId).toBe(lac.id);
+    expect(ciclo.blockedUntil.getTime()).toBeGreaterThan(Date.now() + 27 * 86_400_000);
+    expect(ciclo.blockedUntil.getTime()).toBeLessThan(Date.now() + 32 * 86_400_000);
+    await db.solicitacao.updateMany({ where: { baseId: franquia }, data: { status: "RECEBIDA" } });
+    await expect(pedirF(papel)).rejects.toThrow(/já fez as duas solicitações do ciclo/);
+    await expect(pedirF(fita)).rejects.toThrow(/já fez as duas solicitações do ciclo/);
+    // Quem aprova não entra no ciclo.
+    await criar(admin(), { baseId: franquia, priority: "NORMAL", notes: null, itens: [{ produtoId: papel, quantity: 1 }] });
+    await db.solicitacao.updateMany({ where: { baseId: franquia, status: "PENDENTE" }, data: { status: "RECEBIDA" } });
+
+    // Pedido de lacres cancelado: a vaga de lacres volta e o bloqueio cai; a de insumos continua usada.
+    await db.solicitacao.update({ where: { id: lac.id }, data: { status: "CANCELADA" } });
+    await expect(pedirF(papel)).rejects.toThrow(/já fez a solicitação de insumos deste ciclo/);
+    const lac2 = await pedirF(fita);
+    expect(lac2.id).not.toBe(lac.id);
+    await db.solicitacao.update({ where: { id: lac2.id }, data: { status: "RECEBIDA" } });
+    await expect(pedirF(fita)).rejects.toThrow(/já fez as duas solicitações do ciclo/);
+
+    // Liberado pelo admin ou ciclo vencido: as duas vagas voltam.
+    await db.cicloBase.update({ where: { baseId: franquia }, data: { blockedUntil: new Date(Date.now() - 1000) } });
+    const novo = await pedirF(papel);
+    expect((await db.cicloBase.findUniqueOrThrow({ where: { baseId: franquia } })).lacresSolicitacaoId).toBeNull();
+    await db.solicitacao.update({ where: { id: novo.id }, data: { status: "RECEBIDA" } });
+    await expect(pedirF(papel)).rejects.toThrow(/já fez a solicitação de insumos deste ciclo/);
+    await db.cicloBase.update({ where: { baseId: franquia }, data: { revokedAt: new Date() } });
+    await pedirF(papel);
+
+    // Ciclo desligado em Configurações: sem vagas nem bloqueio, só um por vez de cada tipo (S16).
+    await fechar(franquia);
+    await db.setting.upsert({ where: { key: "pedidos" }, update: { value: { cicloAtivo: false, cicloMeses: 1 } }, create: { key: "pedidos", value: { cicloAtivo: false, cicloMeses: 1 } } });
+    try {
+      await pedirF(papel);
+      await expect(pedirF(papel)).rejects.toThrow(/ainda está em andamento/); // um por vez, por tipo
+      await pedirF(fita); // o outro tipo anda junto
+      await fechar(franquia);
+      await pedirF(papel);
+      await fechar(franquia);
+    } finally {
+      await db.setting.deleteMany({ where: { key: "pedidos" } });
+    }
+    expect(ins.id).toBeTruthy();
   });
 });
 

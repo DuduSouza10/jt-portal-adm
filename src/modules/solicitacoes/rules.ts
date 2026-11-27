@@ -14,6 +14,19 @@ export function ehLacre(p: { lacre: boolean; name: string }): boolean {
   return p.lacre || /lacre/i.test(p.name) || p.name.includes("封条");
 }
 
+/** S20: tipo de pedido da franquia. */
+export type TipoPedido = "INSUMOS" | "LACRES";
+
+/**
+ * S20: o pedido da franquia é de lacres (só lacres) ou de insumos (nenhum lacre). Misturar é recusado (retorna null).
+ * Pedido só com itens fora do cadastro (sem produto) conta como insumos.
+ */
+export function tipoPedidoFranquia(produtos: { lacre: boolean; name: string }[]): TipoPedido | null {
+  const lacres = produtos.filter(ehLacre).length;
+  if (lacres === 0) return "INSUMOS";
+  return lacres === produtos.length ? "LACRES" : null;
+}
+
 export type Acao = "aprovar" | "recusar" | "cancelar" | "iniciarSeparacao" | "separar" | "enviar" | "receber";
 
 const FROM: Record<Acao, SolicitacaoStatus[]> = {

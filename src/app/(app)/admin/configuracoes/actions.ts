@@ -41,7 +41,7 @@ export async function salvarSlaAction(_: FormState, f: FormData): Promise<FormSt
   return { ok: true, message: "Configurações salvas." };
 }
 
-/** Ciclo de 3 meses da base (S1): ligar/desligar e quantos meses. */
+/** Ciclo da base e da franquia (S1, S20): ligar/desligar e quantos meses. */
 export async function salvarPedidosAction(_: FormState, f: FormData): Promise<FormState> {
   const user = await requirePermission("configuracoes.editar");
   const parsed = pedidoSettingsSchema.safeParse({ cicloAtivo: f.get("cicloAtivo") === "on", cicloMeses: f.get("cicloMeses"), limitesAtivos: f.get("limitesAtivos") === "on" });
