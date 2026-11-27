@@ -5,7 +5,7 @@ import { fmtDateTime } from "@/lib/format";
 import type { CurrentUser } from "@/lib/auth/session";
 import { can } from "@/lib/permissions/check";
 import { getPedidoSettings, type PedidoSettings } from "@/lib/settings";
-import { addMonths, cicloFranquiaAcabou, COUNTED, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
+import { addMonths, baseNoDiaDePedir, cicloFranquiaAcabou, COUNTED, estadoCicloFranquia, holdActive, limitError, limitFor, periodStart } from "./limites";
 import { ABERTOS, formatNumber, tipoPedidoFranquia, type TipoPedido } from "./rules";
 
 /**
@@ -20,6 +20,9 @@ type Produto = { id: string; code: string; name: string; unit: string; lacre: bo
 const meses = (n: number) => (n === 1 ? "1 mês" : `${n} meses`);
 
 /** Quem aprova não entra no ciclo nem nos limites (no sistema do Eduardo, o admin). */
+/** S22: mensagem quando a base tenta pedir fora de segunda e terça. */
+export const MSG_FORA_DO_DIA = "As bases só podem fazer solicitações às segundas e terças-feiras. Tente de novo na próxima segunda.";
+
 export const isExempt = (user: CurrentUser) => can(user, "solicitacoes.aprovar");
 
 export async function lockBase(tx: Tx, baseId: string) {
@@ -75,11 +78,12 @@ export async function avisosDoPedido(tx: Tx, base: Base, tipo: TipoPedido | unde
     return {
       cicloAte: st?.bloqueada ? st.ciclo!.blockedUntil : null,
       jaFez: !!st && (tipo === "INSUMOS" ? st.insumos : st.lacres),
+      foraDoDia: false,
       emAndamento: await pedidoEmAndamento(tx, base.id, tipo),
     };
   }
   const c = base.type === "BASE" && cfg.cicloAtivo ? await activeCycle(tx, base.id, now) : null;
-  return { cicloAte: c?.blockedUntil ?? null, jaFez: false, emAndamento: await pedidoEmAndamento(tx, base.id) };
+  return { cicloAte: c?.blockedUntil ?? null, jaFez: false, foraDoDia: base.type === "BASE" && !baseNoDiaDePedir(now), emAndamento: await pedidoEmAndamento(tx, base.id) };
 }
 
 /** Quanto a base já pediu do produto no período do limite. */
@@ -106,6 +110,8 @@ export async function checkBeforeCreate(
   if (base.type === "FRANQUIA" && !tipoPedidoFranquia(produtos)) throw new DomainError("Lacre e insumo não vão no mesmo pedido da franquia: faça um pedido de insumos e outro de lacres.");
   if (isExempt(user)) return;
   if (base.type === "BASE") {
+    // S22: a base só pede às segundas e terças.
+    if (!baseNoDiaDePedir(now)) throw new DomainError(MSG_FORA_DO_DIA);
     if (!peopleCount) throw new DomainError("Informe o número de pessoas na base.");
     const c = cfg.cicloAtivo ? await activeCycle(tx, base.id, now) : null;
     if (c) throw new DomainError(`Esta base está no ciclo e poderá fazer uma nova solicitação após ${fmtDateTime(c.blockedUntil)}.`);

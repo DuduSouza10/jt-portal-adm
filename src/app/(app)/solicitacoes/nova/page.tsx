@@ -38,6 +38,7 @@ export default async function NovaSolicitacaoPage() {
         cicloAte: a?.cicloAte ? fmtDateTime(a.cicloAte, t.locale) : null,
         emAndamento: a?.emAndamento ?? null,
         jaFez: a?.jaFez ? ("INSUMOS" as const) : null,
+        foraDoDia: a?.foraDoDia ?? false,
       };
     }),
   );
